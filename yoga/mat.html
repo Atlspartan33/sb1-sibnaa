@@ -1,0 +1,937 @@
+<title>Four-Minute Floor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Karla:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#eceef1; --surface:#f6f7f9; --raise:#ffffff;
+  --line:#d3d8df; --line-soft:#e2e6ec;
+  --ink:#191c25; --dim:#646b7b; --faint:#949bab;
+  --ember:#bc4718; --ember-soft:#f0ded6; --on-ember:#fffaf7;
+  --sage:#496a47; --sage-soft:#dde6dc;
+  --track:#dde1e7;
+  --shadow:0 1px 2px rgba(25,28,37,.05), 0 8px 24px -12px rgba(25,28,37,.18);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0f1118; --surface:#161922; --raise:#1d212c;
+    --line:#2a2f3c; --line-soft:#222735;
+    --ink:#e9e7e2; --dim:#8c92a3; --faint:#636a7b;
+    --ember:#f0794a; --ember-soft:#2e1d17; --on-ember:#1c0c04;
+    --sage:#96b790; --sage-soft:#1b241b;
+    --track:#262b38;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 32px -14px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0f1118; --surface:#161922; --raise:#1d212c;
+  --line:#2a2f3c; --line-soft:#222735;
+  --ink:#e9e7e2; --dim:#8c92a3; --faint:#636a7b;
+  --ember:#f0794a; --ember-soft:#2e1d17; --on-ember:#1c0c04;
+  --sage:#96b790; --sage-soft:#1b241b;
+  --track:#262b38;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 32px -14px rgba(0,0,0,.7);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--ground); color:var(--ink);
+  font-family:"Karla","Helvetica Neue",system-ui,sans-serif;
+  font-size:16px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:34rem; margin:0 auto; padding:0 20px; padding-block:28px 64px}
+h1,h2,h3{margin:0; text-wrap:balance}
+p{margin:0}
+button{font:inherit; color:inherit; background:none; border:none; cursor:pointer}
+:focus-visible{outline:2px solid var(--ember); outline-offset:3px; border-radius:2px}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums}
+.eyebrow{
+  font-family:"JetBrains Mono",ui-monospace,monospace; font-size:11px;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--faint);
+}
+
+/* ---- masthead ---------------------------------------------------- */
+.masthead{display:flex; flex-direction:column; gap:14px; margin-bottom:26px}
+.brandline{display:flex; align-items:baseline; justify-content:space-between; gap:12px}
+.brand{
+  font-family:"Fraunces",Georgia,serif; font-variation-settings:"opsz" 96;
+  font-weight:600; font-size:23px; letter-spacing:-.015em; line-height:1;
+}
+.brand em{font-style:normal; color:var(--ember)}
+.contract{
+  border-left:2px solid var(--ember); padding:2px 0 2px 13px;
+  color:var(--dim); font-size:14.5px; line-height:1.5;
+}
+.contract b{color:var(--ink); font-weight:700}
+
+/* ---- tabs -------------------------------------------------------- */
+.tabs{display:flex; gap:26px; border-bottom:1px solid var(--line); margin-bottom:26px}
+.tab{
+  padding:0 0 11px; font-size:14px; font-weight:500; color:var(--faint);
+  border-bottom:2px solid transparent; margin-bottom:-1px; letter-spacing:.01em;
+}
+.tab[aria-selected="true"]{color:var(--ink); border-bottom-color:var(--ember)}
+.panel[hidden]{display:none}
+.panel{display:flex; flex-direction:column; gap:26px}
+
+/* ---- form groups ------------------------------------------------- */
+.group{display:flex; flex-direction:column; gap:10px}
+.group > .eyebrow{margin-bottom:-2px}
+.chips{display:flex; flex-wrap:wrap; gap:8px}
+.chip{
+  padding:8px 14px; border:1px solid var(--line); border-radius:999px;
+  font-size:14px; color:var(--dim); background:var(--surface);
+  transition:border-color .15s, color .15s, background .15s;
+}
+.chip:hover{border-color:var(--faint)}
+.chip[aria-pressed="true"]{
+  color:var(--ink); border-color:var(--ink); background:var(--raise); font-weight:500;
+}
+.chip .sub{color:var(--faint); font-size:12px; margin-left:6px}
+.chip[aria-pressed="true"] .sub{color:var(--dim)}
+textarea{
+  width:100%; min-height:62px; resize:vertical; padding:11px 13px;
+  background:var(--surface); border:1px solid var(--line); border-radius:8px;
+  color:var(--ink); font:inherit; font-size:14.5px;
+}
+textarea::placeholder{color:var(--faint)}
+
+/* ---- primary action ---------------------------------------------- */
+.go{
+  width:100%; background:var(--ember); color:var(--on-ember); border-radius:11px;
+  padding:19px 20px 17px; display:flex; align-items:center; justify-content:space-between;
+  gap:14px; box-shadow:var(--shadow); transition:transform .12s, filter .15s;
+}
+.go:hover{filter:brightness(1.06)}
+.go:active{transform:translateY(1px)}
+.go .lead{
+  display:block;
+  font-family:"Fraunces",Georgia,serif; font-variation-settings:"opsz" 72;
+  font-weight:600; font-size:21px; letter-spacing:-.01em; line-height:1.1;
+}
+.go .meta{display:block; font-size:12px; opacity:.78; letter-spacing:.04em; margin-top:3px}
+.go .arrow{font-size:22px; opacity:.85; line-height:1}
+.ghost{
+  width:100%; border:1px solid var(--line); border-radius:11px; padding:13px 16px;
+  color:var(--dim); font-size:14px; text-align:left; background:var(--surface);
+  display:flex; align-items:center; gap:10px; transition:border-color .15s, color .15s;
+}
+.ghost:hover{border-color:var(--faint); color:var(--ink)}
+.ghost .spark{color:var(--ember); font-size:15px}
+.ghost:disabled{opacity:.5; cursor:default}
+.actions{display:flex; flex-direction:column; gap:10px}
+
+/* ---- sequence table ---------------------------------------------- */
+.seqhead{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:12px; padding-bottom:9px; border-bottom:1px solid var(--line);
+}
+.reroll{font-size:12.5px; color:var(--dim); text-decoration:underline; text-underline-offset:3px}
+.reroll:hover{color:var(--ember)}
+ol.seq{list-style:none; margin:0; padding:0}
+ol.seq li{
+  display:grid; grid-template-columns:2.1rem 1fr auto; gap:4px 12px;
+  padding:12px 0; border-bottom:1px solid var(--line-soft); align-items:baseline;
+}
+ol.seq .n{font-family:"JetBrains Mono",monospace; font-size:11.5px; color:var(--faint)}
+ol.seq .nm{
+  font-family:"Fraunces",Georgia,serif; font-variation-settings:"opsz" 30;
+  font-weight:500; font-size:17px; line-height:1.25; letter-spacing:-.005em;
+}
+ol.seq .sk{color:var(--faint); font-size:12.5px; font-style:italic; margin-left:7px; font-family:"Karla",sans-serif}
+ol.seq .br{
+  font-family:"JetBrains Mono",monospace; font-size:12px; color:var(--dim);
+  font-variant-numeric:tabular-nums; white-space:nowrap;
+}
+ol.seq .cue{grid-column:2/4; color:var(--dim); font-size:13.5px; line-height:1.45}
+.note{
+  background:var(--ember-soft); border-radius:9px; padding:13px 15px;
+  font-size:14px; line-height:1.5; color:var(--ink);
+}
+.note .eyebrow{color:var(--ember); display:block; margin-bottom:5px}
+
+/* ---- log --------------------------------------------------------- */
+.stats{display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--line); border-radius:9px; overflow:hidden}
+.stat{background:var(--surface); padding:14px 13px}
+.stat .v{font-family:"JetBrains Mono",monospace; font-size:24px; font-weight:500; line-height:1.1; font-variant-numeric:tabular-nums}
+.stat .k{font-size:11.5px; color:var(--faint); margin-top:4px; letter-spacing:.03em}
+.grid30{display:grid; grid-template-columns:repeat(15,1fr); gap:5px}
+.cell{aspect-ratio:1; border-radius:3px; background:var(--track); position:relative}
+.cell.on{background:var(--sage)}
+.cell.floor{background:var(--sage); opacity:.45}
+.cell.today{box-shadow:inset 0 0 0 1.5px var(--ember)}
+.legend{display:flex; gap:16px; flex-wrap:wrap; font-size:12px; color:var(--faint)}
+.legend i{width:9px; height:9px; border-radius:2px; display:inline-block; margin-right:6px; vertical-align:baseline}
+table.hist{width:100%; border-collapse:collapse; font-size:13.5px}
+table.hist th{
+  text-align:left; font-family:"JetBrains Mono",monospace; font-size:10.5px;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--faint); font-weight:400;
+  padding:0 0 8px; border-bottom:1px solid var(--line);
+}
+table.hist td{padding:10px 0; border-bottom:1px solid var(--line-soft); color:var(--dim)}
+table.hist td:first-child{font-family:"JetBrains Mono",monospace; font-size:12px; color:var(--ink)}
+table.hist td.min{font-family:"JetBrains Mono",monospace; text-align:right; color:var(--ink)}
+.empty{color:var(--faint); font-size:14px; line-height:1.6; padding:6px 0}
+
+/* ---- the stage (player) ------------------------------------------ */
+#stage[hidden]{display:none}
+#stage{
+  position:fixed; inset:0; background:var(--ground); z-index:50;
+  display:flex; flex-direction:column; padding:22px 20px calc(22px + env(safe-area-inset-bottom));
+}
+.stagetop{display:flex; align-items:center; justify-content:space-between; gap:12px}
+.quit{font-size:13px; color:var(--faint)}
+.quit:hover{color:var(--ink)}
+.progress{flex:1; height:2px; background:var(--track); margin:0 14px; border-radius:2px; overflow:hidden}
+.progress span{display:block; height:100%; background:var(--ember); width:0; transition:width .9s linear}
+.stagebody{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:28px; text-align:center}
+.ringwrap{position:relative; width:min(62vw,244px); aspect-ratio:1; display:grid; place-items:center}
+.ring{
+  position:absolute; inset:0; border-radius:50%;
+  border:1.5px solid var(--line); 
+}
+.breath{
+  position:absolute; inset:0; border-radius:50%;
+  background:radial-gradient(circle at 50% 50%, var(--ember-soft) 0%, transparent 72%);
+  border:2px solid var(--ember);
+  animation:breathe 6s ease-in-out infinite;
+}
+@keyframes breathe{
+  0%{transform:scale(.52); opacity:.55}
+  43%{transform:scale(1); opacity:1}
+  100%{transform:scale(.52); opacity:.55}
+}
+.paused .breath{animation-play-state:paused}
+.ringinner{position:relative; display:flex; flex-direction:column; align-items:center; gap:3px}
+.bigcount{font-family:"JetBrains Mono",monospace; font-size:40px; font-weight:500; line-height:1; font-variant-numeric:tabular-nums}
+.breathlabel{font-family:"JetBrains Mono",monospace; font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--ember)}
+.posename{
+  font-family:"Fraunces",Georgia,serif; font-variation-settings:"opsz" 120;
+  font-weight:600; font-size:clamp(28px,7vw,38px); letter-spacing:-.02em; line-height:1.12;
+}
+.posesk{color:var(--faint); font-size:14px; font-style:italic; margin-top:5px}
+.posecue{color:var(--dim); font-size:15.5px; line-height:1.5; max-width:30rem; margin-top:14px}
+.nextup{font-size:12.5px; color:var(--faint)}
+.stagefoot{display:flex; align-items:center; justify-content:center; gap:10px}
+.sbtn{
+  border:1px solid var(--line); border-radius:9px; padding:11px 18px; font-size:14px;
+  color:var(--dim); background:var(--surface);
+}
+.sbtn:hover{border-color:var(--faint); color:var(--ink)}
+.sbtn.wide{flex:1; text-align:center}
+@media (prefers-reduced-motion:reduce){
+  .breath{animation:none; transform:scale(.86)}
+  *{transition-duration:.01ms !important}
+}
+
+/* ---- finish ------------------------------------------------------ */
+.finish{display:flex; flex-direction:column; align-items:center; gap:22px; text-align:center; max-width:26rem}
+.finish .mark{font-family:"Fraunces",serif; font-variation-settings:"opsz" 120; font-weight:600; font-size:34px; letter-spacing:-.02em}
+.coach{color:var(--dim); font-size:16px; line-height:1.55; min-height:3.2em}
+.coach.live{color:var(--ink)}
+.afterrow{display:flex; gap:8px; justify-content:center; flex-wrap:wrap}
+.tiny{font-size:12px; color:var(--faint); line-height:1.6}
+.warn{color:var(--faint); font-size:12.5px; line-height:1.6; border-top:1px solid var(--line-soft); padding-top:16px}
+.warn b{color:var(--dim); font-weight:500}
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <div class="brandline">
+      <h1 class="brand">Four&#8209;Minute&nbsp;<em>Floor</em></h1>
+      <button class="eyebrow" id="themebtn" title="Switch light/dark">theme</button>
+    </div>
+    <p class="contract">The floor is <b>four minutes</b>. A four-minute day counts exactly as much as a twenty-minute day. The only thing being measured here is <b>how often you get on the mat</b>.</p>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-move" aria-selected="true" aria-controls="panel-move">Move</button>
+    <button class="tab" role="tab" id="tab-sit" aria-selected="false" aria-controls="panel-sit">Sit</button>
+    <button class="tab" role="tab" id="tab-log" aria-selected="false" aria-controls="panel-log">Log</button>
+  </div>
+
+  <section class="panel" id="panel-move" role="tabpanel" aria-labelledby="tab-move">
+    <div class="group">
+      <span class="eyebrow">How's the body today</span>
+      <div class="chips" id="moods"></div>
+    </div>
+    <div class="group">
+      <span class="eyebrow">How long</span>
+      <div class="chips" id="lengths"></div>
+    </div>
+    <div class="actions">
+      <button class="go" id="begin">
+        <span>
+          <span class="lead">Get on the mat</span>
+          <span class="meta mono" id="gometa">4 MIN &middot; 6 POSES</span>
+        </span>
+        <span class="arrow">&rarr;</span>
+      </button>
+      <div class="group" id="askbox" hidden>
+        <textarea id="notes" placeholder="Optional: what's tight, what hurts, what kind of day it's been. Claude builds around it."></textarea>
+        <button class="ghost" id="askclaude"><span class="spark">&#9670;</span><span id="asklabel">Have Claude build today's sequence</span></button>
+      </div>
+    </div>
+    <div>
+      <div class="seqhead">
+        <span class="eyebrow" id="seqsrc">Today's sequence &middot; built offline</span>
+        <button class="reroll" id="reroll">reroll</button>
+      </div>
+      <ol class="seq" id="seqlist"></ol>
+    </div>
+    <div class="note" id="ainote" hidden><span class="eyebrow">Claude's note</span><span id="ainotetext"></span></div>
+    <p class="warn"><b>Stiffness is information. Sharp or radiating pain is not.</b> Back out of anything sharp, and get a physio or doctor to look at it. Nothing here is medical advice.</p>
+  </section>
+
+  <section class="panel" id="panel-sit" role="tabpanel" aria-labelledby="tab-sit" hidden>
+    <div class="group">
+      <span class="eyebrow">How long</span>
+      <div class="chips" id="sitlengths"></div>
+    </div>
+    <div class="group">
+      <span class="eyebrow">Pace</span>
+      <div class="chips" id="paces"></div>
+    </div>
+    <button class="go" id="beginsit">
+      <span>
+        <span class="lead">Sit down</span>
+        <span class="meta mono" id="sitmeta">3 MIN &middot; EVEN 6</span>
+      </span>
+      <span class="arrow">&rarr;</span>
+    </button>
+    <p class="tiny">The ring paces the breath so you have something to follow instead of a blank timer. A bell at the start and the end. Eyes closed is fine &mdash; nothing on screen is load-bearing.</p>
+  </section>
+
+  <section class="panel" id="panel-log" role="tabpanel" aria-labelledby="tab-log" hidden>
+    <div class="stats" id="stats"></div>
+    <div class="group">
+      <span class="eyebrow">Last 30 days</span>
+      <div class="grid30" id="grid30"></div>
+      <div class="legend">
+        <span><i style="background:var(--sage)"></i>On the mat</span>
+        <span><i style="background:var(--track)"></i>Off</span>
+        <span><i style="background:transparent;box-shadow:inset 0 0 0 1.5px var(--ember)"></i>Today</span>
+      </div>
+    </div>
+    <div class="group">
+      <span class="eyebrow">Sessions</span>
+      <div id="hist"></div>
+    </div>
+    <p class="tiny" id="syncnote">Saved on this device.</p>
+  </section>
+</div>
+
+<div id="stage" hidden>
+  <div class="stagetop">
+    <button class="quit" id="quit">&larr; Stop</button>
+    <div class="progress"><span id="prog"></span></div>
+    <span class="eyebrow mono" id="clock">00:00</span>
+  </div>
+  <div class="stagebody" id="stagebody"></div>
+  <div class="stagefoot" id="stagefoot"></div>
+</div>
+
+<style>
+.breath.even{animation-name:breathe}
+.breath.longex{animation-name:breathe-longex}
+.breath.box{animation-name:breathe-box}
+@keyframes breathe-longex{
+  0%{transform:scale(.52); opacity:.55}
+  33%{transform:scale(1); opacity:1}
+  100%{transform:scale(.52); opacity:.55}
+}
+@keyframes breathe-box{
+  0%{transform:scale(.52); opacity:.55}
+  25%{transform:scale(1); opacity:1}
+  50%{transform:scale(1); opacity:1}
+  75%{transform:scale(.52); opacity:.55}
+  100%{transform:scale(.52); opacity:.55}
+}
+</style>
+
+<script>
+/* ============================================================
+   Four-Minute Floor
+   One breath = six seconds. Five breaths = thirty. Every hold in
+   this library is written in breaths, not seconds, because that is
+   the unit the practice actually runs on.
+   ============================================================ */
+
+const BREATH = 6; // seconds
+
+/* ---- pose library ------------------------------------------------
+   group: open | spine | stand | hip | twist | fold | back | rest
+   load:  1 gentle .. 3 demanding      calm: 1 stimulating .. 3 settling
+   side:  held on both sides (doubles the time)                      */
+const POSES = [
+  {id:"rest_con",  group:"open",  en:"Constructive rest",    sk:"Savasana, knees bent", breaths:8,  load:1, calm:3, cue:"On your back, knees bent, feet wide, knees leaning together. Do nothing. Let the floor take the weight of your ribs."},
+  {id:"apanasana", group:"open",  en:"Knees to chest",       sk:"Apanasana",            breaths:6,  load:1, calm:3, cue:"Draw both knees in, hands on shins. Exhale, pull a little closer. Inhale, let them float away an inch."},
+  {id:"wipers",    group:"open",  en:"Windshield wipers",    sk:"Jathara Parivartanasana, small", breaths:8, load:1, calm:2, cue:"Feet wider than the mat, knees fall right, then left. Slow. This is the hips waking up, not a stretch."},
+  {id:"supta_ham", group:"open",  en:"Reclined hamstring",   sk:"Supta Padangusthasana",breaths:6,  load:2, calm:2, side:true, cue:"Strap or belt around the foot, other leg bent. Straight-ish leg, not straight. Stiff hamstrings answer to time, not force."},
+  {id:"happybaby", group:"open",  en:"Happy baby",           sk:"Ananda Balasana",      breaths:6,  load:1, calm:3, cue:"Grip the outer feet or the backs of the thighs, knees toward the armpits. Rock a little if it helps."},
+  {id:"neck",      group:"open",  en:"Neck release",         sk:"Seated",               breaths:4,  load:1, calm:3, side:true, cue:"Ear toward shoulder, opposite hand trailing down. Let the jaw go slack. Most desk stiffness lives right here."},
+
+  {id:"catcow",    group:"spine", en:"Cat and cow",          sk:"Marjaryasana Bitilasana", breaths:8, load:1, calm:2, cue:"Hands under shoulders, knees under hips. Inhale the chest forward, exhale the spine round. One breath per movement, no rushing."},
+  {id:"thread",    group:"spine", en:"Thread the needle",    sk:"Parsva Balasana",      breaths:6,  load:2, calm:3, side:true, cue:"From all fours, slide one arm under the other, shoulder and temple to the mat. Breathe into the space between the shoulder blades."},
+  {id:"puppy",     group:"spine", en:"Puppy",                sk:"Uttana Shishosana",    breaths:6,  load:2, calm:2, cue:"Hips stay over the knees, walk the hands forward, chest melts toward the floor. Armpits and upper back."},
+  {id:"child",     group:"spine", en:"Child's pose",         sk:"Balasana",             breaths:8,  load:1, calm:3, cue:"Knees wide, big toes together, forehead down. Arms forward or back alongside the hips. Rest here anytime, on any day, without asking."},
+  {id:"birddog",   group:"spine", en:"Bird dog",             sk:"Chakravakasana",       breaths:6,  load:2, calm:1, side:true, cue:"Opposite arm and leg reach out long. Squared hips, level back. Slow beats high."},
+  {id:"sphinx",    group:"spine", en:"Sphinx",               sk:"Salamba Bhujangasana", breaths:6,  load:2, calm:2, cue:"On the belly, forearms down, elbows under shoulders. Lift through the top of the chest, not the low back."},
+  {id:"sidebend",  group:"spine", en:"Seated side bend",     sk:"Parsva Sukhasana",     breaths:5,  load:1, calm:2, side:true, cue:"Cross-legged, one hand down, the other arm arcs overhead. Lengthen the whole side body, ribs to hip."},
+
+  {id:"uttanasana",group:"stand", en:"Standing fold",        sk:"Uttanasana",           breaths:8,  load:2, calm:3, cue:"Feet hip-width, knees genuinely bent. Fold from the hips, heavy head, hands anywhere. Bent knees are the point, not a compromise."},
+  {id:"tadasana",  group:"stand", en:"Mountain",             sk:"Tadasana",             breaths:5,  load:1, calm:2, cue:"Stand. Weight even across both feet. Arms heavy. Notice what the body is already doing before you change anything."},
+  {id:"lunge",     group:"stand", en:"Low lunge",            sk:"Anjaneyasana",         breaths:6,  load:2, calm:2, side:true, cue:"Back knee down, front knee over the ankle. Tuck the tailbone and the front of the back hip opens. This is the one desk-sitting steals."},
+  {id:"warrior2",  group:"stand", en:"Warrior II",           sk:"Virabhadrasana II",    breaths:6,  load:3, calm:1, side:true, cue:"Front knee toward ninety, back foot flat and turned in. Arms long, gaze over the front hand. Legs work, face doesn't."},
+  {id:"triangle",  group:"stand", en:"Triangle",             sk:"Utthita Trikonasana",  breaths:6,  load:2, calm:2, side:true, cue:"Front leg straight-ish, reach forward first, then lower. Hand to shin or a block. Long spine over deep reach."},
+  {id:"chair",     group:"stand", en:"Chair",                sk:"Utkatasana",           breaths:5,  load:3, calm:1, cue:"Sit back as if a chair were there. Weight in the heels, ribs down. Five breaths is enough to feel honest."},
+  {id:"downdog",   group:"stand", en:"Downward dog",         sk:"Adho Mukha Svanasana", breaths:6,  load:2, calm:2, cue:"Hands shoulder-width, hips up and back, knees bent as much as you need. Pedal the feet. Heels do not have to reach."},
+  {id:"tree",      group:"stand", en:"Tree",                 sk:"Vrksasana",            breaths:5,  load:2, calm:2, side:true, cue:"Foot to the ankle, calf, or inner thigh, never the knee. Wobbling is the pose working, not the pose failing."},
+  {id:"prasarita", group:"stand", en:"Wide-legged fold",     sk:"Prasarita Padottanasana", breaths:6, load:2, calm:3, cue:"Feet wide and parallel, hinge from the hips, crown toward the floor, hands to the mat or a block."},
+
+  {id:"pigeon",    group:"hip",   en:"Pigeon",               sk:"Eka Pada Rajakapotasana", breaths:8, load:2, calm:3, side:true, cue:"Front shin angled, back leg long. Prop the front hip on a cushion so you can stay. Stay longer than is comfortable, shorter than is stupid."},
+  {id:"lizard",    group:"hip",   en:"Lizard",               sk:"Utthan Pristhasana",   breaths:6,  load:3, calm:2, side:true, cue:"Front foot outside the hands, back knee down. Forearms to blocks or the floor if they arrive. They may not today."},
+  {id:"butterfly", group:"hip",   en:"Butterfly",            sk:"Baddha Konasana",      breaths:8,  load:1, calm:3, cue:"Soles together, heels away from the body, not jammed in. Fold only as far as the back stays long."},
+  {id:"malasana",  group:"hip",   en:"Garland squat",        sk:"Malasana",             breaths:6,  load:2, calm:2, cue:"Feet wide, toes out, sink down. Heels on a rolled towel if they lift. Elbows press the knees wide."},
+  {id:"figure4",   group:"hip",   en:"Reclined figure four", sk:"Supta Kapotasana",     breaths:6,  load:1, calm:3, side:true, cue:"Ankle over the opposite thigh, thread through and pull the back thigh in. The outer hip and glute, without any weight on it."},
+
+  {id:"supine_tw", group:"twist", en:"Reclined twist",       sk:"Supta Matsyendrasana", breaths:8,  load:1, calm:3, side:true, cue:"Knees drop to one side, shoulders stay down. Chase the shoulder to the floor, not the knee."},
+  {id:"seated_tw", group:"twist", en:"Seated twist",         sk:"Ardha Matsyendrasana", breaths:6,  load:2, calm:2, side:true, cue:"Sit tall first, then turn. Inhale to lengthen, exhale to rotate a degree further. Don't lever with the arm."},
+
+  {id:"pasch",     group:"fold",  en:"Seated forward fold",  sk:"Paschimottanasana",    breaths:8,  load:2, calm:3, cue:"Sit on a folded blanket. Knees bent as much as needed. Fold from the hips and let the last inch never arrive."},
+  {id:"janu",      group:"fold",  en:"Head to knee",         sk:"Janu Sirsasana",       breaths:6,  load:2, calm:3, side:true, cue:"One leg long, the other foot to the inner thigh. Turn the chest over the long leg before folding."},
+  {id:"upavistha", group:"fold",  en:"Wide seated fold",     sk:"Upavistha Konasana",   breaths:6,  load:2, calm:3, cue:"Legs wide, kneecaps up. Walk the hands forward on an exhale. Stop early, stay long."},
+
+  {id:"bridge",    group:"back",  en:"Bridge",               sk:"Setu Bandha Sarvangasana", breaths:6, load:2, calm:2, cue:"Feet hip-width, press the floor away, lift the hips. Glutes and hamstrings, not a crunch in the low back."},
+  {id:"cobra",     group:"back",  en:"Low cobra",            sk:"Bhujangasana",         breaths:5,  load:2, calm:1, cue:"Hands under the shoulders, elbows in. Lift only as high as the hands are not pushing. Low is the useful one."},
+  {id:"locust",    group:"back",  en:"Locust",               sk:"Salabhasana",          breaths:4,  load:3, calm:1, cue:"On the belly, lift chest and legs an inch or two, arms back alongside the ribs. The whole back line at once."},
+
+  {id:"legsup",    group:"rest",  en:"Legs up the wall",     sk:"Viparita Karani",      breaths:12, load:1, calm:3, cue:"Hips near the wall, legs up, arms out. If there's no wall, knees over a chair seat. The single highest ratio of benefit to effort in the whole practice."},
+  {id:"savasana",  group:"rest",  en:"Final rest",           sk:"Savasana",             breaths:12, load:1, calm:3, cue:"Flat on your back, feet flopping out, palms up. Nothing to do now. This is not optional padding, it is where the practice gets filed."},
+  {id:"child_r",   group:"rest",  en:"Supported child's pose",sk:"Balasana",            breaths:10, load:1, calm:3, cue:"Cushion or folded blanket between the thighs and the chest. Head turned to one side, halfway through turn it the other."}
+];
+
+const BY_ID = Object.fromEntries(POSES.map(p => [p.id, p]));
+const poseSeconds = p => p.breaths * BREATH * (p.side ? 2 : 1);
+
+/* ---- moods and arcs ---------------------------------------------- */
+const MOODS = {
+  stiff: {label:"Stiff",  sub:"everything's locked", ok:p => p.load <= 2,
+          arc:["open","spine","spine","hip","stand","hip","twist","rest"],
+          brief:"long easy holds, hips and spine, nothing that demands strength"},
+  tired: {label:"Tired",  sub:"low battery",         ok:p => p.load <= 2 && p.calm >= 2,
+          arc:["open","spine","open","hip","twist","fold","rest"],
+          brief:"mostly on the floor, restorative, no standing work"},
+  wired: {label:"Wired",  sub:"can't settle",        ok:p => p.calm >= 2,
+          arc:["open","spine","stand","fold","hip","twist","rest"],
+          brief:"start with a little output, then fold and twist to bring the system down"},
+  fine:  {label:"Fine",   sub:"ready to work",       ok:() => true,
+          arc:["open","spine","stand","stand","back","hip","twist","fold","rest"],
+          brief:"a full arc including standing poses and a mild backbend"}
+};
+const LENGTHS = [
+  {min:4,  label:"4 min",  sub:"the floor"},
+  {min:10, label:"10 min", sub:""},
+  {min:20, label:"20 min", sub:""}
+];
+
+/* deterministic per-day shuffle: the same day gives the same sequence,
+   so re-opening the page isn't a slot machine. Reroll bumps the seed. */
+function rng(seed){ let s = seed >>> 0; return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296; }
+const dayNumber = d => Math.floor((d ? new Date(d) : new Date()).setHours(0,0,0,0) / 864e5);
+const hash = str => { let h = 2166136261; for (const c of str){ h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+
+function buildSequence(moodKey, minutes, seed){
+  const mood = MOODS[moodKey] || MOODS.fine;
+  const rand = rng(dayNumber() * 2654435761 + hash(moodKey) + minutes * 40503 + seed * 7919);
+  const budget = minutes * 60;
+  const used = new Set();
+
+  const pick = group => {
+    let pool = POSES.filter(p => p.group === group && !used.has(p.id) && mood.ok(p));
+    if (!pool.length) pool = POSES.filter(p => p.group === group && !used.has(p.id));
+    if (!pool.length) return null;
+    const p = pool[Math.floor(rand() * pool.length)];
+    used.add(p.id);
+    return p;
+  };
+
+  // the closing rest is reserved first so it can never get squeezed out
+  const closer = pick("rest") || BY_ID.savasana;
+  const closerTime = minutes <= 4 ? 48 : Math.min(120, Math.round(budget * 0.13));
+  const ceiling = budget - closerTime;
+
+  const arc = mood.arc.slice(0, -1);
+  const steps = [];
+  let total = 0;
+  // walk the arc as many times as the budget allows, so a longer
+  // practice deepens the same shape instead of stopping early
+  for (let pass = 0; pass < 4 && total < ceiling * 0.92; pass++){
+    for (const group of arc){
+      if (total >= ceiling * 0.92) break;
+      if (pass > 0 && group === "open") continue; // warm-ups belong at the start
+      const p = pick(group);
+      if (!p) continue;
+      const t = poseSeconds(p);
+      // let one pose overshoot slightly rather than end the practice short
+      if (total + t > ceiling && total > ceiling * 0.7) continue;
+      steps.push(p);
+      total += t;
+    }
+  }
+  if (!steps.length) steps.push(BY_ID.catcow);
+  steps.push({...closer, breaths: Math.max(6, Math.round(closerTime / BREATH))});
+  return steps;
+}
+</script>
+
+<script>
+/* ---- state & storage --------------------------------------------- */
+const KEY = "fmf.v1";
+const today = () => new Date().toISOString().slice(0,10);
+const $ = s => document.querySelector(s);
+
+const state = Object.assign({
+  mood:"stiff", minutes:4, seed:0,
+  sitMin:3, pace:"even", voice:true, log:[]
+}, load());
+
+function load(){ try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } }
+function save(){
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+  syncUp();
+}
+
+/* cross-device sync, best effort. The device copy is always the truth
+   you can practise from; the store just keeps phone and laptop level. */
+let DB = null;
+window.claude?.use?.("db").then(db => {
+  DB = db; if (!db) return;
+  db.doc("practice/state").get().then(snap => {
+    const remote = snap.exists ? (snap.data().log || []) : [];
+    if (mergeLog(remote)) { renderLog(); }
+    $("#syncnote").textContent = "Synced across your devices.";
+    syncUp();
+  }).catch(() => {});
+}).catch(() => {});
+
+function syncUp(){
+  if (!DB) return;
+  DB.doc("practice/state").set({ log: state.log, updated: new Date().toISOString() }).catch(() => {});
+}
+function mergeLog(incoming){
+  const seen = new Set(state.log.map(e => e.id));
+  const add = (incoming || []).filter(e => e && e.id && !seen.has(e.id));
+  if (!add.length) return false;
+  state.log = state.log.concat(add).sort((a,b) => b.id - a.id);
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+  return true;
+}
+
+/* ---- ask Claude --------------------------------------------------- */
+let SAMPLE = null;
+window.claude?.use?.("sample").then(s => {
+  SAMPLE = s;
+  if (s) $("#askbox").hidden = false;
+}).catch(() => {});
+
+const recentSummary = () => state.log.slice(0,7)
+  .map(e => `${e.d} ${e.min}min ${e.mood || e.kind}${e.after ? " felt:" + e.after : ""}`).join("; ") || "no sessions logged yet";
+
+async function askClaude(){
+  const btn = $("#askclaude"), label = $("#asklabel");
+  btn.disabled = true; label.textContent = "Building…";
+  const menu = POSES.map(p =>
+    `${p.id}|${p.en}|${p.group}|${p.breaths}br|load${p.load}${p.side ? "|both sides" : ""}`).join("\n");
+  const prompt =
+`You are sequencing one short home yoga practice for an adult returning after several years away. They are stiff, self-conscious, and the entire goal is that they come back tomorrow. Bias to gentle. Never sequence anything that needs strength or balance they may not have.
+
+Pick ONLY from this library, by id:
+${menu}
+
+Today: mood=${state.mood} (${MOODS[state.mood].brief}); length=${state.minutes} minutes; one breath = 6 seconds, and a "both sides" pose costs double its breaths.
+What they said about today: ${($("#notes").value || "nothing in particular").slice(0,600)}
+Their last few sessions: ${recentSummary()}
+
+Build a sequence that totals close to ${state.minutes * 60} seconds and ends on a pose from the rest group.
+Return JSON only:
+{"note":"one sentence, under 25 words, saying why this shape today — plain and specific, no wellness language","steps":[{"id":"pose_id","breaths":6,"cue":"optional replacement cue, under 30 words"}]}`;
+
+  try {
+    const out = await SAMPLE.json(prompt, {modelTier:"default"});
+    const steps = (out.steps || [])
+      .filter(s => BY_ID[s.id])
+      .map(s => ({...BY_ID[s.id], breaths: Math.max(3, Math.min(20, Number(s.breaths) || BY_ID[s.id].breaths)), cue: (s.cue || BY_ID[s.id].cue)}));
+    if (steps.length < 3) throw new Error("short");
+    current = steps;
+    $("#seqsrc").textContent = "Today's sequence · built by Claude";
+    if (out.note){ $("#ainote").hidden = false; $("#ainotetext").textContent = out.note; }
+    aiBuilt = true;
+    renderSeq();
+    label.textContent = "Rebuild with Claude";
+  } catch (err) {
+    label.textContent = err && err.code === "not_granted"
+      ? "Claude isn't available here — the offline sequence still works"
+      : "Couldn't reach Claude — using the offline sequence";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ---- setup rendering ---------------------------------------------- */
+let current = [], aiBuilt = false;
+
+function chip(label, sub, pressed, onClick){
+  const b = document.createElement("button");
+  b.className = "chip"; b.type = "button";
+  b.setAttribute("aria-pressed", pressed ? "true" : "false");
+  b.innerHTML = label + (sub ? ` <span class="sub">${sub}</span>` : "");
+  b.addEventListener("click", onClick);
+  return b;
+}
+
+function renderChips(){
+  const m = $("#moods"); m.innerHTML = "";
+  for (const [k, v] of Object.entries(MOODS))
+    m.append(chip(v.label, v.sub, state.mood === k, () => { state.mood = k; state.seed = 0; save(); rebuild(); }));
+  const l = $("#lengths"); l.innerHTML = "";
+  for (const o of LENGTHS)
+    l.append(chip(o.label, o.sub, state.minutes === o.min, () => { state.minutes = o.min; save(); rebuild(); }));
+  const sl = $("#sitlengths"); sl.innerHTML = "";
+  for (const n of [3,5,10,15])
+    sl.append(chip(n + " min", n === 3 ? "the floor" : "", state.sitMin === n, () => { state.sitMin = n; save(); renderChips(); sitMeta(); }));
+  const pc = $("#paces"); pc.innerHTML = "";
+  for (const [k, v] of Object.entries(PACES))
+    pc.append(chip(v.label, v.sub, state.pace === k, () => { state.pace = k; save(); renderChips(); sitMeta(); }));
+}
+
+function rebuild(){
+  current = buildSequence(state.mood, state.minutes, state.seed);
+  aiBuilt = false;
+  $("#seqsrc").textContent = "Today's sequence · built offline";
+  $("#ainote").hidden = true;
+  renderChips(); renderSeq();
+}
+
+function renderSeq(){
+  const ol = $("#seqlist"); ol.innerHTML = "";
+  current.forEach((p, i) => {
+    const li = document.createElement("li");
+    const br = document.createElement("span"); br.className = "br";
+    br.textContent = p.breaths + " br" + (p.side ? " ×2" : "");
+    const n = document.createElement("span"); n.className = "n";
+    n.textContent = String(i + 1).padStart(2, "0");
+    const nm = document.createElement("span"); nm.className = "nm";
+    nm.textContent = p.en;
+    const sk = document.createElement("span"); sk.className = "sk"; sk.textContent = p.sk;
+    nm.append(sk);
+    const cue = document.createElement("span"); cue.className = "cue"; cue.textContent = p.cue;
+    li.append(n, nm, br, cue);
+    ol.append(li);
+  });
+  const secs = current.reduce((t, p) => t + poseSeconds(p), 0);
+  $("#gometa").textContent = `${Math.round(secs / 60)} MIN · ${current.length} POSES`;
+}
+
+const PACES = {
+  even:   {label:"Even",        sub:"6s",  cycle:6,  cls:"even",   say:"in two, out three"},
+  longex: {label:"Long exhale", sub:"12s", cycle:12, cls:"longex", say:"in four, out eight"},
+  box:    {label:"Box",         sub:"16s", cycle:16, cls:"box",    say:"four in, hold, four out, hold"}
+};
+const sitMeta = () => {
+  $("#sitmeta").textContent = `${state.sitMin} MIN · ${PACES[state.pace].label.toUpperCase()} ${PACES[state.pace].cycle}`;
+};
+</script>
+
+<script>
+/* ---- the stage ---------------------------------------------------- */
+const stage = $("#stage"), body = $("#stagebody"), foot = $("#stagefoot");
+let S = null, tick = null, audio = null;
+
+const mmss = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`;
+
+function bell(){
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.type = "sine"; o.frequency.value = 432;
+    g.gain.setValueAtTime(0.0001, audio.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.25, audio.currentTime + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 2.6);
+    o.connect(g); g.connect(audio.destination); o.start(); o.stop(audio.currentTime + 2.7);
+  } catch {}
+}
+function say(text){
+  if (!state.voice || !window.speechSynthesis) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 0.9; u.pitch = 0.95;
+    speechSynthesis.speak(u);
+  } catch {}
+}
+
+/* a "both sides" pose becomes two steps, so the switch is announced */
+function expand(seq){
+  const out = [];
+  for (const p of seq){
+    if (p.side){
+      out.push({...p, seconds: p.breaths * BREATH, side: "Right side"});
+      out.push({...p, seconds: p.breaths * BREATH, side: "Left side"});
+    } else {
+      out.push({...p, seconds: p.breaths * BREATH, side: null});
+    }
+  }
+  return out;
+}
+
+function startMove(){
+  S = {kind:"move", steps:expand(current), i:0, left:0, elapsed:0, paused:false,
+       total:0, mood:state.mood};
+  S.total = S.steps.reduce((t,s) => t + s.seconds, 0);
+  openStage(); bell(); nextStep(true);
+}
+
+function startSit(){
+  const pace = PACES[state.pace];
+  S = {kind:"sit", i:0, left:state.sitMin*60, elapsed:0, paused:false,
+       total:state.sitMin*60, cycle:pace.cycle, cls:pace.cls};
+  openStage(); bell(); say(`${state.sitMin} minutes. ${pace.say}. Follow the ring.`);
+  drawSit(); run();
+}
+
+function openStage(){
+  stage.hidden = false;
+  document.documentElement.style.overflow = "hidden";
+}
+function closeStage(){
+  clearInterval(tick); tick = null;
+  try { speechSynthesis.cancel(); } catch {}
+  stage.hidden = true; S = null;
+  document.documentElement.style.overflow = "";
+}
+
+function run(){
+  clearInterval(tick);
+  tick = setInterval(() => {
+    if (!S || S.paused) return;
+    S.left--; S.elapsed++;
+    if (S.kind === "move"){
+      if (S.left <= 0) return nextStep();
+      paint();
+    } else {
+      if (S.left <= 0){ bell(); return finish(); }
+      paintSit();
+    }
+  }, 1000);
+}
+
+function nextStep(first){
+  if (!first) S.i++;
+  if (S.i >= S.steps.length){ bell(); return finish(); }
+  const st = S.steps[S.i];
+  S.left = st.seconds;
+  drawMove();
+  say(`${st.en}${st.side ? ". " + st.side : ""}. ${st.cue}`);
+  if (first) run();
+}
+
+function ringEl(cycleSeconds, cls){
+  return `<div class="ringwrap" id="ringwrap">
+      <div class="ring"></div>
+      <div class="breath ${cls || "even"}" style="animation-duration:${cycleSeconds}s"></div>
+      <div class="ringinner">
+        <span class="bigcount" id="bigcount">—</span>
+        <span class="breathlabel" id="breathlabel">breath</span>
+      </div>
+    </div>`;
+}
+
+function drawMove(){
+  const st = S.steps[S.i], nxt = S.steps[S.i+1];
+  body.innerHTML = `
+    ${ringEl(BREATH)}
+    <div>
+      <h2 class="posename">${st.en}</h2>
+      <p class="posesk">${st.sk}${st.side ? " · " + st.side : ""}</p>
+      <p class="posecue">${st.cue}</p>
+    </div>
+    <p class="nextup">${nxt ? "Next: " + nxt.en + (nxt.side ? " · " + nxt.side : "") : "Last one."}</p>`;
+  foot.innerHTML = `
+    <button class="sbtn" id="pause">Pause</button>
+    <button class="sbtn wide" id="skip">Next pose &rarr;</button>
+    <button class="sbtn" id="voice" aria-pressed="${state.voice}">${state.voice ? "Voice on" : "Voice off"}</button>`;
+  $("#pause").onclick = togglePause;
+  $("#skip").onclick = () => { S.left = 0; nextStep(); };
+  $("#voice").onclick = () => { state.voice = !state.voice; if (!state.voice) try{speechSynthesis.cancel()}catch{}; save(); drawMove(); };
+  paint();
+}
+
+function drawSit(){
+  body.innerHTML = `
+    ${ringEl(S.cycle, S.cls)}
+    <div>
+      <h2 class="posename">Sitting</h2>
+      <p class="posecue">${PACES[state.pace].say}. When you notice you've gone somewhere else, come back. That noticing is the whole practice, not a failure of it.</p>
+    </div>`;
+  foot.innerHTML = `<button class="sbtn wide" id="pause">Pause</button>`;
+  $("#pause").onclick = togglePause;
+  paintSit();
+}
+
+function togglePause(){
+  S.paused = !S.paused;
+  $("#ringwrap").classList.toggle("paused", S.paused);
+  $("#pause").textContent = S.paused ? "Resume" : "Pause";
+  if (S.paused) try { speechSynthesis.cancel(); } catch {}
+}
+
+function paint(){
+  const st = S.steps[S.i];
+  const done = st.seconds - S.left;
+  const breath = Math.min(st.breaths, Math.floor(done / BREATH) + 1);
+  $("#bigcount").textContent = String(breath).padStart(2,"0");
+  $("#breathlabel").textContent = `breath ${breath} of ${st.breaths}`;
+  $("#clock").textContent = mmss(S.elapsed);
+  $("#prog").style.width = Math.min(100, (S.elapsed / S.total) * 100) + "%";
+}
+function paintSit(){
+  $("#bigcount").textContent = mmss(S.left);
+  $("#breathlabel").textContent = "remaining";
+  $("#clock").textContent = mmss(S.elapsed);
+  $("#prog").style.width = Math.min(100, (S.elapsed / S.total) * 100) + "%";
+}
+
+/* ---- finish ------------------------------------------------------- */
+const OFFLINE_LINES = [
+  "That's logged. The next one is easier than this one was.",
+  "Done is the whole bar. You cleared it.",
+  "Four minutes today beats forty minutes you keep planning for Sunday.",
+  "The stiffness doesn't go in one session. The habit does start in one.",
+  "You got on the mat. That was the hard part and it's behind you."
+];
+
+function finish(){
+  clearInterval(tick); tick = null;
+  const minutes = Math.max(1, Math.round(S.elapsed / 60));
+  const entry = {
+    id: Date.now(), d: today(), min: minutes,
+    kind: S.kind, mood: S.kind === "move" ? S.mood : state.pace, after: null
+  };
+  if (S.elapsed >= 60){ state.log.unshift(entry); save(); }
+  const days = uniqueDays();
+
+  body.innerHTML = `
+    <div class="finish">
+      <span class="mark">${S.kind === "sit" ? "Sat." : "On the mat."}</span>
+      <p class="eyebrow mono">${minutes} MIN &middot; DAY ${days} ON THE MAT</p>
+      <p class="coach" id="coach">${OFFLINE_LINES[Math.floor(Math.random()*OFFLINE_LINES.length)]}</p>
+      ${S.elapsed >= 60 ? `<div>
+        <p class="eyebrow" style="margin-bottom:9px">How did the body take it</p>
+        <div class="afterrow" id="afterrow"></div>
+      </div>` : `<p class="tiny">Under a minute, so nothing logged. No harm done.</p>`}
+    </div>`;
+  foot.innerHTML = `<button class="sbtn wide" id="done">Close</button>`;
+  $("#done").onclick = () => { closeStage(); renderLog(); };
+
+  if (S.elapsed >= 60){
+    const row = $("#afterrow");
+    for (const a of ["Easier than expected","About right","Rough"]){
+      row.append(chip(a, "", false, e => {
+        entry.after = a; save();
+        [...row.children].forEach(c => c.setAttribute("aria-pressed","false"));
+        e.currentTarget.setAttribute("aria-pressed","true");
+      }));
+    }
+    coachLine(entry, days);
+  }
+}
+
+async function coachLine(entry, days){
+  if (!SAMPLE) return;
+  const el = $("#coach");
+  try {
+    const prompt =
+`Write ONE sentence to someone who just finished a ${entry.min}-minute ${entry.kind === "sit" ? "meditation" : "yoga practice"} at home. They are restarting after years off, stiff, and quietly embarrassed about it.
+
+Their record: ${days} days on the mat, ${state.log.length} sessions logged. Recent: ${recentSummary()}
+
+Rules: under 22 words. Dry and specific, the way a good training partner talks. No wellness language, no "journey", no "honour your body", no exclamation marks, no emoji. Don't congratulate them for existing — say something true about what the record actually shows. Return the sentence only.`;
+    el.classList.add("live");
+    await SAMPLE(prompt, {modelTier:"quick", onText:({text}) => { el.textContent = text; }});
+  } catch { el.classList.remove("live"); }
+}
+
+/* ---- log ---------------------------------------------------------- */
+const uniqueDays = () => new Set(state.log.map(e => e.d)).size;
+
+function renderLog(){
+  const days = uniqueDays();
+  const last30 = state.log.filter(e => dayNumber(e.d) > dayNumber() - 30);
+  const mins = state.log.reduce((t,e) => t + e.min, 0);
+  $("#stats").innerHTML = `
+    <div class="stat"><div class="v">${days}</div><div class="k">days on the mat</div></div>
+    <div class="stat"><div class="v">${new Set(last30.map(e=>e.d)).size}</div><div class="k">of the last 30</div></div>
+    <div class="stat"><div class="v">${mins}</div><div class="k">minutes total</div></div>`;
+
+  const g = $("#grid30"); g.innerHTML = "";
+  const t = dayNumber();
+  for (let i = 29; i >= 0; i--){
+    const dn = t - i;
+    const date = new Date(dn * 864e5).toISOString().slice(0,10);
+    const hits = state.log.filter(e => e.d === date);
+    const c = document.createElement("div");
+    c.className = "cell" + (hits.length ? (hits.some(e => e.min >= 4) ? " on" : " floor") : "") + (i === 0 ? " today" : "");
+    c.title = hits.length ? `${date} — ${hits.reduce((a,e)=>a+e.min,0)} min` : date;
+    g.append(c);
+  }
+
+  const h = $("#hist");
+  if (!state.log.length){
+    h.innerHTML = `<p class="empty">Nothing logged yet. That's the honest starting point, and it's the last time this screen will look like this &mdash; four minutes from now it won't.</p>`;
+    return;
+  }
+  h.innerHTML = `<table class="hist"><thead><tr><th>Date</th><th>What</th><th>Felt</th><th style="text-align:right">Min</th></tr></thead><tbody>${
+    state.log.slice(0,40).map(e => `<tr>
+      <td>${e.d.slice(5)}</td>
+      <td>${e.kind === "sit" ? "Sit · " + (PACES[e.mood]?.label || e.mood) : "Move · " + (MOODS[e.mood]?.label || e.mood)}</td>
+      <td>${e.after || "&mdash;"}</td>
+      <td class="min">${e.min}</td></tr>`).join("")}</tbody></table>`;
+}
+
+/* ---- wiring -------------------------------------------------------- */
+for (const id of ["move","sit","log"]){
+  $("#tab-" + id).addEventListener("click", () => {
+    for (const o of ["move","sit","log"]){
+      $("#tab-" + o).setAttribute("aria-selected", String(o === id));
+      $("#panel-" + o).hidden = o !== id;
+    }
+    if (id === "log") renderLog();
+  });
+}
+$("#begin").addEventListener("click", startMove);
+$("#beginsit").addEventListener("click", startSit);
+$("#quit").addEventListener("click", () => { if (S && S.elapsed >= 60) finish(); else closeStage(); });
+$("#reroll").addEventListener("click", () => { state.seed++; save(); rebuild(); });
+$("#askclaude").addEventListener("click", askClaude);
+$("#themebtn").addEventListener("click", () => {
+  const cur = document.documentElement.getAttribute("data-theme");
+  const next = cur === "dark" ? "light" : cur === "light" ? "dark"
+    : (matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "dark");
+  document.documentElement.setAttribute("data-theme", next);
+  try { localStorage.setItem("fmf.theme", next); } catch {}
+});
+try {
+  const th = localStorage.getItem("fmf.theme");
+  if (th) document.documentElement.setAttribute("data-theme", th);
+} catch {}
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && S) { if (S.elapsed >= 60) finish(); else closeStage(); }
+  if (e.key === " " && S && $("#pause")) { e.preventDefault(); togglePause(); }
+});
+
+rebuild();
+sitMeta();
+renderLog();
+</script>
