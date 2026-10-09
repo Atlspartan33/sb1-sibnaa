@@ -81,6 +81,10 @@ export interface Civilization {
   era: string;
   region: string;
   dateLabel: string;
+  /** Years as integers; negative numbers are BCE. Drives the globe's time slider. */
+  period: { start: number; end: number };
+  /** Marker position on the globe: the civilization's center or capital. */
+  location: { lat: number; lng: number };
   status: CivilizationStatus;
   blurb: string;
   /** Shown on in-research civilizations: what has to happen before images are made. */

@@ -40,3 +40,24 @@
     @apply rounded-xl border border-ink-800/10 bg-white/70 shadow-sm;
   }
 }
+
+/* Pulsing ring on globe markers that have published reconstructions. */
+.animate-ping-slow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ping-slow 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes ping-slow {
+  75%,
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-ping-slow {
+    animation: none;
+  }
+}

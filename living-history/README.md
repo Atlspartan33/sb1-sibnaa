@@ -21,7 +21,7 @@ npm run lint
 
 | Route | What it is |
 | --- | --- |
-| `/` | Home: hero, featured entries, civilizations (published and in research), how it works |
+| `/` | Globe explorer: drag to spin, a time slider that highlights civilizations alive in a given year, click a marker to open its panel. Then featured entries and how it works |
 | `/civilizations/:id` | Timeline, type filters, and grid of entries |
 | `/entries/:id` | The image, evidence with confidence badges and citations, myth vs. reality, sources, and the generated prompt |
 | `/method` | Pipeline, confidence levels, and ethics commitments |
@@ -64,16 +64,24 @@ src/
   types.ts                 SceneSpec, Entry, Civilization, Source types
   data/
     sources.ts             shared source registry (cited by id)
-    civilizations.ts       published and in-research civilizations
+    civilizations.ts       civilizations with globe coordinates and date ranges
     egypt-new-kingdom.ts   10 research-backed Scene Specs
     index.ts               lookups
   lib/promptBuilder.ts     Scene Spec → image prompt + negative prompt
+  components/Globe.tsx     orthographic SVG globe (d3-geo + world-atlas), drag, fly-to, markers
+  components/GlobeExplorer.tsx  globe + time slider + civilization panel
   pages/                   Home, Civilization, Entry, Method, Studio
   components/              cards, badges, image frame, source list, prompt panel
 prompts/
   scene-spec-generator.md  LLM prompt template for drafting Scene Specs
   scene-spec.schema.json   JSON Schema for structured output
 ```
+
+## Adding a civilization to the globe
+
+Add an object to `src/data/civilizations.ts` with `location` (lat/lng of its center or capital) and `period`
+(start/end years, negative = BCE). It appears on the globe and in the time slider automatically. Set `status:
+'published'` once it has reviewed entries.
 
 ## Content so far: New Kingdom Egypt (c. 1550–1070 BCE)
 

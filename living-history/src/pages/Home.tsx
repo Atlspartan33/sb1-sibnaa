@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, BookOpenCheck, FileSearch, ScanEye, ShieldCheck } from 'lucide-react';
-import { civilizations, getEntry } from '../data';
+import { BookOpenCheck, FileSearch, ScanEye, ShieldCheck } from 'lucide-react';
+import { getEntry } from '../data';
 import type { Entry } from '../types';
 import EntryCard from '../components/EntryCard';
+import GlobeExplorer from '../components/GlobeExplorer';
 
 const steps = [
   {
@@ -35,23 +36,20 @@ export default function Home() {
   return (
     <>
       <section className="relative overflow-hidden bg-ink-900 text-papyrus-50">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(208,138,60,0.35),transparent_60%),radial-gradient(ellipse_at_bottom_left,rgba(47,79,143,0.45),transparent_55%)]" />
-        <div className="container-page relative py-20 sm:py-28">
-          <p className="eyebrow text-ochre-400">Evidence-based reconstructions</p>
-          <h1 className="mt-4 max-w-3xl text-5xl font-bold leading-[1.05] text-papyrus-50 sm:text-6xl">
-            See the people of the past as they really were.
-          </h1>
-          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-papyrus-100/85">
-            Photorealistic reconstructions of ancient lives, clothing, and cities, built from archaeology rather than
-            Hollywood. Every image shows the evidence behind it, and where that evidence runs out.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link to="/civilizations/egypt-new-kingdom" className="btn bg-ochre-500 text-white hover:bg-ochre-600">
-              Explore New Kingdom Egypt <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link to="/method" className="btn border border-papyrus-50/25 text-papyrus-50 hover:bg-papyrus-50/10">
-              How it works
-            </Link>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(208,138,60,0.25),transparent_55%),radial-gradient(ellipse_at_bottom_left,rgba(47,79,143,0.4),transparent_55%)]" />
+        <div className="container-page relative py-10 sm:py-14">
+          <div className="max-w-3xl">
+            <p className="eyebrow text-ochre-400">Evidence-based reconstructions</p>
+            <h1 className="mt-3 text-4xl font-bold leading-[1.05] text-papyrus-50 sm:text-5xl">
+              Spin the globe. See the people of the past as they really were.
+            </h1>
+            <p className="mt-4 text-base leading-relaxed text-papyrus-100/85 sm:text-lg">
+              Photorealistic reconstructions built from archaeology rather than Hollywood. Drag the globe, travel
+              through time, and select a civilization to explore it.
+            </p>
+          </div>
+          <div className="mt-8">
+            <GlobeExplorer />
           </div>
         </div>
       </section>
@@ -73,48 +71,6 @@ export default function Home() {
           {featured.map((entry) => (
             <EntryCard key={entry.id} entry={entry} />
           ))}
-        </div>
-      </section>
-
-      <section className="border-y border-ink-800/10 bg-papyrus-100/60 py-16">
-        <div className="container-page">
-          <p className="eyebrow">Civilizations</p>
-          <h2 className="mt-2 text-3xl font-bold sm:text-4xl">Where we’re going</h2>
-          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {civilizations.map((civ) => {
-              const published = civ.status === 'published';
-              const content = (
-                <>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-ink-700">{civ.dateLabel}</span>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                        published ? 'bg-malachite-500/15 text-malachite-600' : 'bg-ink-800/5 text-ink-700'
-                      }`}
-                    >
-                      {published ? 'Explore' : 'In research'}
-                    </span>
-                  </div>
-                  <h3 className="mt-3 text-2xl font-semibold">{civ.name}</h3>
-                  <p className="mt-1 text-xs text-ink-700">{civ.region}</p>
-                  <p className="mt-3 text-sm leading-relaxed text-ink-700">{civ.blurb}</p>
-                </>
-              );
-              return published ? (
-                <Link
-                  key={civ.id}
-                  to={`/civilizations/${civ.id}`}
-                  className="card p-5 transition-shadow hover:shadow-md"
-                >
-                  {content}
-                </Link>
-              ) : (
-                <div key={civ.id} className="card p-5 opacity-90">
-                  {content}
-                </div>
-              );
-            })}
-          </div>
         </div>
       </section>
 
