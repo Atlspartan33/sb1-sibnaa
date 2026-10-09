@@ -17,6 +17,14 @@ npm run build      # typecheck + production build
 npm run lint
 ```
 
+## Deploy
+
+- **Your own domain:** connect the repo to Netlify with base directory `living-history`. `netlify.toml` sets the
+  build and the single-page-app redirect. Any static host works the same way: build with `npm run build` and serve
+  `dist/` with all routes falling back to `index.html`.
+- **Static hosts without route fallbacks:** `npm run build:static` outputs `dist-static/` with relative asset paths
+  and hash URLs (`#/entries/...`), so it runs from any folder.
+
 ## Pages
 
 | Route | What it is |

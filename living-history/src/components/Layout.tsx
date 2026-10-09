@@ -17,7 +17,7 @@ export default function Layout() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-20 border-b border-ink-800/10 bg-papyrus-50/90 backdrop-blur">
+      <header className="sticky top-[env(safe-area-inset-top,0px)] z-20 border-b border-ink-800/10 bg-papyrus-50/90 backdrop-blur">
         <div className="container-page flex h-16 items-center justify-between gap-4">
           <Link to="/" className="flex shrink-0 items-center gap-2 text-ink-900">
             <Hourglass className="h-5 w-5 text-ochre-500" aria-hidden />
