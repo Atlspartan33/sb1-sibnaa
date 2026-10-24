@@ -525,6 +525,92 @@ end
 
 ------------------------------------------------------------------------------
 
+-- The whole client, head to toe, for the runway and podium (a "paper doll").
+-- `container` should be twice as tall as it is wide.
+function LookRenderer.renderBody(container: GuiObject, client, look, options: Options?): Frame
+	local old = container:FindFirstChild("Doll")
+	if old then
+		old:Destroy()
+	end
+	local root = Instance.new("Frame")
+	root.Name = "Doll"
+	root.AnchorPoint = Vector2.new(0.5, 0.5)
+	root.Position = UDim2.fromScale(0.5, 0.5)
+	root.Size = UDim2.fromScale(1, 1)
+	root.BackgroundTransparency = 1
+	root.ZIndex = container.ZIndex
+	local aspect = Instance.new("UIAspectRatioConstraint")
+	aspect.AspectRatio = 0.5
+	aspect.Parent = root
+
+	local skin = client.skin
+	local outfit = Catalog.byId[look.outfit]
+	local custom = Catalog.byId[look.outfitColor or ""]
+	local dress = outfit ~= nil and outfit.dress == true
+	local accent = if outfit and outfit.accent then outfit.accent else WHITE
+	local function clothes(f: Frame)
+		if custom and custom.color then
+			f.BackgroundColor3 = custom.color
+		else
+			paint(f, outfit, Color3.fromRGB(110, 120, 135))
+		end
+		drawPattern(f, look.outfitPattern, if custom and custom.color then WHITE else accent)
+	end
+
+	-- legs and shoes (y is 0..1 down a body that's twice as tall as wide)
+	for side = -1, 1, 2 do
+		local leg = shape(root, 0.5 + side * 0.08, 0.8, 0.13, 0.26, if dress then skin else accent, 1, 0.5)
+		if not dress then
+			leg.BackgroundColor3 = if custom and custom.color then darken(custom.color, 0.7) else accent
+		end
+		shape(root, 0.5 + side * 0.095, 0.94, 0.17, 0.045, if dress then accent else Color3.fromRGB(250, 250, 255), 2, 0.5)
+	end
+	-- arms with sleeves and hands
+	for side = -1, 1, 2 do
+		local arm = shape(root, 0.5 + side * 0.29, 0.51, 0.11, 0.2, skin, 2, 0.5, 0, side * -10)
+		arm.Name = "Arm"
+		local sleeve = shape(root, 0.5 + side * 0.28, 0.45, 0.13, 0.09, Color3.new(), 3, 0.5, 0, side * -10)
+		clothes(sleeve)
+		shape(root, 0.5 + side * 0.31, 0.61, 0.11, 0.055, skin, 3, 0.5)
+	end
+	shape(root, 0.5, 0.385, 0.14, 0.05, skin, 3, 0.4) -- neck
+	local top = shape(root, 0.5, 0.48, 0.5, 0.16, Color3.new(), 4, 0.3)
+	clothes(top)
+	shape(root, 0.5, 0.41, 0.16, 0.025, skin, 5, 0.5) -- neckline
+	if dress then
+		local skirt = shape(root, 0.5, 0.64, 0.8, 0.2, Color3.new(), 4, 0.35)
+		clothes(skirt)
+		shape(root, 0.5, 0.735, 0.78, 0.018, accent, 5, 0.5) -- hem trim
+	else
+		local pants = if custom and custom.color then darken(custom.color, 0.7) else accent
+		shape(root, 0.5, 0.62, 0.32, 0.11, pants, 2, 0.25) -- hips
+		local belt = shape(root, 0.5, 0.565, 0.5, 0.03, darken(top.BackgroundColor3, 0.75), 5, 0.3)
+		belt.Name = "Belt"
+	end
+
+	-- the head is the same drawing as the makeover portrait
+	local head = Instance.new("Frame")
+	head.Name = "Head"
+	head.AnchorPoint = Vector2.new(0.5, 0)
+	head.Position = UDim2.fromScale(0.5, -0.05)
+	head.Size = UDim2.fromScale(1.05, 0.525)
+	head.BackgroundTransparency = 1
+	head.ZIndex = 6
+	head.Parent = root
+	LookRenderer.render(head, client, look, {
+		headOnly = true,
+		clean = if options and options.clean then options.clean else 1,
+		mood = if options and options.mood then options.mood else "smile",
+	})
+	local headRoot = head:FindFirstChild("Portrait")
+	if headRoot and headRoot:IsA("GuiObject") then
+		headRoot.ClipsDescendants = false
+	end
+
+	root.Parent = container
+	return root
+end
+
 -- The nail station: a close-up of the client's hand.
 local FINGERS = { { 0.335, 0.27 }, { 0.445, 0.17 }, { 0.555, 0.2 }, { 0.665, 0.28 } } -- x, fingertip y
 

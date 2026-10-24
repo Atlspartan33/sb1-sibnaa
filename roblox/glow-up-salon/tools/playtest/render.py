@@ -1,7 +1,7 @@
 import json,sys,os,html,subprocess
 MAIN = __name__=='__main__'
 shots=[]
-outdir=sys.argv[2] if MAIN else '.'
+outdir=os.path.abspath(sys.argv[2]) if MAIN else '.'
 if MAIN: os.makedirs(outdir,exist_ok=True)
 for line in (open(sys.argv[1]) if MAIN else []):
     if line.startswith('@@SHOT '):

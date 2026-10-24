@@ -37,6 +37,7 @@ if [ "${1:-}" = "--screens" ]; then
 	fi
 	python3 render.py "$OUT/play.out" "$OUT/screens"
 	"$CACHE/luau" gallery.luau > "$OUT/gallery.out" && python3 render.py "$OUT/gallery.out" "$OUT/screens"
+	"$CACHE/luau" dolls.luau > "$OUT/dolls.out" && python3 render.py "$OUT/dolls.out" "$OUT/screens"
 	"$CACHE/luau" world3d.luau > "$OUT/world.out" && python3 render3d.py "$OUT/world.out" "$OUT/3d"
 	python3 render.py "$OUT/events.out" "$OUT/screens" && python3 render3d.py "$OUT/events.out" "$OUT/3d"
 fi

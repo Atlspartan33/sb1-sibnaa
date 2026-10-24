@@ -2,7 +2,10 @@
 -- Building with code means the place works straight away; you can still decorate around it in Studio.
 
 local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+
+local Config = require(ReplicatedStorage.Shared.Config)
 
 local WorldBuilder = {}
 
@@ -259,6 +262,7 @@ function WorldBuilder.setDecor(eventId: string?)
 		snow.EmissionDirection = Enum.NormalId.Bottom
 		snow.SpreadAngle = Vector2.new(15, 15)
 		snow.LightEmission = 0.3
+		snow.Texture = Config.Textures.Circle
 		snow.Parent = cloud
 		for i = 1, 8 do
 			floater(decor, "❄️", Vector3.new(-16 + (i % 4) * 10, 15 + (i % 3) * 3, -50 + i * 8), 2.4)
@@ -400,6 +404,7 @@ function WorldBuilder.build(): World
 			ColorSequenceKeypoint.new(1, rgb(180, 120, 255)),
 		})
 		emitter.EmissionDirection = Enum.NormalId.Top
+		emitter.Texture = Config.Textures.Star
 		emitter.Parent = cannon
 		table.insert(confetti, emitter)
 	end

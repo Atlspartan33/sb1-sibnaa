@@ -3,7 +3,7 @@ sys.argv_backup=sys.argv;
 import importlib.util
 spec=importlib.util.spec_from_file_location('r2d',os.path.join(os.path.dirname(os.path.abspath(__file__)),'render.py'))
 saved=sys.argv; sys.argv=['x']; r2d=importlib.util.module_from_spec(spec); spec.loader.exec_module(r2d); sys.argv=saved
-src,outdir=sys.argv[1],sys.argv[2]; os.makedirs(outdir,exist_ok=True)
+src,outdir=sys.argv[1],os.path.abspath(sys.argv[2]); os.makedirs(outdir,exist_ok=True)
 worlds=[]
 for line in open(src):
     if line.startswith('@@WORLD '):

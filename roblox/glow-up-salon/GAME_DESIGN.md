@@ -15,8 +15,8 @@
 | ![](docs/screens/07-runway.jpg) | ![](docs/screens/08-halloween.jpg) | ![](docs/screens/09-christmas.jpg) |
 | **Podium** | **Results** | **Gift calendar** |
 | ![](docs/screens/10-podium.jpg) | ![](docs/screens/11-results.jpg) | ![](docs/screens/12-gift-calendar.jpg) |
-| **Look Book** | **Shop** | |
-| ![](docs/screens/13-lookbook.jpg) | ![](docs/screens/14-shop.jpg) | |
+| **Look Book** | **Shop** | **Runway paper dolls** |
+| ![](docs/screens/13-lookbook.jpg) | ![](docs/screens/14-shop.jpg) | ![](docs/screens/15-runway-dolls.jpg) |
 
 *These pictures come from the play-test tool (`tools/playtest`), not Roblox Studio. In Roblox, lighting, fonts and 3D look a little different.*
 
@@ -28,7 +28,7 @@
 | Do their hair / you get to do their hair too | 💇 11 hairstyles and 20 hair colors (some only during holidays). Clients show up with **messy** hair you have to fix |
 | They come in from the shop dirty, so they have to wash their face | Every client says where they've been ("I fixed cars at the auto shop all day. I'm SO greasy! 😫"). Rub the splats off with 🧽 Soap (✨ pops), then 🚿 Rinse the bubbles. The game switches tools for you |
 | Pay to get extra stuff | Coins you earn unlock looks for free. Robux packs add extra looks and fun effects. Nothing paid is needed to win |
-| Then you do a fashion show | Clients walk a 3D runway under a balloon arch. The camera follows them, photographers flash, and everyone taps emoji cheers and hearts |
+| Then you do a fashion show | Clients walk a 3D runway under a balloon arch as a head-to-toe "paper doll" (the same drawing as the makeover, so the dress, colors, pattern, shoes and hair all show). They bounce as they walk and twirl at the end, with a trail of stars. The camera follows them, photographers flash, and everyone taps emoji cheers and hearts |
 | You only get 5 minutes to do everything | A "5 minutes! GO! 💨" splash, then one timer for the whole makeover. It turns red and pulses in the last 30 seconds |
 
 ## What makes it fun (and easy for little kids)
@@ -140,7 +140,7 @@ New packs are easy to add: give items `pass = "PackName"` in `Catalog` and add t
 
 - Co-op "Best Friend Mode": two stylists on one client
 - Your own salon to decorate with coins
-- Real 3D hair and dresses on the runway models (needs uploaded meshes)
+- Real 3D hair and dresses (needs uploaded meshes). The paper-doll runway works well without them.
 - Voice clips for the client ("Ewww!", "I LOVE it!") for kids who can't read yet
 - Photo mode: save a picture card with frames
 - Client of the Day requests ("Make me look like a mermaid!")

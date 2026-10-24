@@ -209,6 +209,15 @@ local function buildBlockModel(skin: Color3, top: Color3, bottom: Color3): Model
 	return model
 end
 
+local function rootHeight(model: Model): number
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	local root = model.PrimaryPart or model:FindFirstChild("HumanoidRootPart") :: BasePart
+	if humanoid and humanoid.RigType == Enum.HumanoidRigType.R15 then
+		return humanoid.HipHeight + root.Size.Y / 2
+	end
+	return 3
+end
+
 -- Makes a 3D client with the face the stylist designed.
 local function buildClientModel(entry: Entry): Model
 	local outfit = Catalog.byId[entry.look.outfit]
@@ -261,54 +270,47 @@ local function buildClientModel(entry: Entry): Model
 		end
 	end
 
-	-- Swap the plain head for the face the stylist made
-	local head = model:FindFirstChild("Head") :: BasePart?
-	if head then
-		head.Transparency = 1
-		for _, d in head:GetChildren() do
-			if d:IsA("Decal") then
-				d:Destroy()
-			end
+	-- The 3D body is hidden; a "paper doll" of the client (the same drawing as the makeover,
+	-- head to toe) walks the runway instead, so the dress, colors and hair all show.
+	for _, p in model:GetDescendants() do
+		if p:IsA("BasePart") then
+			p.Transparency = 1
+		elseif p:IsA("Decal") then
+			p:Destroy()
 		end
+	end
+	local dollRoot = model.PrimaryPart or model:FindFirstChild("HumanoidRootPart")
+	if dollRoot then
+		local stars = Scoring.judge(entry, theme())
 		local billboard = Instance.new("BillboardGui")
-		billboard.Name = "Face"
-		billboard.Size = UDim2.fromScale(4.4, 4.4)
-		billboard.StudsOffset = Vector3.new(0, 0.5, 0)
+		billboard.Name = "Doll"
+		billboard.Size = UDim2.fromScale(3.6, 7.2)
+		billboard.StudsOffset = Vector3.new(0, 3.6 - rootHeight(model), 0)
 		billboard.LightInfluence = 0
 		billboard.MaxDistance = 250
 		billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 		local holder = Instance.new("Frame")
+		holder.Name = "Holder"
 		holder.Size = UDim2.fromScale(1, 1)
 		holder.BackgroundTransparency = 1
 		holder.Parent = billboard
-		-- Everyone sees the client washed and happy; the judges' tips stay private
-		local stars = Scoring.judge(entry, theme())
-		LookRenderer.render(holder, entry.client, entry.look, {
-			headOnly = true,
-			clean = 1,
-			mood = if stars >= 4 then "grin" else "smile",
-		})
-		billboard.Adornee = head
-		billboard.Parent = head
-	end
+		-- everyone sees the client washed and happy; the judges' tips stay private
+		LookRenderer.renderBody(holder, entry.client, entry.look, { clean = 1, mood = if stars >= 4 then "grin" else "smile" })
+		billboard.Adornee = dollRoot
+		billboard.Parent = dollRoot
 
-	-- Dresses get a skirt
-	local hips = model:FindFirstChild("LowerTorso") or model:FindFirstChild("Torso")
-	if outfit and outfit.dress and hips and hips:IsA("BasePart") then
-		local skirt = Instance.new("Part")
-		skirt.Name = "Skirt"
-		skirt.Shape = Enum.PartType.Cylinder
-		skirt.Size = Vector3.new(1.6, 2.9, 2.9) -- a cylinder's height runs along X
-		skirt.Color = top
-		skirt.Material = if outfit.sparkle then Enum.Material.Glass else Enum.Material.SmoothPlastic
-		skirt.CanCollide = false
-		skirt.Massless = true
-		skirt.CFrame = hips.CFrame * CFrame.new(0, -0.75, 0) * CFrame.Angles(0, 0, math.rad(90))
-		local weld = Instance.new("WeldConstraint")
-		weld.Part0 = hips
-		weld.Part1 = skirt
-		weld.Parent = skirt
-		skirt.Parent = model
+		-- a little trail of stars behind every client
+		local trail = Instance.new("ParticleEmitter")
+		trail.Name = "StarTrail"
+		trail.Texture = Config.Textures.Star
+		trail.Rate = 8
+		trail.Lifetime = NumberRange.new(1, 1.6)
+		trail.Speed = NumberRange.new(1, 2)
+		trail.SpreadAngle = Vector2.new(180, 180)
+		trail.Size = NumberSequence.new(0.5, 0)
+		trail.LightEmission = 0.6
+		trail.Color = ColorSequence.new(theme().color, Color3.new(1, 1, 1))
+		trail.Parent = dollRoot
 	end
 
 	if hasPass(entry.player, "RunwayStar") then
@@ -329,14 +331,6 @@ local function buildClientModel(entry: Entry): Model
 	return model
 end
 
-local function rootHeight(model: Model): number
-	local humanoid = model:FindFirstChildOfClass("Humanoid")
-	local root = model.PrimaryPart or model:FindFirstChild("HumanoidRootPart") :: BasePart
-	if humanoid and humanoid.RigType == Enum.HumanoidRigType.R15 then
-		return humanoid.HipHeight + root.Size.Y / 2
-	end
-	return 3
-end
 
 local function placeModel(model: Model, groundPosition: Vector3, facing: Vector3): BasePart
 	local root = model.PrimaryPart or model:FindFirstChild("HumanoidRootPart") :: BasePart

@@ -147,22 +147,22 @@ function Showcase:buildScreen()
 		Parent = bg,
 	}, { new("UIAspectRatioConstraint", { AspectRatio = 1 }), Theme.corner(40) })
 	self.screenTitle = new("TextLabel", {
-		Position = UDim2.fromScale(0.5, 0.1),
-		Size = UDim2.fromScale(0.46, 0.22),
+		Position = UDim2.fromScale(0.5, 0.05),
+		Size = UDim2.fromScale(0.46, 0.2),
 		TextColor3 = C.white,
 		Text = "✨ 5 Minute Glow Up ✨",
 		Parent = bg,
 	})
 	self.screenSub = new("TextLabel", {
-		Position = UDim2.fromScale(0.5, 0.36),
-		Size = UDim2.fromScale(0.46, 0.14),
+		Position = UDim2.fromScale(0.5, 0.26),
+		Size = UDim2.fromScale(0.46, 0.13),
 		TextColor3 = C.pink,
 		Text = "",
 		Parent = bg,
 	})
 	self.screenTheme = new("TextLabel", {
-		Position = UDim2.fromScale(0.5, 0.6),
-		Size = UDim2.fromScale(0.46, 0.12),
+		Position = UDim2.fromScale(0.5, 0.41),
+		Size = UDim2.fromScale(0.46, 0.1),
 		TextColor3 = C.gold,
 		Text = "",
 		Parent = bg,
@@ -229,14 +229,32 @@ function Showcase:updateWalkers()
 		if typeof(from) == "Vector3" and typeof(to) == "Vector3" and type(start) == "number" and type(walkTime) == "number" and root and root:IsA("BasePart") then
 			local t = now - start
 			local forward = Vector3.new(0, 0, 1)
+			local bob, squeeze = 0, 1
 			if t < walkTime then
 				local pos = from:Lerp(to, math.max(t, 0) / walkTime)
 				root.CFrame = CFrame.lookAt(pos, pos + forward)
+				bob = 0.15 * math.abs(math.sin(t * 7)) -- a bouncy little walk
 			elseif t < walkTime + 1 then
-				-- twirl!
-				root.CFrame = CFrame.lookAt(to, to + forward) * CFrame.Angles(0, (t - walkTime) * math.pi * 2, 0)
+				-- twirl! (the paper doll squeezes thin and back, like turning around)
+				local angle = (t - walkTime) * math.pi * 2
+				root.CFrame = CFrame.lookAt(to, to + forward) * CFrame.Angles(0, angle, 0)
+				squeeze = math.abs(math.cos(angle))
 			else
 				root.CFrame = CFrame.lookAt(to, to + forward)
+			end
+			local billboard = root:FindFirstChild("Doll")
+			if billboard and billboard:IsA("BillboardGui") then
+				local baseY = billboard:GetAttribute("BaseY")
+				if type(baseY) ~= "number" then
+					baseY = billboard.StudsOffset.Y
+					billboard:SetAttribute("BaseY", baseY)
+				end
+				billboard.StudsOffset = Vector3.new(0, baseY + bob, 0)
+				local doll = billboard:FindFirstChild("Doll", true)
+				local aspect = doll and doll:FindFirstChildOfClass("UIAspectRatioConstraint")
+				if aspect then
+					aspect.AspectRatio = math.max(0.03, 0.5 * squeeze)
+				end
 			end
 		end
 	end

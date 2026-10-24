@@ -46,18 +46,26 @@ Config.CoinPackAmounts = {
 	CoinsSmall = 500,
 }
 
--- Sounds and music. Find free ones in Studio: Toolbox -> Audio (or the Creator Store),
--- right-click one -> "Copy Asset ID", and paste it here like "rbxassetid://1234567".
--- Empty ones are skipped, so the game works without them.
+-- Sounds and music. The filled-in ones are free sounds from Roblox's own audio tutorials.
+-- Add more in Studio: Toolbox -> Audio (or the Creator Store), right-click one ->
+-- "Copy Asset ID", and paste it here like "rbxassetid://1234567". Empty ones are skipped.
 Config.Sounds = {
 	Click = "", -- tapping a button or item
 	Pop = "", -- pop-ups and speech bubbles
 	Scrub = "", -- rubbing with soap
-	Sparkle = "", -- a dirt spot comes off, face is clean
-	Cheer = "", -- results, level up, daily gift
+	Sparkle = "rbxassetid://4110925712", -- a dirt spot comes off (Roblox tutorial "simple chime")
+	Cheer = "rbxassetid://3422389728", -- results, level up, daily gift (Roblox tutorial "retro jingle")
 	Camera = "", -- camera flash on the runway
-	MakeoverMusic = "", -- loops during the makeover
-	RunwayMusic = "", -- loops during the fashion show
+	MakeoverMusic = "rbxassetid://1841461968", -- loops during the makeover (Roblox tutorial "upbeat" track)
+	RunwayMusic = "rbxassetid://1846248593", -- loops during the fashion show (Roblox tutorial "cheerful, celebratory" track)
+}
+
+-- Particle pictures from Roblox's own particle tutorial
+Config.Textures = {
+	Star = "rbxassetid://6772783963",
+	Heart = "rbxassetid://5857851618",
+	Circle = "rbxassetid://6711256324",
+	Spark = "rbxassetid://5833323391",
 }
 
 -- Holiday events (Halloween, Harvest Festival, Christmas) turn on by date - see Shared/Events.

@@ -62,7 +62,7 @@ Until an ID is filled in, that item shows **"Soon!"** in the shop, so it's safe 
 
 ## 4. Add sounds and music (optional)
 
-**Do this one!** Sound makes the biggest difference for young kids, and the game is quiet until you pick sounds. Roblox's Creator Store has thousands of free sounds and licensed music that any game may use.
+Sound makes a big difference for young kids. The game already plays music while styling and on the runway, a chime when dirt comes off and a jingle for celebrations. These are free sounds from Roblox's own audio tutorials. For more sounds (button clicks, pops, scrubbing, camera clicks), pick free ones from the Creator Store, which has thousands of sounds and licensed music any game may use.
 
 | Config key | Search the Toolbox for |
 |---|---|
@@ -88,7 +88,7 @@ Config.Sounds = {
 }
 ```
 
-Empty ones are skipped.
+Empty ones are skipped. If a sound doesn't play in Studio, check the Output window. Replace any sound Roblox says can't be loaded.
 
 ## 5. Change the game
 
