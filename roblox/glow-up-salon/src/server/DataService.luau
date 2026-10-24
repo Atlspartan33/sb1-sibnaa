@@ -6,6 +6,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
@@ -14,10 +15,12 @@ local DataService = {}
 export type Profile = {
 	coins: number,
 	owned: { [string]: boolean },
-	superSoaps: number,
 	stats: { shows: number, wins: number, bestStars: number, totalStars: number },
 	lastDay: number, -- last day a daily gift was given (days since 1970)
-	streak: number, -- days in a row
+	streak: number, -- days played in total (the gift calendar never resets)
+	giftsGiven: number, -- day-7 accessories collected
+	friends: { [string]: { visits: number, skin: number, eyes: number } }, -- regular clients
+	lookbook: { any }, -- saved finished looks, newest first
 	receipts: { string },
 	passes: { [string]: boolean }, -- not saved; checked with Roblox every visit
 	canSave: boolean, -- false if loading failed, so we never overwrite good data with an empty profile
@@ -51,7 +54,6 @@ local function newProfile(saved): Profile
 	return {
 		coins = tonumber(saved.coins) or Config.STARTING_COINS,
 		owned = saved.owned or {},
-		superSoaps = tonumber(saved.superSoaps) or 0,
 		stats = {
 			shows = stats.shows or 0,
 			wins = stats.wins or 0,
@@ -60,6 +62,9 @@ local function newProfile(saved): Profile
 		},
 		lastDay = tonumber(saved.lastDay) or 0,
 		streak = tonumber(saved.streak) or 0,
+		giftsGiven = tonumber(saved.giftsGiven) or 0,
+		friends = saved.friends or {},
+		lookbook = saved.lookbook or {},
 		receipts = saved.receipts or {},
 		passes = {},
 		canSave = true,
@@ -98,8 +103,9 @@ function DataService.push(player: Player)
 			coins = p.coins,
 			owned = p.owned,
 			passes = p.passes,
-			superSoaps = p.superSoaps,
 			totalStars = p.stats.totalStars,
+			calendarDay = p.streak,
+			lookbook = p.lookbook,
 		})
 	end
 end
@@ -142,11 +148,13 @@ function DataService.save(player: Player, release: boolean?): boolean
 				return {
 					coins = p.coins,
 					owned = p.owned,
-					superSoaps = p.superSoaps,
-					stats = p.stats,
+							stats = p.stats,
 					receipts = p.receipts,
 					lastDay = p.lastDay,
 					streak = p.streak,
+					giftsGiven = p.giftsGiven,
+					friends = p.friends,
+					lookbook = p.lookbook,
 					session = if release then nil else game.JobId,
 					lockTime = os.time(),
 				}
@@ -164,19 +172,32 @@ function DataService.save(player: Player, release: boolean?): boolean
 	return false
 end
 
--- A gift for coming back each day. Coming back days in a row makes it bigger.
+-- The daily gift calendar: a prize for each new day played. Missing a day just pauses it.
 local function giveDailyGift(player: Player, profile: Profile)
 	local today = os.time() // 86400
 	if profile.lastDay >= today then
 		return
 	end
-	profile.streak = if profile.lastDay == today - 1 then profile.streak + 1 else 1
 	profile.lastDay = today
-	local coins = Config.DAILY_GIFT_COINS + Config.DAILY_STREAK_BONUS * math.min(profile.streak - 1, 5)
-	profile.coins += coins
+	profile.streak += 1
+	local day = (profile.streak - 1) % 7 + 1
+	local info = { kind = "daily", day = day, coins = 0, item = nil :: string? }
+	if day < 7 then
+		info.coins = Config.CALENDAR_COINS[day]
+	else
+		local giftId = Catalog.GiftItems[profile.giftsGiven + 1]
+		if giftId then
+			profile.giftsGiven += 1
+			profile.owned[giftId] = true
+			info.item = Catalog.byId[giftId].name
+		else
+			info.coins = Config.CALENDAR_DAY7_COINS
+		end
+	end
+	profile.coins += info.coins
 	task.delay(3, function()
 		if player.Parent then
-			Remotes.Celebrate:FireClient(player, { kind = "daily", coins = coins, streak = profile.streak })
+			Remotes.Celebrate:FireClient(player, info)
 			DataService.push(player)
 		end
 	end)

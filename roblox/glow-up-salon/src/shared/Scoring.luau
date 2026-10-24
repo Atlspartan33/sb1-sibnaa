@@ -77,10 +77,18 @@ function Scoring.judge(entry: Entry, theme: Catalog.Theme): (number, { string })
 		table.insert(comments, "They walked the runway in work overalls! 👗")
 	else
 		points += 0.5
-		if Catalog.matchesTheme(Catalog.byId[look.outfit], theme) then
+		if Catalog.matchesTheme(Catalog.byId[look.outfit], theme) or Catalog.matchesTheme(Catalog.byId[look.outfitColor or ""], theme) then
 			points += 0.5
 		else
 			table.insert(comments, "Try an outfit that matches " .. theme.name)
+		end
+	end
+
+	-- Nails (bonus)
+	if not Catalog.isNone(look.nailColor) then
+		points += 0.25
+		if Catalog.matchesTheme(Catalog.byId[look.nailColor], theme) then
+			points += 0.25
 		end
 	end
 

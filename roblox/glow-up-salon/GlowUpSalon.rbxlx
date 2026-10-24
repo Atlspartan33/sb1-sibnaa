@@ -38,6 +38,10 @@
 --   color / accent / gradient / sparkle   how it's drawn
 --   tags    used by the judges to check if a look matches the show's theme
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Progress = require(ReplicatedStorage.Shared.Progress)
+
 local Catalog = {}
 
 export type Item = {
@@ -52,6 +56,11 @@ export type Item = {
 	gradient: { Color3 }?,
 	sparkle: boolean?,
 	dress: boolean?, -- outfits that get a skirt on the runway
+	event: string?, -- holiday event id: only available during that event (unless already unlocked)
+	level: number?, -- unlocks for free at this stylist level
+	gift: boolean?, -- only from the daily gift calendar
+	draw: string?, -- draw it like another item (e.g. a gold bow uses "acc_bow")
+	icon: string?, -- symbol for nail art
 	tags: { string },
 }
 
@@ -68,6 +77,7 @@ export type Theme = {
 	name: string,
 	tags: { string },
 	color: Color3,
+	event: string?, -- only shows up during this holiday event
 }
 
 local rgb = Color3.fromRGB
@@ -82,6 +92,7 @@ Catalog.Tabs = {
 	{ id = "Wash", label = "Wash", icon = "🧼" },
 	{ id = "Hair", label = "Hair", icon = "💇" },
 	{ id = "Makeup", label = "Makeup", icon = "💄" },
+	{ id = "Nails", label = "Nails", icon = "💅" },
 	{ id = "Outfit", label = "Outfit", icon = "👗" },
 	{ id = "Extras", label = "Extras", icon = "✨" },
 }
@@ -104,6 +115,7 @@ Catalog.Categories = {
 			item({ id = "hair_braid", name = "Side Braid", price = 120 }),
 			item({ id = "hair_updo", name = "Royal Updo", pass = "VIP", tags = { "sparkle" } }),
 			item({ id = "hair_mermaid", name = "Mermaid Waves", pass = "VIP", tags = { "sparkle" } }),
+			item({ id = "hair_princess", name = "Princess Curls", pass = "Princess", draw = "hair_curls", tags = { "sparkle" } }),
 		},
 	},
 	{
@@ -113,9 +125,11 @@ Catalog.Categories = {
 		preview = "swatch",
 		items = {
 			item({ id = "hc_black", name = "Black", color = rgb(35, 30, 32), tags = { "dark" } }),
-			item({ id = "hc_brown", name = "Brown", color = rgb(105, 66, 40) }),
+			item({ id = "hc_brown", name = "Brown", color = rgb(105, 66, 40), tags = { "brown" } }),
 			item({ id = "hc_blonde", name = "Blonde", color = rgb(240, 205, 120), tags = { "gold", "bright" } }),
-			item({ id = "hc_ginger", name = "Ginger", color = rgb(200, 95, 45), tags = { "red", "bright" } }),
+			item({ id = "hc_strawberry", name = "Strawberry", color = rgb(250, 160, 170), tags = { "pink", "pastel" } }),
+			item({ id = "hc_teal", name = "Teal", color = rgb(60, 170, 180), tags = { "blue", "green" } }),
+			item({ id = "hc_ginger", name = "Ginger", color = rgb(200, 95, 45), tags = { "red", "bright", "orange" } }),
 			item({ id = "hc_pink", name = "Bubblegum", color = rgb(255, 130, 190), price = 50, tags = { "pink", "pastel" } }),
 			item({ id = "hc_blue", name = "Ocean Blue", color = rgb(70, 140, 235), price = 50, tags = { "blue" } }),
 			item({ id = "hc_purple", name = "Grape", color = rgb(145, 80, 210), price = 50, tags = { "purple" } }),
@@ -137,6 +151,22 @@ Catalog.Categories = {
 				gradient = { rgb(40, 20, 90), rgb(120, 60, 200), rgb(240, 110, 200) },
 				tags = { "purple", "blue", "sparkle", "dark" },
 			}),
+			item({ id = "hc_cottoncandy", name = "Cotton Candy", level = 3, color = rgb(255, 170, 220), gradient = { rgb(255, 160, 215), rgb(170, 210, 255) }, tags = { "pink", "pastel", "blue" } }),
+			item({ id = "hc_rosegold", name = "Rose Gold", pass = "Princess", color = rgb(240, 170, 150), gradient = { rgb(250, 200, 170), rgb(230, 140, 150) }, tags = { "pink", "gold", "sparkle" } }),
+			-- Holiday colors
+			item({ id = "hc_pumpkin", name = "Pumpkin", color = rgb(245, 130, 30), price = 40, event = "halloween", tags = { "orange", "bright" } }),
+			item({ id = "hc_witch", name = "Witchy Purple", color = rgb(90, 40, 140), price = 40, event = "halloween", tags = { "purple", "dark" } }),
+			item({ id = "hc_maple", name = "Maple Red", color = rgb(160, 50, 30), price = 40, event = "thanksgiving", tags = { "red", "brown", "orange" } }),
+			item({ id = "hc_frost", name = "Frosty", color = rgb(220, 240, 255), price = 60, event = "christmas", tags = { "white", "blue", "sparkle" } }),
+			item({
+				id = "hc_candycane",
+				name = "Candy Cane",
+				pass = "VIP",
+				event = "christmas",
+				color = rgb(230, 40, 60),
+				gradient = { rgb(230, 40, 60), rgb(255, 255, 255), rgb(230, 40, 60), rgb(255, 255, 255) },
+				tags = { "red", "white", "sparkle" },
+			}),
 		},
 	},
 	{
@@ -147,7 +177,8 @@ Catalog.Categories = {
 		items = {
 			item({ id = "es_none", name = "None" }),
 			item({ id = "es_pink", name = "Pink", color = rgb(255, 150, 200), tags = { "pink", "pastel" } }),
-			item({ id = "es_peach", name = "Peach", color = rgb(255, 180, 140), tags = { "pastel", "bright" } }),
+			item({ id = "es_peach", name = "Peach", color = rgb(255, 180, 140), tags = { "pastel", "bright", "orange" } }),
+			item({ id = "es_bronze", name = "Bronze", color = rgb(180, 120, 70), tags = { "gold", "brown" } }),
 			item({ id = "es_blue", name = "Sky Blue", color = rgb(110, 170, 255), tags = { "blue" } }),
 			item({ id = "es_purple", name = "Lilac", color = rgb(170, 120, 230), tags = { "purple" } }),
 			item({ id = "es_green", name = "Emerald", color = rgb(60, 180, 120), tags = { "green" } }),
@@ -163,6 +194,18 @@ Catalog.Categories = {
 				sparkle = true,
 				tags = { "purple", "dark", "sparkle" },
 			}),
+			item({
+				id = "es_rainbow",
+				name = "Rainbow Shimmer",
+				level = 6,
+				color = rgb(255, 150, 200),
+				gradient = { rgb(255, 120, 150), rgb(255, 220, 100), rgb(120, 220, 160), rgb(130, 170, 255) },
+				sparkle = true,
+				tags = { "bright", "sparkle", "pink", "blue" },
+			}),
+			item({ id = "es_pumpkin", name = "Pumpkin Spice", color = rgb(240, 120, 40), price = 30, event = "halloween", tags = { "orange" } }),
+			item({ id = "es_harvest", name = "Harvest Gold", color = rgb(200, 140, 50), sparkle = true, price = 40, event = "thanksgiving", tags = { "gold", "orange", "brown" } }),
+			item({ id = "es_mistletoe", name = "Mistletoe", color = rgb(40, 160, 80), sparkle = true, price = 40, event = "christmas", tags = { "green", "sparkle" } }),
 		},
 	},
 	{
@@ -185,7 +228,7 @@ Catalog.Categories = {
 		items = {
 			item({ id = "bl_none", name = "None" }),
 			item({ id = "bl_rosy", name = "Rosy", color = rgb(255, 120, 140), tags = { "pink" } }),
-			item({ id = "bl_peach", name = "Peachy", color = rgb(255, 160, 120), tags = { "pastel", "bright" } }),
+			item({ id = "bl_peach", name = "Peachy", color = rgb(255, 160, 120), tags = { "pastel", "bright", "orange" } }),
 			item({ id = "bl_berry", name = "Berry", color = rgb(190, 60, 110), price = 30, tags = { "purple", "red" } }),
 			item({ id = "bl_shimmer", name = "Shimmer", color = rgb(255, 170, 210), sparkle = true, price = 80, tags = { "pink", "sparkle" } }),
 		},
@@ -197,15 +240,20 @@ Catalog.Categories = {
 		preview = "swatch",
 		items = {
 			item({ id = "lip_none", name = "None" }),
-			item({ id = "lip_nude", name = "Nude", color = rgb(200, 130, 115) }),
+			item({ id = "lip_nude", name = "Nude", color = rgb(200, 130, 115), tags = { "brown" } }),
+			item({ id = "lip_clear", name = "Clear Gloss", color = rgb(245, 200, 205), sparkle = true, tags = { "sparkle", "white", "pastel" } }),
 			item({ id = "lip_pink", name = "Pink", color = rgb(250, 110, 170), tags = { "pink", "pastel" } }),
 			item({ id = "lip_red", name = "Classic Red", color = rgb(210, 30, 50), tags = { "red" } }),
-			item({ id = "lip_coral", name = "Coral", color = rgb(255, 120, 90), tags = { "bright" } }),
+			item({ id = "lip_coral", name = "Coral", color = rgb(255, 120, 90), tags = { "bright", "orange" } }),
 			item({ id = "lip_berry", name = "Berry", color = rgb(150, 40, 100), tags = { "purple", "red" } }),
 			item({ id = "lip_black", name = "Midnight", color = rgb(40, 30, 45), price = 40, tags = { "dark" } }),
 			item({ id = "lip_blue", name = "Mermaid Blue", color = rgb(60, 150, 220), price = 40, tags = { "blue", "green" } }),
 			item({ id = "lip_gloss", name = "Pink Gloss", color = rgb(255, 150, 200), sparkle = true, price = 80, tags = { "pink", "pastel", "sparkle" } }),
 			item({ id = "lip_gold", name = "Golden Glam", color = rgb(225, 175, 60), sparkle = true, pass = "VIP", tags = { "gold", "sparkle" } }),
+			item({ id = "lip_bubblegum", name = "Bubblegum Gloss", level = 4, color = rgb(255, 120, 200), sparkle = true, tags = { "pink", "pastel", "sparkle" } }),
+			item({ id = "lip_candycorn", name = "Candy Corn", color = rgb(255, 150, 40), price = 30, event = "halloween", tags = { "orange", "bright" } }),
+			item({ id = "lip_cranberry", name = "Cranberry", color = rgb(150, 20, 50), price = 30, event = "thanksgiving", tags = { "red", "purple" } }),
+			item({ id = "lip_holly", name = "Holly Red", color = rgb(210, 20, 40), sparkle = true, price = 40, event = "christmas", tags = { "red", "sparkle" } }),
 		},
 	},
 	{
@@ -217,6 +265,11 @@ Catalog.Categories = {
 			item({ id = "outfit_work", name = "Work Overalls", hidden = true, color = rgb(110, 120, 135), accent = rgb(80, 85, 95) }),
 			item({ id = "outfit_tee", name = "Comfy Tee", color = rgb(245, 245, 250), accent = rgb(255, 150, 190), tags = { "white" } }),
 			item({ id = "outfit_denim", name = "Denim Jacket", color = rgb(80, 120, 190), accent = rgb(230, 230, 240), tags = { "blue" } }),
+			item({ id = "outfit_cozy", name = "Cozy Cardigan", color = rgb(160, 105, 70), accent = rgb(245, 225, 200), tags = { "brown", "orange" } }),
+			item({ id = "outfit_band", name = "Band Tee", color = rgb(35, 30, 40), accent = rgb(220, 40, 60), tags = { "dark", "red" } }),
+			item({ id = "outfit_lilac", name = "Lilac Top", color = rgb(170, 120, 230), accent = rgb(245, 205, 90), tags = { "purple", "gold" } }),
+			item({ id = "outfit_lime", name = "Lime Hoodie", color = rgb(130, 210, 90), accent = rgb(255, 255, 255), tags = { "green", "bright" } }),
+			item({ id = "outfit_star", name = "Star Dress", dress = true, level = 5, color = rgb(250, 210, 80), accent = rgb(255, 255, 255), sparkle = true, tags = { "gold", "sparkle", "bright" } }),
 			item({ id = "outfit_party", dress = true, name = "Pink Party Dress", color = rgb(255, 140, 195), accent = rgb(255, 230, 240), tags = { "pink", "pastel" } }),
 			item({ id = "outfit_sunny", dress = true, name = "Sunny Sundress", color = rgb(255, 210, 70), accent = rgb(255, 255, 255), price = 60, tags = { "bright", "gold" } }),
 			item({ id = "outfit_black", dress = true, name = "Little Black Dress", color = rgb(30, 28, 35), accent = rgb(200, 200, 210), price = 60, tags = { "dark" } }),
@@ -235,6 +288,163 @@ Catalog.Categories = {
 				sparkle = true,
 				tags = { "purple", "dark", "sparkle", "blue" },
 			}),
+			item({
+				id = "outfit_ballgown",
+				name = "Ice Ball Gown",
+				dress = true,
+				pass = "Princess",
+				color = rgb(140, 190, 255),
+				accent = rgb(255, 255, 255),
+				gradient = { rgb(200, 230, 255), rgb(120, 170, 255) },
+				sparkle = true,
+				tags = { "blue", "white", "sparkle" },
+			}),
+			item({
+				id = "outfit_rosegown",
+				name = "Rose Gown",
+				dress = true,
+				pass = "Princess",
+				color = rgb(255, 130, 180),
+				accent = rgb(255, 230, 150),
+				gradient = { rgb(255, 200, 225), rgb(240, 90, 150) },
+				sparkle = true,
+				tags = { "pink", "gold", "sparkle" },
+			}),
+			-- Holiday outfits
+			item({ id = "outfit_pumpkin", name = "Pumpkin Dress", dress = true, color = rgb(245, 130, 30), accent = rgb(60, 140, 60), price = 60, event = "halloween", tags = { "orange", "green" } }),
+			item({ id = "outfit_witch", name = "Witch Dress", dress = true, color = rgb(35, 25, 45), accent = rgb(150, 80, 220), price = 80, event = "halloween", tags = { "dark", "purple" } }),
+			item({
+				id = "outfit_midnight",
+				name = "Midnight Witch Gown",
+				dress = true,
+				pass = "VIP",
+				event = "halloween",
+				color = rgb(60, 20, 90),
+				accent = rgb(255, 140, 40),
+				gradient = { rgb(20, 10, 40), rgb(90, 30, 140), rgb(255, 130, 40) },
+				sparkle = true,
+				tags = { "purple", "dark", "orange", "sparkle" },
+			}),
+			item({ id = "outfit_sweater", name = "Fall Sweater", color = rgb(200, 100, 40), accent = rgb(250, 220, 170), price = 60, event = "thanksgiving", tags = { "orange", "brown" } }),
+			item({ id = "outfit_harvest", name = "Harvest Dress", dress = true, color = rgb(170, 60, 30), accent = rgb(230, 170, 60), price = 80, event = "thanksgiving", tags = { "red", "gold", "orange" } }),
+			item({ id = "outfit_xmas", name = "Holiday Sweater", color = rgb(200, 30, 40), accent = rgb(40, 150, 70), price = 60, event = "christmas", tags = { "red", "green" } }),
+			item({ id = "outfit_velvet", name = "Red Velvet Dress", dress = true, color = rgb(170, 10, 30), accent = rgb(255, 255, 255), sparkle = true, price = 100, event = "christmas", tags = { "red", "white", "sparkle" } }),
+			item({
+				id = "outfit_sugarplum",
+				name = "Sugar Plum Fairy",
+				dress = true,
+				pass = "VIP",
+				event = "christmas",
+				color = rgb(230, 120, 200),
+				accent = rgb(255, 255, 255),
+				gradient = { rgb(255, 190, 230), rgb(200, 110, 230), rgb(140, 80, 220) },
+				sparkle = true,
+				tags = { "pink", "purple", "sparkle", "white" },
+			}),
+		},
+	},
+	{
+		key = "nailColor",
+		label = "Polish",
+		tab = "Nails",
+		preview = "swatch",
+		items = {
+			item({ id = "nail_none", name = "Natural" }),
+			item({ id = "nail_pink", name = "Pink", color = rgb(255, 120, 190), tags = { "pink" } }),
+			item({ id = "nail_red", name = "Red", color = rgb(220, 30, 50), tags = { "red" } }),
+			item({ id = "nail_coral", name = "Coral", color = rgb(255, 130, 80), tags = { "orange", "bright" } }),
+			item({ id = "nail_lilac", name = "Lilac", color = rgb(180, 140, 240), tags = { "purple", "pastel" } }),
+			item({ id = "nail_sky", name = "Sky Blue", color = rgb(120, 190, 255), tags = { "blue", "pastel" } }),
+			item({ id = "nail_mint", name = "Mint", color = rgb(130, 225, 180), tags = { "green", "pastel" } }),
+			item({ id = "nail_white", name = "Snow White", color = rgb(250, 250, 255), tags = { "white" } }),
+			item({ id = "nail_black", name = "Midnight", color = rgb(30, 25, 40), price = 30, tags = { "dark" } }),
+			item({ id = "nail_gold", name = "Gold Glitter", color = rgb(235, 190, 70), sparkle = true, price = 60, tags = { "gold", "sparkle" } }),
+			item({
+				id = "nail_rainbow",
+				name = "Rainbow Chrome",
+				pass = "VIP",
+				color = rgb(255, 140, 190),
+				gradient = { rgb(255, 100, 140), rgb(255, 220, 90), rgb(110, 220, 160), rgb(120, 160, 255) },
+				sparkle = true,
+				tags = { "bright", "sparkle", "pink", "blue" },
+			}),
+			item({ id = "nail_pumpkin", name = "Pumpkin", color = rgb(245, 130, 30), event = "halloween", tags = { "orange" } }),
+			item({ id = "nail_cranberry", name = "Cranberry", color = rgb(150, 20, 50), event = "thanksgiving", tags = { "red", "purple" } }),
+			item({
+				id = "nail_candycane",
+				name = "Candy Cane",
+				price = 40,
+				event = "christmas",
+				color = rgb(230, 40, 60),
+				gradient = { rgb(230, 40, 60), rgb(255, 255, 255), rgb(230, 40, 60) },
+				tags = { "red", "white" },
+			}),
+		},
+	},
+	{
+		key = "nailArt",
+		label = "Nail Art",
+		tab = "Nails",
+		preview = "icon",
+		items = {
+			item({ id = "art_none", name = "None" }),
+			item({ id = "art_hearts", name = "Hearts", icon = "♥", tags = { "pink" } }),
+			item({ id = "art_dots", name = "Dots", icon = "•" }),
+			item({ id = "art_stars", name = "Stars", icon = "★", tags = { "gold" } }),
+			item({ id = "art_flowers", name = "Flowers", icon = "✿", price = 30, tags = { "bright", "pastel" } }),
+			item({ id = "art_gems", name = "Gems", icon = "◆", price = 40, tags = { "sparkle" } }),
+			item({ id = "art_pumpkin", name = "Pumpkins", icon = "🎃", event = "halloween", tags = { "orange" } }),
+			item({ id = "art_leaf", name = "Leaves", icon = "🍁", event = "thanksgiving", tags = { "orange", "red" } }),
+			item({ id = "art_snow", name = "Snowflakes", icon = "❄️", event = "christmas", tags = { "white", "blue" } }),
+		},
+	},
+	{
+		key = "outfitColor",
+		label = "🎨 Color",
+		tab = "Outfit",
+		preview = "swatch",
+		items = (function()
+			local list = { item({ id = "oc_none", name = "Original" }) }
+			local palette = {
+				{ "Hot Pink", rgb(255, 80, 160), { "pink", "bright" } },
+				{ "Baby Pink", rgb(255, 190, 215), { "pink", "pastel" } },
+				{ "Cherry", rgb(220, 30, 50), { "red" } },
+				{ "Tangerine", rgb(255, 140, 40), { "orange", "bright" } },
+				{ "Sunshine", rgb(255, 215, 60), { "gold", "bright" } },
+				{ "Gold", rgb(225, 175, 60), { "gold", "sparkle" } },
+				{ "Lime", rgb(150, 220, 80), { "green", "bright" } },
+				{ "Mint", rgb(150, 230, 190), { "green", "pastel" } },
+				{ "Emerald", rgb(30, 150, 90), { "green" } },
+				{ "Aqua", rgb(70, 210, 220), { "blue", "bright" } },
+				{ "Sky", rgb(140, 200, 255), { "blue", "pastel" } },
+				{ "Royal Blue", rgb(50, 80, 200), { "blue" } },
+				{ "Lavender", rgb(190, 160, 240), { "purple", "pastel" } },
+				{ "Violet", rgb(130, 60, 200), { "purple" } },
+				{ "Plum", rgb(90, 30, 90), { "purple", "dark" } },
+				{ "Chocolate", rgb(110, 70, 45), { "brown" } },
+				{ "Snow", rgb(250, 250, 255), { "white" } },
+				{ "Silver", rgb(195, 200, 210), { "white", "sparkle" } },
+				{ "Charcoal", rgb(60, 60, 70), { "dark" } },
+				{ "Midnight", rgb(20, 18, 30), { "dark" } },
+			}
+			for i, p in palette do
+				table.insert(list, item({ id = "oc_" .. i, name = p[1], color = p[2], tags = p[3] }))
+			end
+			return list
+		end)(),
+	},
+	{
+		key = "outfitPattern",
+		label = "Pattern",
+		tab = "Outfit",
+		preview = "portrait",
+		items = {
+			item({ id = "pat_none", name = "Plain" }),
+			item({ id = "pat_dots", name = "Polka Dots", tags = { "bright" } }),
+			item({ id = "pat_stripes", name = "Stripes" }),
+			item({ id = "pat_hearts", name = "Hearts", tags = { "pink" } }),
+			item({ id = "pat_stars", name = "Stars", price = 40, tags = { "gold", "sparkle" } }),
+			item({ id = "pat_flowers", name = "Flowers", price = 40, tags = { "bright", "pastel" } }),
 		},
 	},
 	{
@@ -248,6 +458,11 @@ Catalog.Categories = {
 			item({ id = "gem_hearts", name = "Heart Stickers", price = 40, color = rgb(255, 80, 130), tags = { "pink", "red" } }),
 			item({ id = "gem_stars", name = "Star Stickers", price = 40, color = rgb(255, 200, 60), tags = { "gold", "bright" } }),
 			item({ id = "gem_rhinestones", name = "Rhinestones", pass = "VIP", color = rgb(220, 240, 255), tags = { "sparkle", "white" } }),
+			item({ id = "gem_pinkgems", name = "Pink Gems", pass = "Princess", draw = "gem_rhinestones", color = rgb(255, 140, 200), tags = { "pink", "sparkle" } }),
+			item({ id = "gem_bats", name = "Bat Stickers", price = 30, event = "halloween", color = rgb(40, 30, 50), tags = { "dark", "purple" } }),
+			item({ id = "gem_web", name = "Spider Web", price = 30, event = "halloween", color = rgb(255, 255, 255), tags = { "dark", "white" } }),
+			item({ id = "gem_leaves", name = "Leaf Stickers", price = 30, event = "thanksgiving", color = rgb(220, 110, 30), tags = { "orange", "red", "brown" } }),
+			item({ id = "gem_snowflakes", name = "Snowflakes", price = 30, event = "christmas", color = rgb(200, 230, 255), tags = { "white", "blue", "sparkle" } }),
 		},
 	},
 	{
@@ -259,10 +474,24 @@ Catalog.Categories = {
 			item({ id = "acc_none", name = "None" }),
 			item({ id = "acc_bow", name = "Big Bow", color = rgb(255, 110, 170), tags = { "pink" } }),
 			item({ id = "acc_headband", name = "Headband", color = rgb(90, 150, 255), tags = { "blue" } }),
-			item({ id = "acc_flower", name = "Flower", color = rgb(255, 120, 90), tags = { "bright" } }),
+			item({ id = "acc_redbow", name = "Red Bow", draw = "acc_bow", color = rgb(220, 30, 50), tags = { "red" } }),
+			item({ id = "acc_purpleband", name = "Purple Headband", draw = "acc_headband", color = rgb(120, 60, 180), tags = { "purple", "dark" } }),
+			item({ id = "acc_flower", name = "Flower", color = rgb(255, 120, 90), tags = { "bright", "orange" } }),
 			item({ id = "acc_earrings", name = "Gold Hoops", color = rgb(240, 195, 70), price = 50, tags = { "gold" } }),
 			item({ id = "acc_catears", name = "Cat Ears", color = rgb(40, 35, 45), price = 80, tags = { "dark" } }),
 			item({ id = "acc_crown", name = "Royal Crown", color = rgb(245, 200, 60), pass = "VIP", tags = { "gold", "sparkle" } }),
+			item({ id = "acc_butterfly", name = "Butterfly Clip", level = 2, color = rgb(120, 180, 255), tags = { "blue", "bright" } }),
+			item({ id = "acc_halo", name = "Star Halo", level = 8, color = rgb(255, 220, 80), tags = { "gold", "sparkle" } }),
+			item({ id = "acc_tiara", name = "Princess Tiara", pass = "Princess", color = rgb(245, 205, 90), tags = { "gold", "sparkle", "pink" } }),
+			item({ id = "acc_goldbow", name = "Golden Bow", gift = true, draw = "acc_bow", color = rgb(245, 195, 60), tags = { "gold", "sparkle" } }),
+			item({ id = "acc_rainbowband", name = "Rainbow Headband", gift = true, draw = "acc_headband", color = rgb(255, 120, 160), gradient = { rgb(255, 90, 120), rgb(255, 210, 80), rgb(90, 210, 140), rgb(110, 150, 255) }, tags = { "bright", "pink", "blue" } }),
+			item({ id = "acc_pearls", name = "Pearl Earrings", gift = true, draw = "acc_earrings", color = rgb(250, 245, 240), tags = { "white", "sparkle" } }),
+			item({ id = "acc_witchhat", name = "Witch Hat", color = rgb(35, 25, 45), accent = rgb(150, 80, 220), price = 60, event = "halloween", tags = { "dark", "purple" } }),
+			item({ id = "acc_pumpkin", name = "Pumpkin Clip", color = rgb(245, 130, 30), event = "halloween", tags = { "orange", "green" } }),
+			item({ id = "acc_leafcrown", name = "Leaf Crown", color = rgb(220, 110, 30), price = 50, event = "thanksgiving", tags = { "orange", "red", "gold" } }),
+			item({ id = "acc_santahat", name = "Santa Hat", color = rgb(210, 30, 40), price = 60, event = "christmas", tags = { "red", "white" } }),
+			item({ id = "acc_antlers", name = "Reindeer Antlers", color = rgb(130, 80, 40), event = "christmas", tags = { "brown", "red" } }),
+			item({ id = "acc_earmuffs", name = "Fluffy Earmuffs", color = rgb(255, 255, 255), accent = rgb(110, 170, 255), price = 50, event = "christmas", tags = { "white", "blue" } }),
 		},
 	},
 }
@@ -278,7 +507,13 @@ Catalog.Themes = {
 	{ id = "beach", name = "Sunny Beach 🌴", tags = { "bright", "gold", "blue" }, color = rgb(255, 200, 70) },
 	{ id = "winter", name = "Winter Wonderland ❄️", tags = { "white", "blue", "sparkle" }, color = rgb(150, 200, 255) },
 	{ id = "red_carpet", name = "Red Carpet 🌟", tags = { "red", "gold", "dark" }, color = rgb(200, 30, 50) },
+	{ id = "halloween", name = "Halloween Party 🎃", tags = { "orange", "dark", "purple", "green" }, color = rgb(245, 130, 30), event = "halloween" },
+	{ id = "thanksgiving", name = "Harvest Festival 🍂", tags = { "orange", "brown", "gold", "red" }, color = rgb(200, 110, 40), event = "thanksgiving" },
+	{ id = "christmas", name = "Christmas Party 🎄", tags = { "red", "green", "white", "sparkle" }, color = rgb(200, 30, 40), event = "christmas" },
 } :: { Theme }
+
+-- Day-7 prizes of the daily gift calendar, given in this order
+Catalog.GiftItems = { "acc_goldbow", "acc_rainbowband", "acc_pearls" }
 
 -- Lookup tables -------------------------------------------------------------
 
@@ -308,16 +543,51 @@ function Catalog.defaultLook(): { [string]: string }
 		blush = "bl_none",
 		lipstick = "lip_none",
 		outfit = "outfit_work",
+		outfitColor = "oc_none",
+		nailColor = "nail_none",
+		nailArt = "art_none",
+		outfitPattern = "pat_none",
 		gems = "gem_none",
 		accessory = "acc_none",
 	}
 end
 
--- Is this item usable by a player with this profile?
--- profile = { owned = { [itemId] = true }, passes = { VIP = true } }
-function Catalog.isUnlocked(it: Item, profile): boolean
+-- Can this item be shown and used right now? Holiday items show up during their event,
+-- and stay forever for players who unlocked them.
+local function owns(profile, itemId: string): boolean
+	return profile ~= nil and profile.owned ~= nil and profile.owned[itemId] == true
+end
+
+-- Total stars earned (the client gets it as `totalStars`, the server keeps it in `stats`).
+function Catalog.playerLevel(profile): number
+	local stars = 0
+	if profile then
+		stars = profile.totalStars or (profile.stats and profile.stats.totalStars) or 0
+	end
+	return Progress.level(stars)
+end
+
+function Catalog.isAvailable(it: Item, profile, eventId: string?): boolean
 	if it.hidden then
 		return false
+	end
+	if it.gift then
+		return owns(profile, it.id)
+	end
+	if it.event and it.event ~= eventId then
+		return profile ~= nil and profile.owned ~= nil and profile.owned[it.id] == true
+	end
+	return true
+end
+
+-- Is this item usable by a player with this profile?
+-- profile = { owned = { [itemId] = true }, passes = { VIP = true } }
+function Catalog.isUnlocked(it: Item, profile, eventId: string?): boolean
+	if not Catalog.isAvailable(it, profile, eventId) then
+		return false
+	end
+	if it.level then
+		return Catalog.playerLevel(profile) >= it.level
 	end
 	if it.pass then
 		return profile ~= nil and profile.passes ~= nil and profile.passes[it.pass] == true
@@ -380,8 +650,14 @@ export type Client = {
 	story: string,
 	skin: Color3,
 	eyes: Color3,
+	skinIndex: number,
+	eyesIndex: number,
+	visits: number, -- how many times this stylist has styled them (1 = first time)
 	dirt: { DirtSpot },
 }
+
+-- What a stylist remembers about a regular client (saved, so no Color3s)
+export type Friend = { visits: number, skin: number, eyes: number }
 
 local rgb = Color3.fromRGB
 
@@ -424,13 +700,36 @@ local STORIES = {
 	{ text = "Slime exploded at the toy shop! So sticky! 🟢", colors = { rgb(120, 220, 90), rgb(90, 200, 160), rgb(200, 120, 255) } },
 }
 
+-- Extra stories during holiday events (about half the clients use one).
+local EVENT_STORIES = {
+	halloween = {
+		{ text = "I carved pumpkins at the pumpkin shop. Pumpkin goo! 🎃", colors = { rgb(245, 130, 30), rgb(250, 190, 70) } },
+		{ text = "I tried ALL the face paint at the costume shop! 🧛", colors = { rgb(120, 220, 90), rgb(150, 80, 220), rgb(30, 30, 30) } },
+		{ text = "I made caramel apples at the candy shop! 🍎", colors = { rgb(170, 100, 40), rgb(210, 40, 40) } },
+	},
+	thanksgiving = {
+		{ text = "I baked pies at the pie shop. Flour everywhere! 🥧", colors = { rgb(250, 245, 235), rgb(220, 140, 60) } },
+		{ text = "I jumped in a leaf pile at the garden shop! 🍂", colors = { rgb(200, 90, 30), rgb(150, 90, 40), rgb(230, 170, 50) } },
+		{ text = "I made cranberry sauce at the diner! 🍒", colors = { rgb(170, 20, 50), rgb(210, 60, 80) } },
+	},
+	christmas = {
+		{ text = "I baked gingerbread at the cookie shop! 🍪", colors = { rgb(170, 100, 50), rgb(255, 255, 255) } },
+		{ text = "I wrapped presents at the toy shop. Glitter everywhere! 🎁", colors = { rgb(240, 200, 60), rgb(200, 210, 230), rgb(230, 50, 60) } },
+		{ text = "I made hot cocoa at the cafe. Chocolate mustache! ☕", colors = { rgb(90, 50, 30), rgb(255, 250, 245) } },
+	},
+}
+
 -- Face area (matches LookRenderer's face oval) so dirt lands on the face.
 local FACE_MIN_X, FACE_MAX_X = 0.31, 0.69
 local FACE_MIN_Y, FACE_MAX_Y = 0.24, 0.7
 
-function Clients.generate(rng: Random?): Client
+function Clients.generate(rng: Random?, eventId: string?): Client
 	local r = rng or Random.new()
 	local story = STORIES[r:NextInteger(1, #STORIES)]
+	local special = eventId and EVENT_STORIES[eventId]
+	if special and r:NextNumber() < 0.5 then
+		story = special[r:NextInteger(1, #special)]
+	end
 
 	local dirt = {}
 	for _ = 1, r:NextInteger(9, 13) do
@@ -442,13 +741,35 @@ function Clients.generate(rng: Random?): Client
 		})
 	end
 
+	local skinIndex = r:NextInteger(1, #SKIN_TONES)
+	local eyesIndex = r:NextInteger(1, #EYE_COLORS)
 	return {
 		name = NAMES[r:NextInteger(1, #NAMES)],
 		story = story.text,
-		skin = SKIN_TONES[r:NextInteger(1, #SKIN_TONES)],
-		eyes = EYE_COLORS[r:NextInteger(1, #EYE_COLORS)],
+		skin = SKIN_TONES[skinIndex],
+		eyes = EYE_COLORS[eyesIndex],
+		skinIndex = skinIndex,
+		eyesIndex = eyesIndex,
+		visits = 1,
 		dirt = dirt,
 	}
+end
+
+-- A regular coming back: same name and face, new mess.
+function Clients.returning(name: string, friend: Friend, rng: Random?, eventId: string?): Client
+	local client = Clients.generate(rng, eventId)
+	client.name = name
+	client.skinIndex = math.clamp(friend.skin, 1, #SKIN_TONES)
+	client.eyesIndex = math.clamp(friend.eyes, 1, #EYE_COLORS)
+	client.skin = SKIN_TONES[client.skinIndex]
+	client.eyes = EYE_COLORS[client.eyesIndex]
+	client.visits = friend.visits + 1
+	return client
+end
+
+-- Rebuilds a client's face colors from saved indices (for the Look Book).
+function Clients.colors(skinIndex: number, eyesIndex: number): (Color3, Color3)
+	return SKIN_TONES[math.clamp(skinIndex, 1, #SKIN_TONES)], EYE_COLORS[math.clamp(eyesIndex, 1, #EYE_COLORS)]
 end
 
 return Clients
@@ -476,27 +797,31 @@ Config.COINS_PER_STAR = 10
 Config.COINS_SPOTLESS_BONUS = 10
 Config.COINS_PER_VOTE = 2
 Config.COINS_PLACEMENT = { 50, 30, 15 } -- 1st, 2nd, 3rd (only when 2+ stylists played)
-Config.DAILY_GIFT_COINS = 50 -- coming back each day
-Config.DAILY_STREAK_BONUS = 10 -- extra per day in a row (up to 5 days)
+-- Daily gift calendar: coins on days 1-6, a special accessory on day 7 (missing a day just pauses it)
+Config.CALENDAR_COINS = { 30, 40, 50, 60, 70, 80 }
+Config.CALENDAR_DAY7_COINS = 200 -- once every day-7 accessory has been collected
+Config.RETURNING_CLIENT_CHANCE = 0.35 -- how often a client you styled before comes back
+Config.BEST_FRIEND_VISITS = { 3, 5, 10 } -- visits that earn a best-friend bonus
+Config.BEST_FRIEND_COINS = 25
+Config.LOOKBOOK_SIZE = 24 -- looks saved in the Look Book
 
 -- Robux monetization.
 -- Create these on the Creator Dashboard (create.roblox.com) after publishing,
 -- then paste the IDs here. While an ID is 0 the store shows "Coming soon".
 Config.GamePasses = {
 	VIP = 0, -- "VIP Glam Kit": exclusive hair, makeup and gowns + VIP badge on the runway
+	Princess = 0, -- "Princess Pack": 2 gowns, Princess Curls, Rose Gold hair, tiara, pink gems
 	DoubleCoins = 0, -- "2x Coins": earn double coins every show
 	RunwayStar = 0, -- "Runway Star": sparkles and confetti when your client walks the runway
+	RainbowBubbles = 0, -- "Rainbow Bubbles": washing makes rainbow bubbles (just for looks)
 }
 
 Config.DevProducts = {
-	SuperSoap = 0, -- one Super Soap: instantly washes a client's face
 	CoinsSmall = 0, -- 500 coins
-	CoinsLarge = 0, -- 2000 coins
 }
 
 Config.CoinPackAmounts = {
 	CoinsSmall = 500,
-	CoinsLarge = 2000,
 }
 
 -- Sounds and music. Find free ones in Studio: Toolbox -> Audio (or the Creator Store),
@@ -513,6 +838,11 @@ Config.Sounds = {
 	RunwayMusic = "", -- loops during the fashion show
 }
 
+-- Holiday events (Halloween, Harvest Festival, Christmas) turn on by date - see Shared/Events.
+-- To preview one in Studio, set this to "halloween", "thanksgiving" or "christmas".
+Config.FORCE_EVENT = nil :: string?
+Config.EVENT_THEME_CHANCE = 0.5 -- during an event, how often the show uses the holiday theme
+
 -- Studio testing: pretend you own every Game Pass while testing in Roblox Studio.
 -- This never applies in the live game.
 Config.STUDIO_OWNS_ALL_PASSES = true
@@ -526,6 +856,62 @@ return Config
         </Properties>
       </Item>
       <Item class="ModuleScript" referent="6">
+        <Properties>
+          <string name="Name">Events</string>
+          <string name="Source"><![CDATA[-- Holiday events: limited-time themes, items, client stories and decorations.
+-- Dates are in UTC. Set Config.FORCE_EVENT to preview an event in Studio.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+
+local Events = {}
+
+export type Event = {
+	id: string,
+	name: string,
+	icon: string,
+	theme: string, -- the special fashion show theme
+	from: { number }, -- { month, day }
+	to: { number }, -- { month, day } (inclusive)
+	endsText: string,
+}
+
+Events.List = {
+	{ id = "halloween", name = "Halloween", icon = "🎃", theme = "halloween", from = { 10, 10 }, to = { 11, 2 }, endsText = "until Nov 2" },
+	{ id = "thanksgiving", name = "Harvest Festival", icon = "🍂", theme = "thanksgiving", from = { 11, 3 }, to = { 11, 30 }, endsText = "until Nov 30" },
+	{ id = "christmas", name = "Christmas", icon = "🎄", theme = "christmas", from = { 12, 1 }, to = { 12, 31 }, endsText = "until Dec 31" },
+} :: { Event }
+
+Events.byId = {} :: { [string]: Event }
+for _, e in Events.List do
+	Events.byId[e.id] = e
+end
+
+local function dayNumber(month: number, day: number): number
+	return month * 100 + day
+end
+
+-- The event happening at `timestamp` (seconds since 1970, UTC), or nil.
+function Events.current(timestamp: number): Event?
+	if Config.FORCE_EVENT then
+		return Events.byId[Config.FORCE_EVENT]
+	end
+	local date = os.date("!*t", math.floor(timestamp))
+	local today = dayNumber(date.month, date.day)
+	for _, e in Events.List do
+		if today >= dayNumber(e.from[1], e.from[2]) and today <= dayNumber(e.to[1], e.to[2]) then
+			return e
+		end
+	end
+	return nil
+end
+
+return Events
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="7">
         <Properties>
           <string name="Name">LookRenderer</string>
           <string name="Source"><![CDATA[-- Draws a client's face (and shoulders) out of UI shapes, so the game needs no uploaded images.
@@ -667,7 +1053,8 @@ local function drawHair(root: Frame, look, hairItem: Catalog.Item?)
 		hair(0.42, 0.265, 0.24, 0.07, Z.hairFront, 0.5, -14)
 	end
 
-	local style = look.hairStyle
+	local styleItem = Catalog.byId[look.hairStyle]
+	local style = if styleItem and styleItem.draw then styleItem.draw else look.hairStyle
 	if style == "hair_messy" then
 		hair(0.5, 0.3, 0.56, 0.36, Z.hairBack, 0.5)
 		cap()
@@ -847,8 +1234,8 @@ local function drawCheeksAndLips(root: Frame, client, look, mood: string?)
 end
 
 local function drawGems(root: Frame, client, look)
-	local gems = look.gems
-	local it = Catalog.byId[gems]
+	local it = Catalog.byId[look.gems]
+	local gems = if it and it.draw then it.draw else look.gems
 	if gems == "gem_freckles" then
 		local c = darken(client.skin, 0.72)
 		for _, p in { { 0.42, 0.49 }, { 0.445, 0.51 }, { 0.41, 0.515 }, { 0.58, 0.49 }, { 0.555, 0.51 }, { 0.59, 0.515 } } do
@@ -861,6 +1248,18 @@ local function drawGems(root: Frame, client, look)
 		glyph(root, "★", 0.335, 0.41, 0.06, it.color or WHITE, Z.gems)
 		glyph(root, "★", 0.665, 0.41, 0.06, it.color or WHITE, Z.gems)
 		glyph(root, "★", 0.355, 0.47, 0.035, it.color or WHITE, Z.gems)
+	elseif gems == "gem_bats" then
+		glyph(root, "🦇", 0.34, 0.47, 0.07, WHITE, Z.gems)
+		glyph(root, "🦇", 0.67, 0.4, 0.05, WHITE, Z.gems)
+	elseif gems == "gem_web" then
+		glyph(root, "🕸️", 0.65, 0.48, 0.09, WHITE, Z.gems)
+	elseif gems == "gem_leaves" then
+		glyph(root, "🍁", 0.34, 0.48, 0.06, WHITE, Z.gems)
+		glyph(root, "🍂", 0.66, 0.48, 0.06, WHITE, Z.gems)
+	elseif gems == "gem_snowflakes" then
+		glyph(root, "❄️", 0.34, 0.47, 0.06, WHITE, Z.gems)
+		glyph(root, "❄️", 0.665, 0.41, 0.045, WHITE, Z.gems)
+		glyph(root, "❄️", 0.68, 0.5, 0.035, WHITE, Z.gems)
 	elseif gems == "gem_rhinestones" and it then
 		for side = -1, 1, 2 do
 			for i = 0, 3 do
@@ -871,15 +1270,22 @@ local function drawGems(root: Frame, client, look)
 end
 
 local function drawAccessory(root: Frame, look)
-	local acc = look.accessory
-	local it = Catalog.byId[acc]
+	local it = Catalog.byId[look.accessory]
+	local acc = if it and it.draw then it.draw else look.accessory
 	local c = it and it.color or WHITE
+	-- paints a shape with the item's color, or its rainbow gradient
+	local function tint(f: Frame): Frame
+		if it and it.gradient then
+			paint(f, it)
+		end
+		return f
+	end
 	if acc == "acc_bow" then
 		shape(root, 0.32, 0.14, 0.09, 0.07, c, Z.accessory, 0.4, 0, -20)
 		shape(root, 0.42, 0.14, 0.09, 0.07, c, Z.accessory, 0.4, 0, 20)
 		shape(root, 0.37, 0.14, 0.035, 0.035, darken(c, 0.8), Z.accessory, 0.5)
 	elseif acc == "acc_headband" then
-		shape(root, 0.5, 0.2, 0.52, 0.03, c, Z.accessory, 0.5)
+		tint(shape(root, 0.5, 0.2, 0.52, 0.035, c, Z.accessory, 0.5))
 	elseif acc == "acc_flower" then
 		glyph(root, "✿", 0.68, 0.18, 0.13, c, Z.accessory)
 		shape(root, 0.68, 0.185, 0.025, 0.025, Color3.fromRGB(255, 220, 80), Z.accessory, 0.5)
@@ -893,6 +1299,85 @@ local function drawAccessory(root: Frame, look)
 		end
 	elseif acc == "acc_crown" then
 		glyph(root, "👑", 0.5, 0.09, 0.18, c, Z.accessory)
+	elseif acc == "acc_butterfly" then
+		glyph(root, "🦋", 0.68, 0.17, 0.12, WHITE, Z.accessory)
+	elseif acc == "acc_halo" then
+		local ring = shape(root, 0.5, 0.06, 0.4, 0.06, c, Z.accessory, 0.5)
+		shape(ring, 0.5, 0.5, 0.8, 0.45, Color3.fromRGB(255, 250, 225), Z.accessory, 0.5)
+		for i = 0, 4 do
+			glyph(root, "✦", 0.34 + i * 0.08, 0.06, 0.04, Color3.fromRGB(255, 240, 150), Z.accessory)
+		end
+	elseif acc == "acc_tiara" then
+		shape(root, 0.5, 0.17, 0.36, 0.025, c, Z.accessory, 0.5)
+		for i = -2, 2 do
+			local h = if i == 0 then 0.07 else (if math.abs(i) == 1 then 0.05 else 0.035)
+			shape(root, 0.5 + i * 0.07, 0.165 - h / 2, 0.025, h, c, Z.accessory, 0.5)
+		end
+		shape(root, 0.5, 0.12, 0.035, 0.035, Color3.fromRGB(255, 120, 190), Z.accessory, 0.5)
+		shape(root, 0.43, 0.135, 0.022, 0.022, Color3.fromRGB(140, 200, 255), Z.accessory, 0.5)
+		shape(root, 0.57, 0.135, 0.022, 0.022, Color3.fromRGB(140, 200, 255), Z.accessory, 0.5)
+	elseif acc == "acc_witchhat" then
+		local band = it and it.accent or Color3.fromRGB(150, 80, 220)
+		shape(root, 0.5, 0.165, 0.66, 0.05, c, Z.accessory, 0.5)
+		shape(root, 0.5, 0.115, 0.34, 0.07, c, Z.accessory, 0.3)
+		shape(root, 0.51, 0.065, 0.25, 0.06, c, Z.accessory, 0.3, 0, 4)
+		shape(root, 0.53, 0.025, 0.16, 0.05, c, Z.accessory, 0.3, 0, 10)
+		shape(root, 0.57, 0.0, 0.08, 0.04, c, Z.accessory, 0.5, 0, 25)
+		shape(root, 0.5, 0.14, 0.35, 0.022, band, Z.accessory, 0.2)
+		glyph(root, "⭐", 0.6, 0.11, 0.04, WHITE, Z.accessory)
+	elseif acc == "acc_pumpkin" then
+		glyph(root, "🎃", 0.69, 0.17, 0.12, WHITE, Z.accessory)
+	elseif acc == "acc_leafcrown" then
+		for i, p in { { 0.31, 0.19, "🍂" }, { 0.39, 0.14, "🍁" }, { 0.5, 0.12, "🍂" }, { 0.61, 0.14, "🍁" }, { 0.69, 0.19, "🍂" } } do
+			glyph(root, p[3], p[1], p[2], if i == 3 then 0.1 else 0.08, WHITE, Z.accessory)
+		end
+	elseif acc == "acc_santahat" then
+		shape(root, 0.5, 0.135, 0.5, 0.11, c, Z.accessory, 0.45)
+		shape(root, 0.61, 0.075, 0.3, 0.08, c, Z.accessory, 0.45, 0, 22)
+		shape(root, 0.72, 0.06, 0.12, 0.06, c, Z.accessory, 0.45, 0, 50)
+		shape(root, 0.5, 0.185, 0.56, 0.055, WHITE, Z.accessory, 0.5)
+		shape(root, 0.79, 0.09, 0.075, 0.075, WHITE, Z.accessory, 0.5)
+	elseif acc == "acc_antlers" then
+		for side = -1, 1, 2 do
+			shape(root, 0.5 + side * 0.17, 0.09, 0.03, 0.15, c, Z.accessory, 0.5, 0, side * 18)
+			shape(root, 0.5 + side * 0.215, 0.07, 0.025, 0.08, c, Z.accessory, 0.5, 0, side * 55)
+			shape(root, 0.5 + side * 0.14, 0.04, 0.022, 0.07, c, Z.accessory, 0.5, 0, -side * 25)
+		end
+		shape(root, 0.5, 0.505, 0.055, 0.05, Color3.fromRGB(230, 30, 40), Z.accessory, 0.5)
+		shape(root, 0.49, 0.495, 0.015, 0.013, WHITE, Z.accessory, 0.5, 0.2)
+	elseif acc == "acc_earmuffs" then
+		local band = it and it.accent or Color3.fromRGB(110, 170, 255)
+		shape(root, 0.5, 0.15, 0.56, 0.03, band, Z.accessory, 0.5)
+		for side = -1, 1, 2 do
+			shape(root, 0.5 + side * 0.24, 0.45, 0.11, 0.13, c, Z.accessory, 0.5)
+			shape(root, 0.5 + side * 0.24, 0.45, 0.06, 0.07, Color3.fromRGB(230, 240, 255), Z.accessory, 0.5)
+		end
+	end
+end
+
+-- Dots, stripes, hearts... drawn on top of the outfit
+local PATTERN_SPOTS = { { 0.14, 0.2 }, { 0.32, 0.36 }, { 0.5, 0.18 }, { 0.68, 0.36 }, { 0.86, 0.2 }, { 0.23, 0.52 }, { 0.77, 0.52 }, { 0.5, 0.5 } }
+
+local function drawPattern(body: Frame, patternId: string?, color: Color3)
+	if patternId == "pat_dots" then
+		for _, p in PATTERN_SPOTS do
+			local dot = shape(body, p[1], p[2], 0.05, 0.13, color, body.ZIndex, 0.5, 0.1)
+			dot.Name = "Pattern"
+		end
+	elseif patternId == "pat_stripes" then
+		for i = 0, 3 do
+			local stripe = shape(body, 0.5, 0.14 + i * 0.15, 0.86, 0.055, color, body.ZIndex, 0.5, 0.15)
+			stripe.Name = "Pattern"
+		end
+	else
+		local symbol = ({ pat_hearts = "♥", pat_stars = "★", pat_flowers = "✿" })[patternId or ""]
+		if symbol then
+			for _, p in PATTERN_SPOTS do
+				local t = glyph(body, symbol, p[1], p[2], 0.12, color, body.ZIndex)
+				t.Size = UDim2.fromScale(0.09, 0.22)
+				t.Name = "Pattern"
+			end
+		end
 	end
 end
 
@@ -900,7 +1385,19 @@ local function drawOutfit(root: Frame, client, look)
 	local outfit = Catalog.byId[look.outfit]
 	shape(root, 0.5, 0.77, 0.15, 0.14, client.skin, Z.neck, 0.3)
 	local body = shape(root, 0.5, 0.97, 0.78, 0.3, Color3.new(), Z.outfit, 0.35)
-	paint(body, outfit, Color3.fromRGB(110, 120, 135))
+	-- A custom color from the 🎨 palette replaces the outfit's own colors
+	local custom = Catalog.byId[look.outfitColor or ""]
+	if custom and custom.color then
+		body.BackgroundColor3 = custom.color
+	else
+		paint(body, outfit, Color3.fromRGB(110, 120, 135))
+	end
+	local patternColor = if outfit and outfit.accent then outfit.accent else WHITE
+	if custom and custom.color then
+		local _, _, v = custom.color:ToHSV()
+		patternColor = if v > 0.8 then Color3.fromRGB(255, 120, 190) else WHITE
+	end
+	drawPattern(body, look.outfitPattern, patternColor)
 	shape(root, 0.5, 0.83, 0.14, 0.06, client.skin, Z.ears, 0.5)
 	local accent = outfit and outfit.accent or WHITE
 	shape(root, 0.43, 0.86, 0.06, 0.02, accent, Z.ears, 0.5, 0, 25)
@@ -929,6 +1426,68 @@ local function drawDirt(root: Frame, client, options: Options?)
 end
 
 ------------------------------------------------------------------------------
+
+-- The nail station: a close-up of the client's hand.
+local FINGERS = { { 0.335, 0.27 }, { 0.445, 0.17 }, { 0.555, 0.2 }, { 0.665, 0.28 } } -- x, fingertip y
+
+function LookRenderer.renderHand(container: GuiObject, client, look): Frame
+	local old = container:FindFirstChild("Portrait")
+	if old then
+		old:Destroy()
+	end
+	local root = Instance.new("Frame")
+	root.Name = "Portrait"
+	root.AnchorPoint = Vector2.new(0.5, 0.5)
+	root.Position = UDim2.fromScale(0.5, 0.5)
+	root.Size = UDim2.fromScale(1, 1)
+	root.BackgroundTransparency = 1
+	root.ClipsDescendants = true
+	root.ZIndex = container.ZIndex
+	local aspect = Instance.new("UIAspectRatioConstraint")
+	aspect.AspectRatio = 1
+	aspect.Parent = root
+
+	local skin = client.skin
+	local polish = Catalog.byId[look.nailColor]
+	local art = Catalog.byId[look.nailArt]
+	local natural = skin:Lerp(Color3.fromRGB(255, 220, 225), 0.55)
+
+	local outfit = Catalog.byId[look.outfit]
+	local sleeve = shape(root, 0.5, 1.02, 0.46, 0.16, Color3.new(), 1, 0.3)
+	paint(sleeve, outfit, Color3.fromRGB(110, 120, 135))
+	shape(root, 0.5, 0.92, 0.34, 0.2, skin, 2, 0.3)
+	shape(root, 0.5, 0.72, 0.46, 0.38, skin, 3, 0.3)
+
+	local nails = {}
+	for _, f in FINGERS do
+		local x, top = f[1], f[2]
+		local h = 0.62 - top
+		shape(root, x, top + h / 2, 0.1, h, skin, 3, 0.5)
+		table.insert(nails, { x = x, y = top + 0.055, rot = 0 })
+	end
+	shape(root, 0.255, 0.6, 0.1, 0.28, skin, 3, 0.5, 0, -38)
+	table.insert(nails, { x = 0.185, y = 0.505, rot = -38 })
+	-- little knuckle lines
+	for _, f in FINGERS do
+		shape(root, f[1], 0.47, 0.05, 0.008, darken(skin, 0.85), 4, 0.5)
+	end
+
+	for _, n in nails do
+		local nail = shape(root, n.x, n.y, 0.074, 0.09, natural, 5, 0.45, 0, n.rot)
+		nail.Name = "Nail"
+		if polish and polish.color then
+			paint(nail, polish)
+		end
+		shape(nail, 0.3, 0.3, 0.2, 0.35, WHITE, 6, 0.5, 0.45)
+		if art and art.icon then
+			local dark = polish and polish.color and select(3, polish.color:ToHSV()) > 0.75
+			local t = glyph(nail, art.icon, 0.5, 0.55, 0.9, if dark then Color3.fromRGB(80, 40, 100) else WHITE, 7)
+			t.Size = UDim2.fromScale(0.9, 0.7)
+		end
+	end
+	root.Parent = container
+	return root
+end
 
 -- Colors any UI frame like an item (used for the color swatches in the menus).
 LookRenderer.paint = paint
@@ -991,7 +1550,7 @@ return LookRenderer
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="7">
+      <Item class="ModuleScript" referent="8">
         <Properties>
           <string name="Name">Progress</string>
           <string name="Source"><![CDATA[-- Stylist levels: every star a stylist earns in a show adds up, and every 5 stars is a new level.
@@ -1032,7 +1591,7 @@ return Progress
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="8">
+      <Item class="ModuleScript" referent="9">
         <Properties>
           <string name="Name">Remotes</string>
           <string name="Source"><![CDATA[-- All the messages the server and players send each other.
@@ -1051,9 +1610,7 @@ local EVENTS = {
 	"Vote", -- player -> server: (targetUserId, stars)
 	"Results", -- server -> all: fashion show results
 	"Profile", -- server -> player: coins, unlocked items, passes
-	"PowerUp", -- server -> player: e.g. Super Soap was used
 	"Notify", -- server -> player: a little message
-	"UseSuperSoap", -- player -> server
 	"React", -- player -> server: cheer emoji during the fashion show
 	"Reaction", -- server -> all: someone cheered (emoji)
 	"Celebrate", -- server -> player: daily gift, level up
@@ -1096,7 +1653,7 @@ return Remotes
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="9">
+      <Item class="ModuleScript" referent="10">
         <Properties>
           <string name="Name">Scoring</string>
           <string name="Source"><![CDATA[-- The judges! Gives a look 1-5 stars and says what they liked (or what to fix next time).
@@ -1178,10 +1735,18 @@ function Scoring.judge(entry: Entry, theme: Catalog.Theme): (number, { string })
 		table.insert(comments, "They walked the runway in work overalls! 👗")
 	else
 		points += 0.5
-		if Catalog.matchesTheme(Catalog.byId[look.outfit], theme) then
+		if Catalog.matchesTheme(Catalog.byId[look.outfit], theme) or Catalog.matchesTheme(Catalog.byId[look.outfitColor or ""], theme) then
 			points += 0.5
 		else
 			table.insert(comments, "Try an outfit that matches " .. theme.name)
+		end
+	end
+
+	-- Nails (bonus)
+	if not Catalog.isNone(look.nailColor) then
+		points += 0.25
+		if Catalog.matchesTheme(Catalog.byId[look.nailColor], theme) then
+			points += 0.25
 		end
 	end
 
@@ -1235,15 +1800,15 @@ return Scoring
       </Item>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="10">
+  <Item class="ServerScriptService" referent="11">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Folder" referent="11">
+    <Item class="Folder" referent="12">
       <Properties>
         <string name="Name">Server</string>
       </Properties>
-      <Item class="ModuleScript" referent="12">
+      <Item class="ModuleScript" referent="13">
         <Properties>
           <string name="Name">DataService</string>
           <string name="Source"><![CDATA[-- Saves each player's coins, unlocked items and Super Soaps between visits.
@@ -1254,6 +1819,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
@@ -1262,10 +1828,12 @@ local DataService = {}
 export type Profile = {
 	coins: number,
 	owned: { [string]: boolean },
-	superSoaps: number,
 	stats: { shows: number, wins: number, bestStars: number, totalStars: number },
 	lastDay: number, -- last day a daily gift was given (days since 1970)
-	streak: number, -- days in a row
+	streak: number, -- days played in total (the gift calendar never resets)
+	giftsGiven: number, -- day-7 accessories collected
+	friends: { [string]: { visits: number, skin: number, eyes: number } }, -- regular clients
+	lookbook: { any }, -- saved finished looks, newest first
 	receipts: { string },
 	passes: { [string]: boolean }, -- not saved; checked with Roblox every visit
 	canSave: boolean, -- false if loading failed, so we never overwrite good data with an empty profile
@@ -1299,7 +1867,6 @@ local function newProfile(saved): Profile
 	return {
 		coins = tonumber(saved.coins) or Config.STARTING_COINS,
 		owned = saved.owned or {},
-		superSoaps = tonumber(saved.superSoaps) or 0,
 		stats = {
 			shows = stats.shows or 0,
 			wins = stats.wins or 0,
@@ -1308,6 +1875,9 @@ local function newProfile(saved): Profile
 		},
 		lastDay = tonumber(saved.lastDay) or 0,
 		streak = tonumber(saved.streak) or 0,
+		giftsGiven = tonumber(saved.giftsGiven) or 0,
+		friends = saved.friends or {},
+		lookbook = saved.lookbook or {},
 		receipts = saved.receipts or {},
 		passes = {},
 		canSave = true,
@@ -1346,8 +1916,9 @@ function DataService.push(player: Player)
 			coins = p.coins,
 			owned = p.owned,
 			passes = p.passes,
-			superSoaps = p.superSoaps,
 			totalStars = p.stats.totalStars,
+			calendarDay = p.streak,
+			lookbook = p.lookbook,
 		})
 	end
 end
@@ -1390,11 +1961,13 @@ function DataService.save(player: Player, release: boolean?): boolean
 				return {
 					coins = p.coins,
 					owned = p.owned,
-					superSoaps = p.superSoaps,
-					stats = p.stats,
+							stats = p.stats,
 					receipts = p.receipts,
 					lastDay = p.lastDay,
 					streak = p.streak,
+					giftsGiven = p.giftsGiven,
+					friends = p.friends,
+					lookbook = p.lookbook,
 					session = if release then nil else game.JobId,
 					lockTime = os.time(),
 				}
@@ -1412,19 +1985,32 @@ function DataService.save(player: Player, release: boolean?): boolean
 	return false
 end
 
--- A gift for coming back each day. Coming back days in a row makes it bigger.
+-- The daily gift calendar: a prize for each new day played. Missing a day just pauses it.
 local function giveDailyGift(player: Player, profile: Profile)
 	local today = os.time() // 86400
 	if profile.lastDay >= today then
 		return
 	end
-	profile.streak = if profile.lastDay == today - 1 then profile.streak + 1 else 1
 	profile.lastDay = today
-	local coins = Config.DAILY_GIFT_COINS + Config.DAILY_STREAK_BONUS * math.min(profile.streak - 1, 5)
-	profile.coins += coins
+	profile.streak += 1
+	local day = (profile.streak - 1) % 7 + 1
+	local info = { kind = "daily", day = day, coins = 0, item = nil :: string? }
+	if day < 7 then
+		info.coins = Config.CALENDAR_COINS[day]
+	else
+		local giftId = Catalog.GiftItems[profile.giftsGiven + 1]
+		if giftId then
+			profile.giftsGiven += 1
+			profile.owned[giftId] = true
+			info.item = Catalog.byId[giftId].name
+		else
+			info.coins = Config.CALENDAR_DAY7_COINS
+		end
+	end
+	profile.coins += info.coins
 	task.delay(3, function()
 		if player.Parent then
-			Remotes.Celebrate:FireClient(player, { kind = "daily", coins = coins, streak = profile.streak })
+			Remotes.Celebrate:FireClient(player, info)
 			DataService.push(player)
 		end
 	end)
@@ -1524,7 +2110,7 @@ return DataService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="13">
+      <Item class="Script" referent="14">
         <Properties>
           <string name="Name">Main</string>
           <token name="RunContext">0</token>
@@ -1553,7 +2139,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="14">
+      <Item class="ModuleScript" referent="15">
         <Properties>
           <string name="Name">RoundService</string>
           <string name="Source"><![CDATA[-- Runs the game loop that everyone in the server plays together:
@@ -1566,6 +2152,7 @@ local Workspace = game:GetService("Workspace")
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Clients = require(ReplicatedStorage.Shared.Clients)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Events = require(ReplicatedStorage.Shared.Events)
 local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
 local Progress = require(ReplicatedStorage.Shared.Progress)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -1594,11 +2181,13 @@ local state = {
 	phase = "Waiting",
 	endsAt = 0,
 	themeId = Catalog.Themes[1].id,
+	eventId = nil :: string?,
 }
 local entries: { [number]: Entry } = {} -- by UserId
 local showcase = nil -- payload of the look currently on the runway
 local results = nil -- payload of the last results
 local spawnedModels: { Model } = {}
+local decorated = false
 
 local WALK_ANIMATION = "rbxassetid://507777826" -- Roblox's default R15 walk
 local REACTIONS = { ["😍"] = true, ["👏"] = true, ["🔥"] = true, ["✨"] = true, ["💖"] = true }
@@ -1636,10 +2225,25 @@ end
 ------------------------------------------------------------------------------
 -- Makeover
 
+-- Sometimes a client this stylist has styled before comes back.
+local function pickClient(player: Player): Clients.Client
+	local profile = DataService.get(player)
+	if profile and next(profile.friends) and rng:NextNumber() < Config.RETURNING_CLIENT_CHANCE then
+		local names = {}
+		for name in profile.friends do
+			table.insert(names, name)
+		end
+		table.sort(names)
+		local name = names[rng:NextInteger(1, #names)]
+		return Clients.returning(name, profile.friends[name], rng, state.eventId)
+	end
+	return Clients.generate(rng, state.eventId)
+end
+
 local function assignClient(player: Player)
 	local entry: Entry = {
 		player = player,
-		client = Clients.generate(rng),
+		client = pickClient(player),
 		look = Catalog.defaultLook(),
 		clean = 0,
 		rinsed = false,
@@ -1680,7 +2284,7 @@ local function onUpdateLook(player: Player, key: unknown, itemId: unknown)
 	if not it or it.category ~= key then
 		return
 	end
-	if not Catalog.isUnlocked(it, DataService.get(player)) then
+	if not Catalog.isUnlocked(it, DataService.get(player), state.eventId) then
 		Remotes.Notify:FireClient(player, "Unlock " .. it.name .. " in the shop first!")
 		return
 	end
@@ -1703,18 +2307,6 @@ local function onDone(player: Player, isDone: unknown)
 	if entry then
 		entry.done = isDone == true
 	end
-end
-
--- Used by the shop when a player uses a Super Soap. Returns true if it was used.
-function RoundService.applySuperSoap(player: Player): boolean
-	local entry = activeEntry(player)
-	if not entry or (entry.clean >= 0.98 and entry.rinsed) then
-		return false
-	end
-	entry.clean = 1
-	entry.rinsed = true
-	Remotes.PowerUp:FireClient(player, "SuperSoap")
-	return true
 end
 
 ------------------------------------------------------------------------------
@@ -1756,7 +2348,8 @@ end
 local function buildClientModel(entry: Entry): Model
 	local outfit = Catalog.byId[entry.look.outfit]
 	local skin = entry.client.skin
-	local top = outfit and outfit.color or Color3.new(0.5, 0.5, 0.5)
+	local custom = Catalog.byId[entry.look.outfitColor or ""]
+	local top = if custom and custom.color then custom.color elseif outfit and outfit.color then outfit.color else Color3.new(0.5, 0.5, 0.5)
 	local bottom = outfit and outfit.accent or top
 
 	local model: Model
@@ -1766,8 +2359,16 @@ local function buildClientModel(entry: Entry): Model
 		desc.LeftArmColor = skin
 		desc.RightArmColor = skin
 		desc.TorsoColor = top
-		desc.LeftLegColor = bottom
-		desc.RightLegColor = bottom
+		-- Dresses show legs (the skirt goes on top); other outfits get pants
+		local legs = if outfit and outfit.dress then skin else bottom
+		desc.LeftLegColor = legs
+		desc.RightLegColor = legs
+		-- A slimmer, more doll-like shape than the default blocky body
+		desc.WidthScale = 0.8
+		desc.DepthScale = 0.85
+		desc.HeightScale = 1
+		desc.ProportionScale = 1
+		desc.BodyTypeScale = 0.3
 		return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
 	end)
 	if ok and result then
@@ -1781,6 +2382,20 @@ local function buildClientModel(entry: Entry): Model
 	end
 	model.Name = entry.client.name
 
+	-- Sleeves in the outfit color and cute shoes
+	for _, partName in { "LeftUpperArm", "RightUpperArm" } do
+		local p = model:FindFirstChild(partName)
+		if p and p:IsA("BasePart") then
+			p.Color = top
+		end
+	end
+	for _, partName in { "LeftFoot", "RightFoot" } do
+		local p = model:FindFirstChild(partName)
+		if p and p:IsA("BasePart") then
+			p.Color = bottom
+		end
+	end
+
 	-- Swap the plain head for the face the stylist made
 	local head = model:FindFirstChild("Head") :: BasePart?
 	if head then
@@ -1792,8 +2407,8 @@ local function buildClientModel(entry: Entry): Model
 		end
 		local billboard = Instance.new("BillboardGui")
 		billboard.Name = "Face"
-		billboard.Size = UDim2.fromScale(3.6, 3.6)
-		billboard.StudsOffset = Vector3.new(0, 0.3, 0)
+		billboard.Size = UDim2.fromScale(4.4, 4.4)
+		billboard.StudsOffset = Vector3.new(0, 0.5, 0)
 		billboard.LightInfluence = 0
 		billboard.MaxDistance = 250
 		billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -1801,11 +2416,12 @@ local function buildClientModel(entry: Entry): Model
 		holder.Size = UDim2.fromScale(1, 1)
 		holder.BackgroundTransparency = 1
 		holder.Parent = billboard
+		-- Everyone sees the client washed and happy; the judges' tips stay private
 		local stars = Scoring.judge(entry, theme())
 		LookRenderer.render(holder, entry.client, entry.look, {
 			headOnly = true,
-			clean = entry.clean,
-			mood = Scoring.mood(stars, entry.clean),
+			clean = 1,
+			mood = if stars >= 4 then "grin" else "smile",
 		})
 		billboard.Adornee = head
 		billboard.Parent = head
@@ -1931,8 +2547,8 @@ local function onVote(player: Player, targetUserId: unknown, stars: unknown)
 	if state.phase ~= "Showcase" or not showcase or showcase.userId ~= targetUserId then
 		return
 	end
-	-- Only whole stars 1-5 (this also rejects NaN, which would break scores and coins)
-	if player.UserId == targetUserId or type(stars) ~= "number" or not (stars >= 1 and stars <= 5) or stars % 1 ~= 0 then
+	-- Votes are kind: only 3, 4 or 5 stars (this also rejects NaN, which would break scores and coins)
+	if player.UserId == targetUserId or type(stars) ~= "number" or not (stars >= 3 and stars <= 5) or stars % 1 ~= 0 then
 		return
 	end
 	local entry = entries[targetUserId :: number]
@@ -2023,6 +2639,51 @@ local function scoreAll()
 			end
 			local newLevel = Progress.level(profile.stats.totalStars)
 			row.level = newLevel
+
+			-- Remember this client; regulars who come back often become best friends
+			local entry = entries[row.userId]
+			local client = entry.client
+			local friend = profile.friends[client.name] or { visits = 0, skin = client.skinIndex, eyes = client.eyesIndex }
+			friend.visits = math.max(friend.visits, client.visits)
+			friend.skin, friend.eyes = client.skinIndex, client.eyesIndex
+			profile.friends[client.name] = friend
+			local friendCount = 0
+			for _ in profile.friends do
+				friendCount += 1
+			end
+			if friendCount > 12 then
+				-- forget the least-visited regular
+				local lowest, lowestName = math.huge, nil
+				for name, f in profile.friends do
+					if name ~= client.name and f.visits < lowest then
+						lowest, lowestName = f.visits, name
+					end
+				end
+				if lowestName then
+					profile.friends[lowestName] = nil
+				end
+			end
+			if table.find(Config.BEST_FRIEND_VISITS, client.visits) then
+				profile.coins += Config.BEST_FRIEND_COINS
+				task.delay(6, function()
+					if player.Parent then
+						Remotes.Celebrate:FireClient(player, { kind = "friend", name = client.name, visits = client.visits, coins = Config.BEST_FRIEND_COINS })
+					end
+				end)
+			end
+
+			-- Save the look in the Look Book (newest first)
+			table.insert(profile.lookbook, 1, {
+				name = client.name,
+				skin = client.skinIndex,
+				eyes = client.eyesIndex,
+				look = table.clone(entry.look),
+				theme = state.themeId,
+				stars = row.stars,
+			})
+			while #profile.lookbook > Config.LOOKBOOK_SIZE do
+				table.remove(profile.lookbook)
+			end
 			if newLevel > oldLevel then
 				task.delay(4, function()
 					if player.Parent then
@@ -2048,7 +2709,25 @@ local function runRound()
 		setState("Waiting", 0)
 		task.wait(2)
 	end
-	state.themeId = Catalog.Themes[rng:NextInteger(1, #Catalog.Themes)].id
+	-- Holiday events: switch decorations, and use the holiday theme about half the time
+	local event = Events.current(now())
+	local eventId = event and event.id or nil
+	if eventId ~= state.eventId or not decorated then
+		state.eventId = eventId
+		decorated = true
+		WorldBuilder.setDecor(eventId)
+	end
+	if event and rng:NextNumber() < Config.EVENT_THEME_CHANCE then
+		state.themeId = event.theme
+	else
+		local everyday = {}
+		for _, t in Catalog.Themes do
+			if not t.event then
+				table.insert(everyday, t.id)
+			end
+		end
+		state.themeId = everyday[rng:NextInteger(1, #everyday)]
+	end
 	setState("Intermission", Config.INTERMISSION_SECONDS)
 	task.wait(Config.INTERMISSION_SECONDS)
 
@@ -2087,7 +2766,7 @@ local function runRound()
 				level = Progress.level((DataService.get(entry.player) or { stats = { totalStars = 0 } }).stats.totalStars),
 				client = entry.client,
 				look = entry.look,
-				clean = entry.clean,
+				clean = 1, -- shown tidy on the big screen
 				index = index,
 				total = math.max(total, index),
 			}
@@ -2168,21 +2847,22 @@ return RoundService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="15">
+      <Item class="ModuleScript" referent="16">
         <Properties>
           <string name="Name">ShopService</string>
           <string name="Source"><![CDATA[-- Unlocking items with coins, plus Robux Game Passes and Developer Products.
 
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Events = require(ReplicatedStorage.Shared.Events)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local DataService = require(script.Parent.DataService)
-local RoundService = require(script.Parent.RoundService)
 
 local ShopService = {}
 
@@ -2200,6 +2880,10 @@ local function buyItem(player: Player, itemId: unknown): (boolean, string)
 	if profile.owned[it.id] then
 		return true, "You already have " .. it.name .. "!"
 	end
+	local event = Events.current(Workspace:GetServerTimeNow())
+	if not Catalog.isAvailable(it, profile, event and event.id) then
+		return false, it.name .. " is only here during its holiday event."
+	end
 	if profile.coins < it.price then
 		return false, "You need " .. (it.price - profile.coins) .. " more coins."
 	end
@@ -2207,23 +2891,6 @@ local function buyItem(player: Player, itemId: unknown): (boolean, string)
 	profile.owned[it.id] = true
 	DataService.push(player)
 	return true, "Unlocked " .. it.name .. "! ✨"
-end
-
-local function useSuperSoap(player: Player)
-	local profile = DataService.get(player)
-	if not profile then
-		return
-	end
-	if profile.superSoaps <= 0 then
-		Remotes.Notify:FireClient(player, "You don't have any Super Soap yet.")
-		return
-	end
-	if RoundService.applySuperSoap(player) then
-		profile.superSoaps -= 1
-		DataService.push(player)
-	else
-		Remotes.Notify:FireClient(player, "Super Soap works during a makeover on a dirty face!")
-	end
 end
 
 local function productName(productId: number): string?
@@ -2251,14 +2918,7 @@ local function processReceipt(receipt)
 	end
 
 	local name = productName(receipt.ProductId)
-	if name == "SuperSoap" then
-		profile.superSoaps += 1
-		Remotes.Notify:FireClient(player, "You got a Super Soap! 🧼✨")
-		-- Use it right away if they're in the middle of washing
-		if RoundService.applySuperSoap(player) then
-			profile.superSoaps -= 1
-		end
-	elseif name and Config.CoinPackAmounts[name] then
+	if name and Config.CoinPackAmounts[name] then
 		profile.coins += Config.CoinPackAmounts[name]
 		Remotes.Notify:FireClient(player, "+" .. Config.CoinPackAmounts[name] .. " coins! 🪙")
 	else
@@ -2281,7 +2941,6 @@ end
 
 function ShopService.init()
 	Remotes.BuyItem.OnServerInvoke = buyItem
-	Remotes.UseSuperSoap.OnServerEvent:Connect(useSuperSoap)
 	MarketplaceService.ProcessReceipt = processReceipt
 
 	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passId, purchased)
@@ -2306,7 +2965,7 @@ return ShopService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="16">
+      <Item class="ModuleScript" referent="17">
         <Properties>
           <string name="Name">WorldBuilder</string>
           <string name="Source"><![CDATA[-- Builds the salon, runway, big screen, audience seats and winners' podium when the game starts.
@@ -2376,13 +3035,22 @@ local function plant(parent: Instance, position: Vector3)
 	ball(parent, "Flower", 0.9, position + Vector3.new(-1, 5.2, -0.4), rgb(255, 220, 90))
 end
 
+-- Lighting for everyday and for each holiday event
+local LOOKS = {
+	everyday = { clock = 14.5, tint = rgb(255, 245, 252), air = rgb(255, 214, 236), decay = rgb(200, 170, 255), strip = PINK },
+	halloween = { clock = 18.4, tint = rgb(250, 230, 255), air = rgb(200, 150, 255), decay = rgb(255, 140, 60), strip = rgb(255, 130, 30) },
+	thanksgiving = { clock = 16.8, tint = rgb(255, 238, 220), air = rgb(255, 210, 160), decay = rgb(230, 140, 80), strip = rgb(255, 160, 50) },
+	christmas = { clock = 15.5, tint = rgb(245, 250, 255), air = rgb(225, 240, 255), decay = rgb(180, 210, 255), strip = rgb(230, 40, 50) },
+}
+
 -- Soft, glowy, pastel look for the whole game
-local function setupLighting()
+local function setupLighting(look)
 	for _, effect in Lighting:GetChildren() do
 		if effect.Name == "GlowUp" then
 			effect:Destroy()
 		end
 	end
+	Lighting.ClockTime = look.clock
 	local bloom = Instance.new("BloomEffect")
 	bloom.Name = "GlowUp"
 	bloom.Intensity = 0.7
@@ -2394,16 +3062,179 @@ local function setupLighting()
 	color.Saturation = 0.15
 	color.Brightness = 0.03
 	color.Contrast = 0.05
-	color.TintColor = rgb(255, 245, 252)
+	color.TintColor = look.tint
 	color.Parent = Lighting
 	local atmosphere = Instance.new("Atmosphere")
 	atmosphere.Name = "GlowUp"
 	atmosphere.Density = 0.28
-	atmosphere.Color = rgb(255, 214, 236)
-	atmosphere.Decay = rgb(200, 170, 255)
+	atmosphere.Color = look.air
+	atmosphere.Decay = look.decay
 	atmosphere.Haze = 1.2
 	atmosphere.Glare = 0.4
 	atmosphere.Parent = Lighting
+end
+
+-- An emoji floating in the air (bats, ghosts, leaves, snowflakes)
+local function floater(parent: Instance, emoji: string, position: Vector3, size: number)
+	local anchor = part(parent, "Floater", Vector3.new(0.2, 0.2, 0.2), CFrame.new(position), rgb(255, 255, 255))
+	anchor.Transparency = 1
+	anchor.CanCollide = false
+	anchor.CanQuery = false
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromScale(size, size)
+	gui.LightInfluence = 0
+	gui.MaxDistance = 300
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Text = emoji
+	label.TextScaled = true
+	label.Parent = gui
+	gui.Parent = anchor
+end
+
+local function pumpkin(parent: Instance, position: Vector3, size: number)
+	local body = ball(parent, "Pumpkin", size, position + Vector3.new(0, size / 2, 0), rgb(245, 130, 30))
+	local stem = part(parent, "Stem", Vector3.new(size * 0.25, size * 0.12, size * 0.12), CFrame.new(position + Vector3.new(0, size * 1.02, 0)) * CFrame.Angles(0, 0, math.rad(90)), rgb(70, 130, 50))
+	stem.Shape = Enum.PartType.Cylinder
+	local face = Instance.new("SurfaceGui")
+	face.Face = Enum.NormalId.Back
+	face.LightInfluence = 0
+	face.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	face.PixelsPerStud = 40
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Text = "▲ ▲\n◡◡◡"
+	label.TextScaled = true
+	label.Font = Enum.Font.FredokaOne
+	label.TextColor3 = rgb(60, 25, 10)
+	label.Parent = face
+	face.Parent = body
+end
+
+local function christmasTree(parent: Instance, position: Vector3, height: number)
+	local trunk = part(parent, "Trunk", Vector3.new(height * 0.15, height * 0.12, height * 0.12), CFrame.new(position + Vector3.new(0, height * 0.075, 0)) * CFrame.Angles(0, 0, math.rad(90)), rgb(110, 70, 40))
+	trunk.Shape = Enum.PartType.Cylinder
+	local layers = 8
+	for i = 0, layers - 1 do
+		local w = height * (0.66 - i * 0.075)
+		local y = height * (0.2 + i * 0.09)
+		local green = if i % 2 == 0 then rgb(40, 140, 70) else rgb(55, 165, 85)
+		local layer = part(parent, "Branches", Vector3.new(height * 0.1, w, w), CFrame.new(position + Vector3.new(0, y, 0)) * CFrame.Angles(0, 0, math.rad(90)), green)
+		layer.Shape = Enum.PartType.Cylinder
+		local colors = { rgb(230, 40, 50), GOLD, rgb(90, 170, 255), PINK }
+		for j = 0, (if i % 2 == 0 then 4 else -1) do
+			local a = math.rad(j * 72 + i * 25)
+			ball(parent, "Ornament", height * 0.05, position + Vector3.new(math.cos(a) * w * 0.47, y - height * 0.05, math.sin(a) * w * 0.47), colors[(i + j) % #colors + 1], Enum.Material.Neon)
+		end
+	end
+	ball(parent, "TreeStar", height * 0.1, position + Vector3.new(0, height * 0.95, 0), GOLD, Enum.Material.Neon)
+end
+
+local function present(parent: Instance, position: Vector3, size: number, color: Color3)
+	part(parent, "Present", Vector3.new(size, size * 0.8, size), CFrame.new(position + Vector3.new(0, size * 0.4, 0)), color)
+	part(parent, "Ribbon", Vector3.new(size * 1.02, size * 0.82, size * 0.18), CFrame.new(position + Vector3.new(0, size * 0.4, 0)), rgb(255, 255, 255))
+	part(parent, "Ribbon", Vector3.new(size * 0.18, size * 0.82, size * 1.02), CFrame.new(position + Vector3.new(0, size * 0.4, 0)), rgb(255, 255, 255))
+end
+
+local function autumnTree(parent: Instance, position: Vector3)
+	local trunk = part(parent, "Trunk", Vector3.new(7, 1.4, 1.4), CFrame.new(position + Vector3.new(0, 3.5, 0)) * CFrame.Angles(0, 0, math.rad(90)), rgb(110, 70, 40))
+	trunk.Shape = Enum.PartType.Cylinder
+	ball(parent, "Leaves", 7, position + Vector3.new(0, 9, 0), rgb(230, 110, 30), Enum.Material.Grass)
+	ball(parent, "Leaves", 5, position + Vector3.new(1.8, 10.5, 1), rgb(200, 60, 30), Enum.Material.Grass)
+	ball(parent, "Leaves", 4.5, position + Vector3.new(-2, 10, -1), rgb(240, 180, 40), Enum.Material.Grass)
+end
+
+-- Spots around the salon, runway and podium where decorations go
+local DECOR_SPOTS = {
+	Vector3.new(-30, 0, 36), Vector3.new(30, 0, 36), Vector3.new(-30, 0, 62), Vector3.new(30, 0, 62),
+	Vector3.new(-18, 0, -30), Vector3.new(18, 0, -30), Vector3.new(-22, 0, -50), Vector3.new(22, 0, -50),
+	Vector3.new(-44, 0, -6), Vector3.new(-20, 0, -14), Vector3.new(8, 0, 20), Vector3.new(-8, 0, 20),
+}
+
+local built = nil
+
+-- Swaps in the decorations and lighting for a holiday event (or nil for everyday).
+function WorldBuilder.setDecor(eventId: string?)
+	if not built then
+		return
+	end
+	local old = built.folder:FindFirstChild("Decor")
+	if old then
+		old:Destroy()
+	end
+	local look = LOOKS[eventId or "everyday"] or LOOKS.everyday
+	setupLighting(look)
+	for _, p in built.folder:GetDescendants() do
+		if p:IsA("BasePart") and p.Name == "LightStrip" then
+			p.Color = look.strip
+			local light = p:FindFirstChildOfClass("PointLight")
+			if light then
+				light.Color = look.strip
+			end
+		end
+	end
+	if not eventId then
+		return
+	end
+
+	local decor = Instance.new("Folder")
+	decor.Name = "Decor"
+	if eventId == "halloween" then
+		for i, spot in DECOR_SPOTS do
+			pumpkin(decor, spot, if i % 3 == 0 then 3.2 else 2.4)
+			pumpkin(decor, spot + Vector3.new(2.6, 0, 1), 1.6)
+		end
+		for i = 1, 10 do
+			floater(decor, if i % 3 == 0 then "👻" else "🦇", Vector3.new(-16 + (i % 5) * 8, 16 + (i % 3) * 3, -50 + i * 6), 3)
+		end
+		for i = 1, 6 do
+			floater(decor, "🦇", Vector3.new(-20 + i * 6, 14 + (i % 2) * 3, 50), 2.5)
+		end
+	elseif eventId == "thanksgiving" then
+		for i, spot in DECOR_SPOTS do
+			if i % 2 == 0 then
+				autumnTree(decor, spot)
+			else
+				part(decor, "HayBale", Vector3.new(4, 2.4, 2.6), CFrame.new(spot + Vector3.new(0, 1.2, 0)), rgb(230, 200, 110), Enum.Material.Sand)
+				pumpkin(decor, spot + Vector3.new(0, 2.4, 0), 1.6)
+			end
+			for j = 0, 4 do
+				ball(decor, "Leaf", 0.9, spot + Vector3.new(3 + (j % 3) * 0.8, 0.2, -1 + j * 0.5), ({ rgb(220, 90, 30), rgb(200, 50, 30), rgb(240, 180, 40) })[j % 3 + 1])
+			end
+		end
+		for i = 1, 12 do
+			floater(decor, if i % 2 == 0 then "🍂" else "🍁", Vector3.new(-18 + (i % 6) * 7, 12 + (i % 4) * 3, -52 + i * 8), 2.2)
+		end
+	elseif eventId == "christmas" then
+		for i, spot in DECOR_SPOTS do
+			if i % 2 == 1 then
+				christmasTree(decor, spot, if i <= 4 then 16 else 12)
+			end
+			local colors = { rgb(230, 40, 50), rgb(40, 150, 70), GOLD, PURPLE }
+			present(decor, spot + Vector3.new(3, 0, 2), 1.8, colors[i % #colors + 1])
+			present(decor, spot + Vector3.new(-2.5, 0, 2.5), 1.3, colors[(i + 1) % #colors + 1])
+			part(decor, "Snow", Vector3.new(10, 0.25, 8), CFrame.new(spot + Vector3.new(0, 0.12, 0)), rgb(250, 252, 255), Enum.Material.Snow)
+		end
+		local cloud = part(decor, "SnowCloud", Vector3.new(160, 1, 190), CFrame.new(0, 60, 10), rgb(255, 255, 255))
+		cloud.Transparency = 1
+		cloud.CanCollide = false
+		cloud.CanQuery = false
+		local snow = Instance.new("ParticleEmitter")
+		snow.Rate = 120
+		snow.Lifetime = NumberRange.new(10, 14)
+		snow.Speed = NumberRange.new(4, 7)
+		snow.Size = NumberSequence.new(0.35)
+		snow.EmissionDirection = Enum.NormalId.Bottom
+		snow.SpreadAngle = Vector2.new(15, 15)
+		snow.LightEmission = 0.3
+		snow.Parent = cloud
+		for i = 1, 8 do
+			floater(decor, "❄️", Vector3.new(-16 + (i % 4) * 10, 15 + (i % 3) * 3, -50 + i * 8), 2.4)
+		end
+	end
+	decor.Parent = built.folder
 end
 
 local function cameraMarker(parent: Instance, name: string, from: Vector3, to: Vector3)
@@ -2588,9 +3419,9 @@ function WorldBuilder.build(): World
 	end
 
 	folder.Parent = Workspace
-	setupLighting()
+	setupLighting(LOOKS.everyday)
 
-	return {
+	built = {
 		folder = folder,
 		screen = screen,
 		runwayStart = Vector3.new(0, runwayTopY, runwayStartZ),
@@ -2598,6 +3429,7 @@ function WorldBuilder.build(): World
 		podium = podium,
 		confetti = confetti,
 	}
+	return built
 end
 
 return WorldBuilder
@@ -2606,19 +3438,19 @@ return WorldBuilder
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="17">
+  <Item class="StarterPlayer" referent="18">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="18">
+    <Item class="StarterPlayerScripts" referent="19">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="Folder" referent="19">
+      <Item class="Folder" referent="20">
         <Properties>
           <string name="Name">Client</string>
         </Properties>
-        <Item class="LocalScript" referent="20">
+        <Item class="LocalScript" referent="21">
           <Properties>
             <string name="Name">Main</string>
             <string name="Source"><![CDATA[-- Starts the game on each player's screen and connects it to the server.
@@ -2627,11 +3459,13 @@ local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local UI = script.Parent:WaitForChild("UI")
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local Events = require(ReplicatedStorage.Shared.Events)
 local Effects = require(UI.Effects)
 local HUD = require(UI.HUD)
 local Makeover = require(UI.Makeover)
@@ -2653,7 +3487,7 @@ local hud, shop
 
 -- Shared helpers every screen can use
 local ctx = {
-	profile = { coins = 0, owned = {}, passes = {}, superSoaps = 0 },
+	profile = { coins = 0, owned = {}, passes = {}, totalStars = 0 },
 	state = function()
 		return state
 	end,
@@ -2665,6 +3499,10 @@ local ctx = {
 	end,
 	promptProduct = function(key: string)
 		shop:askProduct(key)
+	end,
+	eventId = function(): string?
+		local event = Events.current(Workspace:GetServerTimeNow())
+		return event and event.id
 	end,
 	isModalOpen = function(): boolean
 		return shop.overlay.Visible or shop.confirm.Visible
@@ -2758,21 +3596,43 @@ Remotes.Profile.OnClientEvent:Connect(function(profile)
 	shop:refreshProfile()
 end)
 
-Remotes.PowerUp.OnClientEvent:Connect(function(kind)
-	if kind == "SuperSoap" then
-		makeover:superSoap()
-		hud:toast("Super Soap! Squeaky clean in one swipe! 🧼✨", Theme.Colors.green)
-	end
-end)
-
 Remotes.Reaction.OnClientEvent:Connect(function(emoji)
 	showcase:reaction(emoji)
 end)
 
 Remotes.Celebrate.OnClientEvent:Connect(function(info)
 	if info.kind == "daily" then
-		local streak = if info.streak > 1 then "Day " .. info.streak .. " in a row! 🔥" else "Come back tomorrow for more!"
-		Effects.splash(gui, "🎁 Daily Gift! +" .. info.coins .. " 🪙", streak, Theme.Colors.gold, 3.5)
+		local title = if info.item then "🎁 Day 7: " .. info.item .. "!" else "🎁 Day " .. info.day .. " Gift! +" .. info.coins .. " 🪙"
+		local card = Effects.splash(gui, title, " ", Theme.Colors.gold, 4)
+		-- The 7-day calendar row
+		local row = Theme.new("Frame", {
+			Position = UDim2.fromScale(0, 0.62),
+			Size = UDim2.fromScale(1, 0.36),
+			BackgroundTransparency = 1,
+			ZIndex = 262,
+			Parent = card,
+		}, {
+			Theme.new("UIListLayout", {
+				FillDirection = Enum.FillDirection.Horizontal,
+				HorizontalAlignment = Enum.HorizontalAlignment.Center,
+				Padding = UDim.new(0.015, 0),
+			}),
+		})
+		for d = 1, 7 do
+			local past, today = d < info.day, d == info.day
+			Theme.new("TextLabel", {
+				Size = UDim2.fromScale(0.125, 1),
+				BackgroundTransparency = 0,
+				BackgroundColor3 = if today then Theme.Colors.gold elseif past then Theme.Colors.green else Theme.Colors.lavender,
+				TextColor3 = if today or past then Theme.Colors.white else Theme.Colors.text,
+				Text = if past then "✓" elseif d == 7 then "🎁" else tostring(d),
+				ZIndex = 263,
+				Parent = row,
+			}, { Theme.corner(10), Theme.maxText(30) })
+		end
+		Effects.confetti(gui, 40)
+	elseif info.kind == "friend" then
+		Effects.splash(gui, "💞 " .. info.name .. " is your BEST friend!", "Visit #" .. info.visits .. "  +" .. info.coins .. " 🪙", Theme.Colors.hotPink, 3.5)
 		Effects.confetti(gui, 40)
 	elseif info.kind == "level" then
 		Effects.splash(gui, "⭐ Level " .. info.level .. "! ⭐", "You're a " .. info.title .. "!", Theme.Colors.purple, 3.5)
@@ -2807,11 +3667,11 @@ end)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="Folder" referent="21">
+        <Item class="Folder" referent="22">
           <Properties>
             <string name="Name">UI</string>
           </Properties>
-          <Item class="ModuleScript" referent="22">
+          <Item class="ModuleScript" referent="23">
             <Properties>
               <string name="Name">Effects</string>
               <string name="Source"><![CDATA[-- Fun screen effects: confetti, floating emoji, camera flashes, sparkles and big pop-up cards.
@@ -2900,14 +3760,14 @@ function Effects.flash(gui: GuiObject)
 	fadeAndDestroy(flash, 0, 0.3)
 end
 
--- A little "✨" that pops at a spot inside `parent` (0..1 position).
-function Effects.sparkle(parent: GuiObject, x: number, y: number)
+-- A little "✨" (or another emoji) that pops at a spot inside `parent` (0..1 position).
+function Effects.sparkle(parent: GuiObject, x: number, y: number, emoji: string?)
 	Sounds.play("Sparkle", 0.15)
 	local s = new("TextLabel", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(x, y),
 		Size = UDim2.fromScale(0.14, 0.14),
-		Text = "✨",
+		Text = emoji or "✨",
 		ZIndex = 120,
 		Parent = parent,
 	}, { new("UIAspectRatioConstraint", { AspectRatio = 1 }) })
@@ -2970,7 +3830,7 @@ return Effects
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="23">
+          <Item class="ModuleScript" referent="24">
             <Properties>
               <string name="Name">HUD</string>
               <string name="Source"><![CDATA[-- The always-on parts of the screen: round timer, coins, shop button, pop-up messages,
@@ -2981,6 +3841,7 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local Events = require(ReplicatedStorage.Shared.Events)
 local Progress = require(ReplicatedStorage.Shared.Progress)
 local Theme = require(script.Parent.Theme)
 
@@ -3090,7 +3951,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 		Name = "Lobby",
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 1, -24),
-		Size = UDim2.new(0.5, 0, 0, 190),
+		Size = UDim2.new(0.5, 0, 0, 226),
 		BackgroundColor3 = C.white,
 		BackgroundTransparency = 0.05,
 		Visible = false,
@@ -3103,7 +3964,19 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 		new("UISizeConstraint", { MinSize = Vector2.new(320, 0) }),
 		new("UIListLayout", { Padding = UDim.new(0, 6), HorizontalAlignment = Enum.HorizontalAlignment.Center }),
 	})
+	self.lobbyEvent = new("TextLabel", {
+		Size = UDim2.new(1, 0, 0, 30),
+		BackgroundTransparency = 0,
+		BackgroundColor3 = C.gold,
+		TextColor3 = C.white,
+		Text = "",
+		Visible = false,
+		LayoutOrder = 1,
+		ZIndex = 41,
+		Parent = self.lobby,
+	}, { Theme.round(), Theme.maxText(22), Theme.padding(4) })
 	self.lobbyTheme = new("TextLabel", {
+		LayoutOrder = 2,
 		Size = UDim2.new(1, 0, 0, 44),
 		Text = "",
 		TextColor3 = C.hotPink,
@@ -3112,6 +3985,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 	}, { Theme.maxText(40) })
 	new("TextLabel", {
 		Size = UDim2.new(1, 0, 0, 104),
+		LayoutOrder = 3,
 		Text = "1. 🧼 Wash your client's dirty face\n2. 💇 Do their hair   3. 💄 Put on makeup\n4. 👗 Pick an outfit that fits the theme\n5. 📸 Walk the runway - you only get 5 minutes!",
 		TextColor3 = C.text,
 		ZIndex = 41,
@@ -3130,6 +4004,11 @@ function HUD:setState(state)
 	end
 	self.lobby.Visible = showLobby
 	self.lobbyTheme.Text = "Next theme: " .. (theme and theme.name or "")
+	local event = Events.current(Workspace:GetServerTimeNow())
+	self.lobbyEvent.Visible = event ~= nil
+	if event then
+		self.lobbyEvent.Text = event.icon .. " " .. event.name .. " event! New looks " .. event.endsText .. " " .. event.icon
+	end
 end
 
 function HUD:setCoins(coins: number)
@@ -3188,7 +4067,7 @@ return HUD
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="24">
+          <Item class="ModuleScript" referent="25">
             <Properties>
               <string name="Name">Makeover</string>
               <string name="Source"><![CDATA[-- The makeover screen: wash the client's face, then do their hair, makeup, outfit and extras.
@@ -3200,6 +4079,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local Events = require(ReplicatedStorage.Shared.Events)
 local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Scoring = require(ReplicatedStorage.Shared.Scoring)
@@ -3221,6 +4101,7 @@ local SEND_INTERVAL = 0.25
 local WASH_LINES = { "That tickles! 😆", "Scrub scrub! 🧽", "Ooh, bubbles!", "Keep going! 💪", "I can see my face again!" }
 local LIKE_LINES = { "Ooh, cute! 💕", "I like it!", "So pretty! ✨", "Ooh la la!", "Wow!" }
 local THEME_LINES = { "Perfect for %s! 😍", "So %s! I love it!", "That's so %s! 💖" }
+local PERFUME_LINES = { "Hee hee! 🌸", "Ooh, I smell like flowers!", "Achoo! 😆", "Mmm, so fancy! 💕", "Again! Again!" }
 local NONE_LINES = { "Hmm, okay!", "Plain is nice too!", "Let's try something else!" }
 
 local function pick(list: { string }): string
@@ -3427,7 +4308,7 @@ function Makeover:buildRight()
 	for _, tab in Catalog.Tabs do
 		local b = Theme.button({
 			Text = "",
-			Size = UDim2.fromScale(0.19, 1),
+			Size = UDim2.fromScale(0.158, 1),
 			Color = C.lavender,
 			ZIndex = 13,
 			Parent = tabs,
@@ -3515,17 +4396,39 @@ function Makeover:buildRight()
 		self:setDone(not self.done)
 	end)
 
-	self.waiting = new("TextLabel", {
+	self.waiting = new("Frame", {
 		Position = UDim2.fromScale(0, 0.09),
 		Size = UDim2.fromScale(1, 0.77),
 		BackgroundColor3 = C.white,
 		BackgroundTransparency = 0.05,
-		Text = "Looking fabulous! 💅\nWaiting for the other stylists...",
-		TextColor3 = C.purple,
 		Visible = false,
 		ZIndex = 30,
 		Parent = right,
-	}, { Theme.corner(18), Theme.maxText(34), Theme.padding(20) })
+	}, { Theme.corner(18), Theme.padding(16) })
+	new("TextLabel", {
+		Size = UDim2.fromScale(1, 0.5),
+		Text = "Looking fabulous! 💅\nWaiting for the other stylists...",
+		TextColor3 = C.purple,
+		ZIndex = 31,
+		Parent = self.waiting,
+	}, { Theme.maxText(34) })
+	-- Something fun to do while waiting
+	local perfume = Theme.button({
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromScale(0.5, 0.58),
+		Size = UDim2.fromScale(0.7, 0.3),
+		Text = "🌸 Spritz perfume!",
+		Color = C.pink,
+		ZIndex = 32,
+		MaxText = 34,
+		Parent = self.waiting,
+	})
+	perfume.Activated:Connect(function()
+		for _ = 1, 4 do
+			Effects.sparkle(self.bubbleLayer, 0.25 + math.random() * 0.5, 0.15 + math.random() * 0.5, if math.random() < 0.5 then "🌸" else "💕")
+		end
+		self:say(pick(PERFUME_LINES), 1.5)
+	end)
 end
 
 function Makeover:buildWashPanel(parent: GuiObject)
@@ -3567,8 +4470,8 @@ function Makeover:buildWashPanel(parent: GuiObject)
 
 	local bar = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.fromScale(0.5, 0.67),
-		Size = UDim2.fromScale(0.88, 0.11),
+		Position = UDim2.fromScale(0.5, 0.74),
+		Size = UDim2.fromScale(0.88, 0.13),
 		BackgroundColor3 = C.lavender,
 		ZIndex = 13,
 		Parent = panel,
@@ -3586,23 +4489,6 @@ function Makeover:buildWashPanel(parent: GuiObject)
 		Parent = bar,
 	}, { Theme.maxText(22), Theme.padding(3) })
 
-	self.soapButton = Theme.button({
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.fromScale(0.5, 0.82),
-		Size = UDim2.fromScale(0.7, 0.16),
-		Text = "",
-		Color = C.purple,
-		ZIndex = 14,
-		MaxText = 24,
-		Parent = panel,
-	})
-	self.soapButton.Activated:Connect(function()
-		if (self.ctx.profile.superSoaps or 0) > 0 then
-			Remotes.UseSuperSoap:FireServer()
-		else
-			self.ctx.promptProduct("SuperSoap")
-		end
-	end)
 end
 
 ------------------------------------------------------------------------------
@@ -3661,11 +4547,16 @@ function Makeover:assign(payload)
 	self.hearts = 0
 	self.tool = "soap"
 	self.tab = "Wash"
-	self.nameTag.Text = "💖 " .. self.client.name
+	local visits = self.client.visits or 1
+	self.nameTag.Text = "💖 " .. self.client.name .. (if visits > 1 then "  ⭐" .. visits else "")
 	self:setDone(self.done, true)
 	self:renderPortrait()
 	self:setTab("Wash")
-	self:say(self.client.story, 5)
+	if visits > 1 then
+		self:say("Hi again! It's me, " .. self.client.name .. "! 💖 " .. self.client.story, 6)
+	else
+		self:say(self.client.story, 5)
+	end
 end
 
 function Makeover:setVisible(visible: boolean)
@@ -3747,16 +4638,20 @@ function Makeover:renderPortrait()
 		return
 	end
 	local stars = self:previewStars()
-	self.portraitRoot = LookRenderer.render(self.portraitHolder, self.client, self.look, {
-		dirtHealth = self.dirtHealth,
-		mood = Scoring.mood(stars, self:cleanAmount()),
-	})
+	if self.tab == "Nails" then
+		self.portraitRoot = LookRenderer.renderHand(self.portraitHolder, self.client, self.look)
+	else
+		self.portraitRoot = LookRenderer.render(self.portraitHolder, self.client, self.look, {
+			dirtHealth = self.dirtHealth,
+			mood = Scoring.mood(stars, self:cleanAmount()),
+		})
+	end
 	self.dirtFrames = {}
 	for i = 1, #self.client.dirt do
 		self.dirtFrames[i] = self.portraitRoot:FindFirstChild("Dirt" .. i)
 	end
 	local full = math.floor(stars)
-	self.heartsLabel.Text = string.rep("💖", full) .. string.rep("🤍", 5 - full)
+	self.heartsLabel.Text = "Happy: " .. string.rep("💖", full) .. string.rep("🤍", 5 - full)
 	if full > self.hearts and self.hearts > 0 then
 		Theme.pop(self.heartsLabel)
 	end
@@ -3795,7 +4690,11 @@ function Makeover:refreshChecklist()
 end
 
 function Makeover:setTab(tabId: string)
+	local wasNails = self.tab == "Nails"
 	self.tab = tabId
+	if (tabId == "Nails") ~= wasNails and self.client then
+		self:renderPortrait() -- switch between the face and the hand
+	end
 	self.cursor.Visible = false
 	for id, b in self.tabButtons do
 		local active = id == tabId
@@ -3828,6 +4727,9 @@ function Makeover:setTab(tabId: string)
 		end
 	end
 	self.chips.Visible = #categories > 1
+	-- Without sub-category chips, the grid moves up to use their space
+	self.grid.Position = UDim2.fromScale(0, if #categories > 1 then 0.33 else 0.24)
+	self.grid.Size = UDim2.fromScale(1, if #categories > 1 then 0.52 else 0.61)
 	for _, category in categories do
 		local active = self.subcategory[tabId] == category.key
 		local chip = Theme.button({
@@ -3852,7 +4754,7 @@ end
 
 function Makeover:layoutGrid()
 	local width = self.grid.AbsoluteSize.X - 8 - self.grid.ScrollBarThickness - 2
-	local cols = if width >= 560 then 5 elseif width >= 380 then 4 else 3
+	local cols = if width >= 600 then 5 elseif width >= 470 then 4 else 3
 	local gap = 8
 	local cell = math.max(40, math.floor((width - gap * (cols - 1)) / cols))
 	self.gridLayout.CellSize = UDim2.fromOffset(cell, math.floor(cell * 1.08))
@@ -3875,16 +4777,18 @@ function Makeover:renderGrid()
 
 	local order = 0
 	self.cards = {}
+	local eventId = self.ctx.eventId()
 	for _, it in category.items do
-		if it.hidden then
+		if not Catalog.isAvailable(it, self.ctx.profile, eventId) then
 			continue
 		end
 		order += 1
 		local selected = self.look[key] == it.id
-		local unlocked = Catalog.isUnlocked(it, self.ctx.profile)
+		local unlocked = Catalog.isUnlocked(it, self.ctx.profile, eventId)
 
 		local card = new("TextButton", {
-			LayoutOrder = order,
+			-- "Remove" first, then holiday items, then everything else
+			LayoutOrder = if Catalog.isNone(it.id) then 0 elseif it.event then order else order + 1000,
 			Text = "",
 			BackgroundTransparency = 0,
 			BackgroundColor3 = if selected then C.softPink else C.white,
@@ -3908,8 +4812,11 @@ function Makeover:renderGrid()
 		if category.preview == "portrait" then
 			local previewLook = table.clone(self.look)
 			previewLook[key] = it.id
-			local zoom = if key == "outfit" then 1 elseif key == "hairStyle" or key == "accessory" then 1.1 else 1.45
-			LookRenderer.render(preview, self.client, previewLook, { headOnly = key ~= "outfit", clean = 1, mood = "smile", zoom = zoom })
+			local body = key == "outfit" or key == "outfitPattern"
+			local zoom = if body then 1 elseif key == "hairStyle" or key == "accessory" then 1.1 else 1.45
+			LookRenderer.render(preview, self.client, previewLook, { headOnly = not body, clean = 1, mood = "smile", zoom = zoom })
+		elseif category.preview == "icon" and it.icon then
+			new("TextLabel", { Size = UDim2.fromScale(1, 1), Text = it.icon, TextColor3 = C.hotPink, ZIndex = 15, Parent = preview }, { Theme.maxText(56) })
 		elseif it.color then
 			local dot = new("Frame", {
 				AnchorPoint = Vector2.new(0.5, 0.5),
@@ -3940,12 +4847,22 @@ function Makeover:renderGrid()
 				Parent = card,
 			})
 		end
+		if it.event or it.gift then
+			new("TextLabel", {
+				AnchorPoint = Vector2.new(0, 1),
+				Position = UDim2.new(0, 3, 0.76, 0),
+				Size = UDim2.fromScale(0.22, 0.2),
+				Text = if it.gift then "🎁" else (Events.byId[it.event] and Events.byId[it.event].icon or "✨"),
+				ZIndex = 18,
+				Parent = card,
+			})
+		end
 
 		if not unlocked then
 			new("Frame", {
-				Size = UDim2.fromScale(1, 1),
+				Size = UDim2.fromScale(1, 0.76),
 				BackgroundColor3 = C.white,
-				BackgroundTransparency = 0.45,
+				BackgroundTransparency = 0.6,
 				ZIndex = 16,
 				Parent = card,
 			}, { Theme.corner(16) })
@@ -3954,9 +4871,9 @@ function Makeover:renderGrid()
 				Position = UDim2.new(1, -3, 0, 3),
 				Size = UDim2.fromScale(0.62, 0.18),
 				BackgroundTransparency = 0,
-				BackgroundColor3 = if it.pass then C.gold else C.purple,
+				BackgroundColor3 = if it.pass then C.gold elseif it.level then C.green else C.purple,
 				TextColor3 = C.white,
-				Text = if it.pass then "👑 VIP" else "🪙 " .. it.price,
+				Text = if it.pass == "VIP" then "👑 VIP" elseif it.pass then "👸 Pack" elseif it.level then "⭐ Lv " .. it.level else "🪙 " .. it.price,
 				ZIndex = 17,
 				Parent = card,
 			}, { Theme.round(), Theme.padding(2) })
@@ -3998,6 +4915,20 @@ function Makeover:choose(key: string, itemId: string)
 
 	local theme = self:theme()
 	local it = Catalog.byId[itemId]
+	if key == "nailColor" or key == "nailArt" then
+		-- paint each nail with a little sparkle, one after another
+		local nails = {}
+		for _, n in self.portraitRoot:GetChildren() do
+			if n.Name == "Nail" and n:IsA("GuiObject") then
+				table.insert(nails, n)
+			end
+		end
+		for i, n in nails do
+			task.delay(i * 0.08, function()
+				Effects.sparkle(self.bubbleLayer, n.Position.X.Scale, n.Position.Y.Scale, if key == "nailArt" then "💫" else "✨")
+			end)
+		end
+	end
 	if self.hearts >= 5 and not self.bestShown then
 		self.bestShown = true
 		self:say("This is my BEST look EVER! 💖", 3)
@@ -4053,9 +4984,6 @@ function Makeover:refreshWash()
 	end
 	self.cleanFill.Size = UDim2.fromScale(math.clamp(clean, 0, 1), 1)
 	self.cleanText.Text = "Clean: " .. math.floor(clean * 100 + 0.5) .. "%" .. (if bubbles > 0 then "  🫧 " .. bubbles else "")
-	local soaps = self.ctx.profile.superSoaps or 0
-	self.soapButton.Text = if soaps > 0 then "✨ Use Super Soap (" .. soaps .. " left)" else "✨ Super Soap (Robux)"
-	self.soapButton.Visible = not self:isWashed()
 	self:refreshChecklist()
 end
 
@@ -4085,11 +5013,12 @@ function Makeover:addBubble(rel: Vector2)
 		return
 	end
 	local size = 0.05 + math.random() * 0.05
+	local rainbow = self.ctx.profile.passes and self.ctx.profile.passes.RainbowBubbles
 	local frame = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(rel.X, rel.Y),
 		Size = UDim2.fromScale(size, size),
-		BackgroundColor3 = C.white,
+		BackgroundColor3 = if rainbow then Color3.fromHSV(math.random(), 0.35, 1) else C.white,
 		BackgroundTransparency = 0.25,
 		ZIndex = 101,
 		Parent = self.bubbleLayer,
@@ -4169,16 +5098,6 @@ function Makeover:scrub(pos: Vector2, moved: number)
 	end
 end
 
-function Makeover:superSoap()
-	for i = 1, #self.dirtHealth do
-		self.dirtHealth[i] = 0
-	end
-	self:clearBubbles()
-	self:renderPortrait()
-	self:refreshWash()
-	self:sendWash(true)
-end
-
 function Makeover:connectInput()
 	local lastPos: Vector2? = nil
 	local activeTouch: InputObject? = nil -- only follow the first finger
@@ -4252,7 +5171,7 @@ return Makeover
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="25">
+          <Item class="ModuleScript" referent="26">
             <Properties>
               <string name="Name">Results</string>
               <string name="Source"><![CDATA[-- Shows who won the fashion show, what the judges said, and the coins you earned.
@@ -4262,7 +5181,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
-local Scoring = require(ReplicatedStorage.Shared.Scoring)
 local Effects = require(script.Parent.Effects)
 local Theme = require(script.Parent.Theme)
 
@@ -4295,19 +5213,32 @@ function Results.new(gui: ScreenGui)
 		ZIndex = 41,
 		Parent = self.panel,
 	}, { Theme.maxText(32) })
-	self.mine = new("TextLabel", {
+	-- Your own client, big, with what the judges said (only you see this)
+	local mineCard = new("Frame", {
 		Position = UDim2.new(0, 0, 0, 44),
-		Size = UDim2.new(1, 0, 0, 96),
-		BackgroundTransparency = 0,
+		Size = UDim2.new(1, 0, 0, 130),
 		BackgroundColor3 = C.softPink,
-		Text = "",
-		TextWrapped = true,
 		ZIndex = 41,
 		Parent = self.panel,
-	}, { Theme.corner(14), Theme.maxText(19), Theme.padding(8) })
+	}, { Theme.corner(14) })
+	self.minePortrait = new("Frame", {
+		Position = UDim2.new(0, 6, 0, 6),
+		Size = UDim2.new(0, 118, 0, 118),
+		BackgroundColor3 = C.white,
+		ZIndex = 42,
+		Parent = mineCard,
+	}, { Theme.corner(12) })
+	self.mine = new("TextLabel", {
+		Position = UDim2.new(0, 130, 0, 0),
+		Size = UDim2.new(1, -134, 1, 0),
+		Text = "",
+		TextWrapped = true,
+		ZIndex = 42,
+		Parent = mineCard,
+	}, { Theme.maxText(19), Theme.padding(6) })
 	self.list = new("ScrollingFrame", {
-		Position = UDim2.new(0, 0, 0, 148),
-		Size = UDim2.new(1, 0, 1, -148),
+		Position = UDim2.new(0, 0, 0, 182),
+		Size = UDim2.new(1, 0, 1, -182),
 		BackgroundTransparency = 1,
 		ScrollBarThickness = 6,
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
@@ -4327,13 +5258,22 @@ function Results:show(results)
 		end
 	end
 
-	self.mine.Text = "Watch the show next round! 👀"
+	self.mine.Text = "Watch the show, then style a client next round! 👀"
+	local old = self.minePortrait:FindFirstChild("Portrait")
+	if old then
+		old:Destroy()
+	end
 	for _, row in results.rows do
 		local isMe = row.userId == Players.LocalPlayer.UserId
 		if isMe then
 			local comments = table.concat(row.comments, "  ", 1, math.min(#row.comments, 3))
-			self.mine.Text = string.format("You placed #%d with %s  (+%d 🪙)\n%s", row.rank, Theme.stars(row.stars), row.coins, comments)
+			self.mine.Text = string.format("Your %s: %s\n+%d 🪙\n%s", row.client.name, Theme.stars(row.stars), row.coins, comments)
+			LookRenderer.render(self.minePortrait, row.client, row.look, { clean = 1, mood = if row.stars >= 4 then "grin" else "smile" })
 			self:celebrate(row, #results.rows)
+		end
+		-- Only the top 3 and your own look are listed, so nobody is shown in last place
+		if row.rank > 3 and not isMe then
+			continue
 		end
 
 		local card = new("Frame", {
@@ -4357,7 +5297,7 @@ function Results:show(results)
 			ZIndex = 43,
 			Parent = card,
 		}, { Theme.corner(12) })
-		LookRenderer.render(face, row.client, row.look, { clean = row.clean, mood = Scoring.mood(row.stars, row.clean) })
+		LookRenderer.render(face, row.client, row.look, { clean = 1, mood = if row.stars >= 4 then "grin" else "smile" })
 		new("TextLabel", {
 			Position = UDim2.new(0, 130, 0, 6),
 			Size = UDim2.new(1, -136, 0, 32),
@@ -4369,7 +5309,7 @@ function Results:show(results)
 		new("TextLabel", {
 			Position = UDim2.new(0, 130, 0, 40),
 			Size = UDim2.new(1, -136, 0, 30),
-			Text = Theme.stars(row.stars) .. (if row.voteCount > 0 then "  (" .. row.voteCount .. " votes)" else ""),
+			Text = (if row.stars < 3 and not isMe then "💖 Great effort!" else Theme.stars(row.stars)) .. (if row.voteCount == 1 then "  (1 vote)" elseif row.voteCount > 1 then "  (" .. row.voteCount .. " votes)" else ""),
 			TextColor3 = C.gold,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			ZIndex = 43,
@@ -4409,7 +5349,7 @@ return Results
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="26">
+          <Item class="ModuleScript" referent="27">
             <Properties>
               <string name="Name">Shop</string>
               <string name="Source"><![CDATA[-- The shop: unlock looks with coins you earn, or get Robux extras.
@@ -4421,6 +5361,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Clients = require(ReplicatedStorage.Shared.Clients)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Events = require(ReplicatedStorage.Shared.Events)
 local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Theme = require(script.Parent.Theme)
@@ -4433,11 +5374,11 @@ Shop.__index = Shop
 
 local ROBUX_ITEMS = {
 	{ kind = "pass", key = "VIP", icon = "👑", title = "VIP Glam Kit", text = "Rainbow & galaxy hair, Royal Updo, Mermaid Waves, Golden Gala Gown, crown and more - plus a VIP badge on the runway!" },
+	{ kind = "pass", key = "Princess", icon = "👸", title = "Princess Pack", text = "Ice Ball Gown, Rose Gown, Princess Curls, Rose Gold hair, a tiara and pink gems!" },
 	{ kind = "pass", key = "DoubleCoins", icon = "🪙", title = "2x Coins", text = "Earn double coins after every fashion show, forever." },
 	{ kind = "pass", key = "RunwayStar", icon = "🌟", title = "Runway Star", text = "Confetti cannons and sparkles every time your client walks the runway!" },
-	{ kind = "product", key = "SuperSoap", icon = "🧼", title = "Super Soap", text = "Instantly washes your client's face. Saves you time!" },
-	{ kind = "product", key = "CoinsSmall", icon = "💰", title = "500 Coins", text = "Unlock new looks faster." },
-	{ kind = "product", key = "CoinsLarge", icon = "💎", title = "2000 Coins", text = "A big bag of coins!" },
+	{ kind = "pass", key = "RainbowBubbles", icon = "🫧", title = "Rainbow Bubbles", text = "Washing makes rainbow-colored bubbles. Just for fun!" },
+	{ kind = "product", key = "CoinsSmall", icon = "💰", title = "500 Coins", text = "Unlock new looks a little faster." },
 }
 
 local priceCache: { [string]: string } = {}
@@ -4500,8 +5441,8 @@ function Shop.new(gui: ScreenGui, ctx)
 		Parent = panel,
 	}, { new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8) }) })
 	self.tabButtons = {}
-	for _, t in { { "Coins", "🪙 Unlock with Coins" }, { "Robux", "💎 Robux Extras" } } do
-		local b = Theme.button({ Text = t[2], Size = UDim2.new(0.5, -4, 1, 0), ZIndex = 63, Parent = tabs })
+	for _, t in { { "Coins", "🪙 Unlock" }, { "Looks", "📖 My Looks" }, { "Robux", "💎 Extras" } } do
+		local b = Theme.button({ Text = t[2], Size = UDim2.new(1 / 3, -6, 1, 0), ZIndex = 63, Parent = tabs })
 		b.Activated:Connect(function()
 			self.tab = t[1]
 			self:render()
@@ -4630,9 +5571,13 @@ end
 
 -- Called when a player taps a locked item.
 function Shop:askUnlock(it: Catalog.Item)
-	if it.pass then
-		self.confirmText.Text = it.name .. " comes with the 👑 " .. it.pass .. " Glam Kit. Take a look?"
-		self.confirmYes.Text = "See VIP"
+	if it.level then
+		self.ctx.toast("⭐ " .. it.name .. " unlocks free at Level " .. it.level .. "! Keep styling!", C.green)
+		return
+	elseif it.pass then
+		local packName = if it.pass == "VIP" then "👑 VIP Glam Kit" elseif it.pass == "Princess" then "👸 Princess Pack" else it.pass
+		self.confirmText.Text = it.name .. " comes with the " .. packName .. ". Take a look?"
+		self.confirmYes.Text = "Take a look"
 		self.onConfirm = function()
 			self:promptPass(it.pass :: string)
 		end
@@ -4687,6 +5632,8 @@ function Shop:render()
 	clear(self.list)
 	if self.tab == "Coins" then
 		self:renderCoinItems()
+	elseif self.tab == "Looks" then
+		self:renderLookBook()
 	else
 		self:renderRobuxItems()
 	end
@@ -4706,15 +5653,16 @@ function Shop:renderCoinItems()
 	})
 
 	local order = 0
+	local eventId = self.ctx.eventId()
 	for _, category in Catalog.Categories do
 		for _, it in category.items do
-			if it.hidden or it.pass or it.price <= 0 then
+			if it.pass or it.level or it.price <= 0 or not Catalog.isAvailable(it, self.ctx.profile, eventId) then
 				continue
 			end
 			order += 1
-			local owned = Catalog.isUnlocked(it, self.ctx.profile)
+			local owned = Catalog.isUnlocked(it, self.ctx.profile, eventId)
 			local card = new("Frame", {
-				LayoutOrder = order,
+				LayoutOrder = if it.event then order else order + 1000, -- holiday items first
 				BackgroundColor3 = if owned then C.softPink else C.white,
 				ZIndex = 63,
 				Parent = self.list,
@@ -4742,7 +5690,7 @@ function Shop:renderCoinItems()
 			new("TextLabel", {
 				Position = UDim2.fromScale(0.05, 0.4),
 				Size = UDim2.fromScale(0.9, 0.3),
-				Text = category.label .. "\n" .. it.name,
+				Text = (if it.event and Events.byId[it.event] then Events.byId[it.event].icon .. " " else "") .. category.label .. "\n" .. it.name,
 				ZIndex = 64,
 				Parent = card,
 			}, { Theme.maxText(16) })
@@ -4762,6 +5710,64 @@ function Shop:renderCoinItems()
 				end)
 			end
 		end
+	end
+end
+
+-- Every finished look is saved here, like a photo album.
+function Shop:renderLookBook()
+	local looks = self.ctx.profile.lookbook or {}
+	if #looks == 0 then
+		new("TextLabel", {
+			Size = UDim2.new(1, 0, 0, 120),
+			Text = "📖 Your Look Book is empty.\nFinish a fashion show and your look gets saved here!",
+			ZIndex = 63,
+			Parent = self.list,
+		}, { Theme.maxText(26) })
+		return
+	end
+	local width = self.list.AbsoluteSize.X - 12 - self.list.ScrollBarThickness
+	local cols = if width >= 700 then 4 elseif width >= 420 then 3 else 2
+	local gap = 10
+	local cell = math.max(80, math.floor((width - gap * (cols - 1)) / cols))
+	new("UIGridLayout", {
+		CellSize = UDim2.fromOffset(cell, math.floor(cell * 1.3)),
+		CellPadding = UDim2.fromOffset(gap, gap),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = self.list,
+	})
+	for i, saved in looks do
+		local skin, eyes = Clients.colors(saved.skin or 1, saved.eyes or 1)
+		local client = { name = saved.name, skin = skin, eyes = eyes, dirt = {} }
+		local theme = Catalog.themeById[saved.theme]
+		local card = new("Frame", {
+			LayoutOrder = i,
+			BackgroundColor3 = if theme then theme.color:Lerp(C.white, 0.7) else C.softPink,
+			ZIndex = 63,
+			Parent = self.list,
+		}, { Theme.corner(16), Theme.stroke(C.gold, 3) })
+		local pic = new("Frame", {
+			Position = UDim2.fromScale(0.05, 0.04),
+			Size = UDim2.fromScale(0.9, 0.7),
+			BackgroundColor3 = C.white,
+			ZIndex = 64,
+			Parent = card,
+		}, { Theme.corner(12) })
+		LookRenderer.render(pic, client, saved.look, { clean = 1, mood = if (saved.stars or 0) >= 4 then "grin" else "smile" })
+		new("TextLabel", {
+			Position = UDim2.fromScale(0.04, 0.75),
+			Size = UDim2.fromScale(0.92, 0.12),
+			Text = saved.name .. "  " .. Theme.stars(saved.stars or 1),
+			ZIndex = 64,
+			Parent = card,
+		}, { Theme.maxText(18) })
+		new("TextLabel", {
+			Position = UDim2.fromScale(0.04, 0.87),
+			Size = UDim2.fromScale(0.92, 0.11),
+			Text = theme and theme.name or "",
+			TextColor3 = C.textLight,
+			ZIndex = 64,
+			Parent = card,
+		}, { Theme.maxText(16) })
 	end
 end
 
@@ -4844,7 +5850,7 @@ return Shop
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="27">
+          <Item class="ModuleScript" referent="28">
             <Properties>
               <string name="Name">Showcase</string>
               <string name="Source"><![CDATA[-- The fashion show: points the camera at the runway, puts the look on the big screen,
@@ -4913,33 +5919,26 @@ function Showcase.new(gui: ScreenGui, ctx)
 		}),
 	})
 	self.starRow = row
-	self.starButtons = {}
-	for i = 1, 5 do
-		local b = new("TextButton", {
-			Size = UDim2.new(0, 56, 0, 56),
-			Text = "☆",
-			TextColor3 = C.gold,
+	self.voteButtons = {}
+	-- Kind voting: every choice is nice. 💖 = 3 stars, 💖💖 = 4, 💖💖💖 = 5
+	for i, choice in { { 3, "💖", "Cute!" }, { 4, "💖💖", "So pretty!" }, { 5, "💖💖💖", "WOW!" } } do
+		local b = Theme.button({
+			Text = choice[2] .. " " .. choice[3],
+			Size = UDim2.new(0.3, 0, 1, 0),
+			Color = C.softPink,
+			TextColor3 = C.hotPink,
 			ZIndex = 42,
+			MaxText = 24,
 			Parent = row,
 		})
+		b.LayoutOrder = i
 		b.Activated:Connect(function()
-			self:vote(i)
+			self:vote(choice[1])
 		end)
-		b.MouseEnter:Connect(function()
-			if not self.voted then
-				self:showStars(i)
-			end
-		end)
-		b.MouseLeave:Connect(function()
-			if not self.voted then
-				self:showStars(0)
-			end
-		end)
-		self.starButtons[i] = b
+		self.voteButtons[choice[1]] = b
 	end
 
-	task.spawn(function()
-		-- Cheer buttons: everyone can tap these, and the emoji float up on every screen
+	-- Cheer buttons: everyone can tap these, and the emoji float up on every screen
 	local cheers = new("Frame", {
 		Position = UDim2.new(0, 0, 0, 128),
 		Size = UDim2.new(1, 0, 0, 44),
@@ -4968,7 +5967,8 @@ function Showcase.new(gui: ScreenGui, ctx)
 	end
 	self.gui = gui
 
-	self:buildScreen()
+	task.spawn(function()
+		self:buildScreen()
 	end)
 	return self
 end
@@ -5106,9 +6106,10 @@ end
 ------------------------------------------------------------------------------
 -- Voting
 
-function Showcase:showStars(n: number)
-	for i, b in self.starButtons do
-		b.Text = if i <= n then "★" else "☆"
+function Showcase:showVote(stars: number)
+	for value, b in self.voteButtons do
+		b.BackgroundColor3 = if value == stars then C.hotPink else C.softPink
+		b.TextColor3 = if value == stars then C.white else C.hotPink
 	end
 end
 
@@ -5119,7 +6120,7 @@ function Showcase:vote(stars: number)
 	end
 	local first = not self.voted
 	self.voted = true
-	self:showStars(stars)
+	self:showVote(stars)
 	Remotes.Vote:FireServer(current.userId, stars)
 	self.prompt.Text = "Thanks for voting! 💖 Tap to cheer!"
 	if first then
@@ -5130,7 +6131,7 @@ end
 function Showcase:show(payload)
 	self.current = payload
 	self.voted = false
-	self:showStars(0)
+	self:showVote(0)
 	self.panel.Visible = true
 	Theme.pop(self.panel)
 	self:setCamera("Showcase")
@@ -5143,7 +6144,7 @@ function Showcase:show(payload)
 		self.prompt.Text = "This is YOUR client! Cheer for them! 📣"
 		self.starRow.Visible = false
 	else
-		self.prompt.Text = "How many stars? ⭐"
+		self.prompt.Text = "How much do you love it?"
 		self.starRow.Visible = true
 	end
 	-- Camera flashes from the photographers
@@ -5173,7 +6174,7 @@ return Showcase
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="28">
+          <Item class="ModuleScript" referent="29">
             <Properties>
               <string name="Name">Sounds</string>
               <string name="Source"><![CDATA[-- Plays the sounds and music listed in Config.Sounds (empty ones are skipped).
@@ -5240,7 +6241,7 @@ return Sounds
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="29">
+          <Item class="ModuleScript" referent="30">
             <Properties>
               <string name="Name">Theme</string>
               <string name="Source"><![CDATA[-- Colors, fonts and little helpers for building the game's screens in code.
@@ -5397,7 +6398,7 @@ return Theme
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="30">
+  <Item class="Workspace" referent="31">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>

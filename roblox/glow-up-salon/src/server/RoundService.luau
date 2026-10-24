@@ -8,6 +8,7 @@ local Workspace = game:GetService("Workspace")
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Clients = require(ReplicatedStorage.Shared.Clients)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Events = require(ReplicatedStorage.Shared.Events)
 local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
 local Progress = require(ReplicatedStorage.Shared.Progress)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -36,11 +37,13 @@ local state = {
 	phase = "Waiting",
 	endsAt = 0,
 	themeId = Catalog.Themes[1].id,
+	eventId = nil :: string?,
 }
 local entries: { [number]: Entry } = {} -- by UserId
 local showcase = nil -- payload of the look currently on the runway
 local results = nil -- payload of the last results
 local spawnedModels: { Model } = {}
+local decorated = false
 
 local WALK_ANIMATION = "rbxassetid://507777826" -- Roblox's default R15 walk
 local REACTIONS = { ["😍"] = true, ["👏"] = true, ["🔥"] = true, ["✨"] = true, ["💖"] = true }
@@ -78,10 +81,25 @@ end
 ------------------------------------------------------------------------------
 -- Makeover
 
+-- Sometimes a client this stylist has styled before comes back.
+local function pickClient(player: Player): Clients.Client
+	local profile = DataService.get(player)
+	if profile and next(profile.friends) and rng:NextNumber() < Config.RETURNING_CLIENT_CHANCE then
+		local names = {}
+		for name in profile.friends do
+			table.insert(names, name)
+		end
+		table.sort(names)
+		local name = names[rng:NextInteger(1, #names)]
+		return Clients.returning(name, profile.friends[name], rng, state.eventId)
+	end
+	return Clients.generate(rng, state.eventId)
+end
+
 local function assignClient(player: Player)
 	local entry: Entry = {
 		player = player,
-		client = Clients.generate(rng),
+		client = pickClient(player),
 		look = Catalog.defaultLook(),
 		clean = 0,
 		rinsed = false,
@@ -122,7 +140,7 @@ local function onUpdateLook(player: Player, key: unknown, itemId: unknown)
 	if not it or it.category ~= key then
 		return
 	end
-	if not Catalog.isUnlocked(it, DataService.get(player)) then
+	if not Catalog.isUnlocked(it, DataService.get(player), state.eventId) then
 		Remotes.Notify:FireClient(player, "Unlock " .. it.name .. " in the shop first!")
 		return
 	end
@@ -145,18 +163,6 @@ local function onDone(player: Player, isDone: unknown)
 	if entry then
 		entry.done = isDone == true
 	end
-end
-
--- Used by the shop when a player uses a Super Soap. Returns true if it was used.
-function RoundService.applySuperSoap(player: Player): boolean
-	local entry = activeEntry(player)
-	if not entry or (entry.clean >= 0.98 and entry.rinsed) then
-		return false
-	end
-	entry.clean = 1
-	entry.rinsed = true
-	Remotes.PowerUp:FireClient(player, "SuperSoap")
-	return true
 end
 
 ------------------------------------------------------------------------------
@@ -198,7 +204,8 @@ end
 local function buildClientModel(entry: Entry): Model
 	local outfit = Catalog.byId[entry.look.outfit]
 	local skin = entry.client.skin
-	local top = outfit and outfit.color or Color3.new(0.5, 0.5, 0.5)
+	local custom = Catalog.byId[entry.look.outfitColor or ""]
+	local top = if custom and custom.color then custom.color elseif outfit and outfit.color then outfit.color else Color3.new(0.5, 0.5, 0.5)
 	local bottom = outfit and outfit.accent or top
 
 	local model: Model
@@ -208,8 +215,16 @@ local function buildClientModel(entry: Entry): Model
 		desc.LeftArmColor = skin
 		desc.RightArmColor = skin
 		desc.TorsoColor = top
-		desc.LeftLegColor = bottom
-		desc.RightLegColor = bottom
+		-- Dresses show legs (the skirt goes on top); other outfits get pants
+		local legs = if outfit and outfit.dress then skin else bottom
+		desc.LeftLegColor = legs
+		desc.RightLegColor = legs
+		-- A slimmer, more doll-like shape than the default blocky body
+		desc.WidthScale = 0.8
+		desc.DepthScale = 0.85
+		desc.HeightScale = 1
+		desc.ProportionScale = 1
+		desc.BodyTypeScale = 0.3
 		return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
 	end)
 	if ok and result then
@@ -223,6 +238,20 @@ local function buildClientModel(entry: Entry): Model
 	end
 	model.Name = entry.client.name
 
+	-- Sleeves in the outfit color and cute shoes
+	for _, partName in { "LeftUpperArm", "RightUpperArm" } do
+		local p = model:FindFirstChild(partName)
+		if p and p:IsA("BasePart") then
+			p.Color = top
+		end
+	end
+	for _, partName in { "LeftFoot", "RightFoot" } do
+		local p = model:FindFirstChild(partName)
+		if p and p:IsA("BasePart") then
+			p.Color = bottom
+		end
+	end
+
 	-- Swap the plain head for the face the stylist made
 	local head = model:FindFirstChild("Head") :: BasePart?
 	if head then
@@ -234,8 +263,8 @@ local function buildClientModel(entry: Entry): Model
 		end
 		local billboard = Instance.new("BillboardGui")
 		billboard.Name = "Face"
-		billboard.Size = UDim2.fromScale(3.6, 3.6)
-		billboard.StudsOffset = Vector3.new(0, 0.3, 0)
+		billboard.Size = UDim2.fromScale(4.4, 4.4)
+		billboard.StudsOffset = Vector3.new(0, 0.5, 0)
 		billboard.LightInfluence = 0
 		billboard.MaxDistance = 250
 		billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -243,11 +272,12 @@ local function buildClientModel(entry: Entry): Model
 		holder.Size = UDim2.fromScale(1, 1)
 		holder.BackgroundTransparency = 1
 		holder.Parent = billboard
+		-- Everyone sees the client washed and happy; the judges' tips stay private
 		local stars = Scoring.judge(entry, theme())
 		LookRenderer.render(holder, entry.client, entry.look, {
 			headOnly = true,
-			clean = entry.clean,
-			mood = Scoring.mood(stars, entry.clean),
+			clean = 1,
+			mood = if stars >= 4 then "grin" else "smile",
 		})
 		billboard.Adornee = head
 		billboard.Parent = head
@@ -373,8 +403,8 @@ local function onVote(player: Player, targetUserId: unknown, stars: unknown)
 	if state.phase ~= "Showcase" or not showcase or showcase.userId ~= targetUserId then
 		return
 	end
-	-- Only whole stars 1-5 (this also rejects NaN, which would break scores and coins)
-	if player.UserId == targetUserId or type(stars) ~= "number" or not (stars >= 1 and stars <= 5) or stars % 1 ~= 0 then
+	-- Votes are kind: only 3, 4 or 5 stars (this also rejects NaN, which would break scores and coins)
+	if player.UserId == targetUserId or type(stars) ~= "number" or not (stars >= 3 and stars <= 5) or stars % 1 ~= 0 then
 		return
 	end
 	local entry = entries[targetUserId :: number]
@@ -465,6 +495,51 @@ local function scoreAll()
 			end
 			local newLevel = Progress.level(profile.stats.totalStars)
 			row.level = newLevel
+
+			-- Remember this client; regulars who come back often become best friends
+			local entry = entries[row.userId]
+			local client = entry.client
+			local friend = profile.friends[client.name] or { visits = 0, skin = client.skinIndex, eyes = client.eyesIndex }
+			friend.visits = math.max(friend.visits, client.visits)
+			friend.skin, friend.eyes = client.skinIndex, client.eyesIndex
+			profile.friends[client.name] = friend
+			local friendCount = 0
+			for _ in profile.friends do
+				friendCount += 1
+			end
+			if friendCount > 12 then
+				-- forget the least-visited regular
+				local lowest, lowestName = math.huge, nil
+				for name, f in profile.friends do
+					if name ~= client.name and f.visits < lowest then
+						lowest, lowestName = f.visits, name
+					end
+				end
+				if lowestName then
+					profile.friends[lowestName] = nil
+				end
+			end
+			if table.find(Config.BEST_FRIEND_VISITS, client.visits) then
+				profile.coins += Config.BEST_FRIEND_COINS
+				task.delay(6, function()
+					if player.Parent then
+						Remotes.Celebrate:FireClient(player, { kind = "friend", name = client.name, visits = client.visits, coins = Config.BEST_FRIEND_COINS })
+					end
+				end)
+			end
+
+			-- Save the look in the Look Book (newest first)
+			table.insert(profile.lookbook, 1, {
+				name = client.name,
+				skin = client.skinIndex,
+				eyes = client.eyesIndex,
+				look = table.clone(entry.look),
+				theme = state.themeId,
+				stars = row.stars,
+			})
+			while #profile.lookbook > Config.LOOKBOOK_SIZE do
+				table.remove(profile.lookbook)
+			end
 			if newLevel > oldLevel then
 				task.delay(4, function()
 					if player.Parent then
@@ -490,7 +565,25 @@ local function runRound()
 		setState("Waiting", 0)
 		task.wait(2)
 	end
-	state.themeId = Catalog.Themes[rng:NextInteger(1, #Catalog.Themes)].id
+	-- Holiday events: switch decorations, and use the holiday theme about half the time
+	local event = Events.current(now())
+	local eventId = event and event.id or nil
+	if eventId ~= state.eventId or not decorated then
+		state.eventId = eventId
+		decorated = true
+		WorldBuilder.setDecor(eventId)
+	end
+	if event and rng:NextNumber() < Config.EVENT_THEME_CHANCE then
+		state.themeId = event.theme
+	else
+		local everyday = {}
+		for _, t in Catalog.Themes do
+			if not t.event then
+				table.insert(everyday, t.id)
+			end
+		end
+		state.themeId = everyday[rng:NextInteger(1, #everyday)]
+	end
 	setState("Intermission", Config.INTERMISSION_SECONDS)
 	task.wait(Config.INTERMISSION_SECONDS)
 
@@ -529,7 +622,7 @@ local function runRound()
 				level = Progress.level((DataService.get(entry.player) or { stats = { totalStars = 0 } }).stats.totalStars),
 				client = entry.client,
 				look = entry.look,
-				clean = entry.clean,
+				clean = 1, -- shown tidy on the big screen
 				index = index,
 				total = math.max(total, index),
 			}

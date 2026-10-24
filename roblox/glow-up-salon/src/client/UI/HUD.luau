@@ -6,6 +6,7 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local Events = require(ReplicatedStorage.Shared.Events)
 local Progress = require(ReplicatedStorage.Shared.Progress)
 local Theme = require(script.Parent.Theme)
 
@@ -115,7 +116,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 		Name = "Lobby",
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 1, -24),
-		Size = UDim2.new(0.5, 0, 0, 190),
+		Size = UDim2.new(0.5, 0, 0, 226),
 		BackgroundColor3 = C.white,
 		BackgroundTransparency = 0.05,
 		Visible = false,
@@ -128,7 +129,19 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 		new("UISizeConstraint", { MinSize = Vector2.new(320, 0) }),
 		new("UIListLayout", { Padding = UDim.new(0, 6), HorizontalAlignment = Enum.HorizontalAlignment.Center }),
 	})
+	self.lobbyEvent = new("TextLabel", {
+		Size = UDim2.new(1, 0, 0, 30),
+		BackgroundTransparency = 0,
+		BackgroundColor3 = C.gold,
+		TextColor3 = C.white,
+		Text = "",
+		Visible = false,
+		LayoutOrder = 1,
+		ZIndex = 41,
+		Parent = self.lobby,
+	}, { Theme.round(), Theme.maxText(22), Theme.padding(4) })
 	self.lobbyTheme = new("TextLabel", {
+		LayoutOrder = 2,
 		Size = UDim2.new(1, 0, 0, 44),
 		Text = "",
 		TextColor3 = C.hotPink,
@@ -137,6 +150,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 	}, { Theme.maxText(40) })
 	new("TextLabel", {
 		Size = UDim2.new(1, 0, 0, 104),
+		LayoutOrder = 3,
 		Text = "1. 🧼 Wash your client's dirty face\n2. 💇 Do their hair   3. 💄 Put on makeup\n4. 👗 Pick an outfit that fits the theme\n5. 📸 Walk the runway - you only get 5 minutes!",
 		TextColor3 = C.text,
 		ZIndex = 41,
@@ -155,6 +169,11 @@ function HUD:setState(state)
 	end
 	self.lobby.Visible = showLobby
 	self.lobbyTheme.Text = "Next theme: " .. (theme and theme.name or "")
+	local event = Events.current(Workspace:GetServerTimeNow())
+	self.lobbyEvent.Visible = event ~= nil
+	if event then
+		self.lobbyEvent.Text = event.icon .. " " .. event.name .. " event! New looks " .. event.endsText .. " " .. event.icon
+	end
 end
 
 function HUD:setCoins(coins: number)

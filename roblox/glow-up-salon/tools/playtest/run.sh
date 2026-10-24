@@ -23,6 +23,11 @@ python3 gen_api.py "$CACHE/API-Dump.json"
 python3 bundle.py "$GAME"
 python3 check_props.py "$CACHE/API-Dump.json" "$GAME/src"
 
+"$CACHE/luau" themes_check.luau | tee "$OUT/themes.out" | tail -1
+grep -q "gaps	0" "$OUT/themes.out" || { echo "A theme can't be matched with free items"; exit 1; }
+"$CACHE/luau" events.luau > "$OUT/events.out"
+grep -v '^@@' "$OUT/events.out"
+grep -q "errors	0	fails	0" "$OUT/events.out" || { echo "HOLIDAY EVENTS TEST FAILED"; exit 1; }
 "$CACHE/luau" play.luau > "$OUT/play.out"
 grep -v '^@@' "$OUT/play.out"
 
@@ -33,6 +38,7 @@ if [ "${1:-}" = "--screens" ]; then
 	python3 render.py "$OUT/play.out" "$OUT/screens"
 	"$CACHE/luau" gallery.luau > "$OUT/gallery.out" && python3 render.py "$OUT/gallery.out" "$OUT/screens"
 	"$CACHE/luau" world3d.luau > "$OUT/world.out" && python3 render3d.py "$OUT/world.out" "$OUT/3d"
+	python3 render.py "$OUT/events.out" "$OUT/screens" && python3 render3d.py "$OUT/events.out" "$OUT/3d"
 fi
 
 grep -q "errors	0	warnings	0	fails	0" "$OUT/play.out" || { echo "PLAYTEST FAILED"; exit 1; }

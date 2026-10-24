@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Clients = require(ReplicatedStorage.Shared.Clients)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Events = require(ReplicatedStorage.Shared.Events)
 local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Theme = require(script.Parent.Theme)
@@ -19,11 +20,11 @@ Shop.__index = Shop
 
 local ROBUX_ITEMS = {
 	{ kind = "pass", key = "VIP", icon = "👑", title = "VIP Glam Kit", text = "Rainbow & galaxy hair, Royal Updo, Mermaid Waves, Golden Gala Gown, crown and more - plus a VIP badge on the runway!" },
+	{ kind = "pass", key = "Princess", icon = "👸", title = "Princess Pack", text = "Ice Ball Gown, Rose Gown, Princess Curls, Rose Gold hair, a tiara and pink gems!" },
 	{ kind = "pass", key = "DoubleCoins", icon = "🪙", title = "2x Coins", text = "Earn double coins after every fashion show, forever." },
 	{ kind = "pass", key = "RunwayStar", icon = "🌟", title = "Runway Star", text = "Confetti cannons and sparkles every time your client walks the runway!" },
-	{ kind = "product", key = "SuperSoap", icon = "🧼", title = "Super Soap", text = "Instantly washes your client's face. Saves you time!" },
-	{ kind = "product", key = "CoinsSmall", icon = "💰", title = "500 Coins", text = "Unlock new looks faster." },
-	{ kind = "product", key = "CoinsLarge", icon = "💎", title = "2000 Coins", text = "A big bag of coins!" },
+	{ kind = "pass", key = "RainbowBubbles", icon = "🫧", title = "Rainbow Bubbles", text = "Washing makes rainbow-colored bubbles. Just for fun!" },
+	{ kind = "product", key = "CoinsSmall", icon = "💰", title = "500 Coins", text = "Unlock new looks a little faster." },
 }
 
 local priceCache: { [string]: string } = {}
@@ -86,8 +87,8 @@ function Shop.new(gui: ScreenGui, ctx)
 		Parent = panel,
 	}, { new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8) }) })
 	self.tabButtons = {}
-	for _, t in { { "Coins", "🪙 Unlock with Coins" }, { "Robux", "💎 Robux Extras" } } do
-		local b = Theme.button({ Text = t[2], Size = UDim2.new(0.5, -4, 1, 0), ZIndex = 63, Parent = tabs })
+	for _, t in { { "Coins", "🪙 Unlock" }, { "Looks", "📖 My Looks" }, { "Robux", "💎 Extras" } } do
+		local b = Theme.button({ Text = t[2], Size = UDim2.new(1 / 3, -6, 1, 0), ZIndex = 63, Parent = tabs })
 		b.Activated:Connect(function()
 			self.tab = t[1]
 			self:render()
@@ -216,9 +217,13 @@ end
 
 -- Called when a player taps a locked item.
 function Shop:askUnlock(it: Catalog.Item)
-	if it.pass then
-		self.confirmText.Text = it.name .. " comes with the 👑 " .. it.pass .. " Glam Kit. Take a look?"
-		self.confirmYes.Text = "See VIP"
+	if it.level then
+		self.ctx.toast("⭐ " .. it.name .. " unlocks free at Level " .. it.level .. "! Keep styling!", C.green)
+		return
+	elseif it.pass then
+		local packName = if it.pass == "VIP" then "👑 VIP Glam Kit" elseif it.pass == "Princess" then "👸 Princess Pack" else it.pass
+		self.confirmText.Text = it.name .. " comes with the " .. packName .. ". Take a look?"
+		self.confirmYes.Text = "Take a look"
 		self.onConfirm = function()
 			self:promptPass(it.pass :: string)
 		end
@@ -273,6 +278,8 @@ function Shop:render()
 	clear(self.list)
 	if self.tab == "Coins" then
 		self:renderCoinItems()
+	elseif self.tab == "Looks" then
+		self:renderLookBook()
 	else
 		self:renderRobuxItems()
 	end
@@ -292,15 +299,16 @@ function Shop:renderCoinItems()
 	})
 
 	local order = 0
+	local eventId = self.ctx.eventId()
 	for _, category in Catalog.Categories do
 		for _, it in category.items do
-			if it.hidden or it.pass or it.price <= 0 then
+			if it.pass or it.level or it.price <= 0 or not Catalog.isAvailable(it, self.ctx.profile, eventId) then
 				continue
 			end
 			order += 1
-			local owned = Catalog.isUnlocked(it, self.ctx.profile)
+			local owned = Catalog.isUnlocked(it, self.ctx.profile, eventId)
 			local card = new("Frame", {
-				LayoutOrder = order,
+				LayoutOrder = if it.event then order else order + 1000, -- holiday items first
 				BackgroundColor3 = if owned then C.softPink else C.white,
 				ZIndex = 63,
 				Parent = self.list,
@@ -328,7 +336,7 @@ function Shop:renderCoinItems()
 			new("TextLabel", {
 				Position = UDim2.fromScale(0.05, 0.4),
 				Size = UDim2.fromScale(0.9, 0.3),
-				Text = category.label .. "\n" .. it.name,
+				Text = (if it.event and Events.byId[it.event] then Events.byId[it.event].icon .. " " else "") .. category.label .. "\n" .. it.name,
 				ZIndex = 64,
 				Parent = card,
 			}, { Theme.maxText(16) })
@@ -348,6 +356,64 @@ function Shop:renderCoinItems()
 				end)
 			end
 		end
+	end
+end
+
+-- Every finished look is saved here, like a photo album.
+function Shop:renderLookBook()
+	local looks = self.ctx.profile.lookbook or {}
+	if #looks == 0 then
+		new("TextLabel", {
+			Size = UDim2.new(1, 0, 0, 120),
+			Text = "📖 Your Look Book is empty.\nFinish a fashion show and your look gets saved here!",
+			ZIndex = 63,
+			Parent = self.list,
+		}, { Theme.maxText(26) })
+		return
+	end
+	local width = self.list.AbsoluteSize.X - 12 - self.list.ScrollBarThickness
+	local cols = if width >= 700 then 4 elseif width >= 420 then 3 else 2
+	local gap = 10
+	local cell = math.max(80, math.floor((width - gap * (cols - 1)) / cols))
+	new("UIGridLayout", {
+		CellSize = UDim2.fromOffset(cell, math.floor(cell * 1.3)),
+		CellPadding = UDim2.fromOffset(gap, gap),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = self.list,
+	})
+	for i, saved in looks do
+		local skin, eyes = Clients.colors(saved.skin or 1, saved.eyes or 1)
+		local client = { name = saved.name, skin = skin, eyes = eyes, dirt = {} }
+		local theme = Catalog.themeById[saved.theme]
+		local card = new("Frame", {
+			LayoutOrder = i,
+			BackgroundColor3 = if theme then theme.color:Lerp(C.white, 0.7) else C.softPink,
+			ZIndex = 63,
+			Parent = self.list,
+		}, { Theme.corner(16), Theme.stroke(C.gold, 3) })
+		local pic = new("Frame", {
+			Position = UDim2.fromScale(0.05, 0.04),
+			Size = UDim2.fromScale(0.9, 0.7),
+			BackgroundColor3 = C.white,
+			ZIndex = 64,
+			Parent = card,
+		}, { Theme.corner(12) })
+		LookRenderer.render(pic, client, saved.look, { clean = 1, mood = if (saved.stars or 0) >= 4 then "grin" else "smile" })
+		new("TextLabel", {
+			Position = UDim2.fromScale(0.04, 0.75),
+			Size = UDim2.fromScale(0.92, 0.12),
+			Text = saved.name .. "  " .. Theme.stars(saved.stars or 1),
+			ZIndex = 64,
+			Parent = card,
+		}, { Theme.maxText(18) })
+		new("TextLabel", {
+			Position = UDim2.fromScale(0.04, 0.87),
+			Size = UDim2.fromScale(0.92, 0.11),
+			Text = theme and theme.name or "",
+			TextColor3 = C.textLight,
+			ZIndex = 64,
+			Parent = card,
+		}, { Theme.maxText(16) })
 	end
 end
 

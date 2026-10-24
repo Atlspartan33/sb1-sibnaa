@@ -4,11 +4,13 @@ local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local UI = script.Parent:WaitForChild("UI")
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local Events = require(ReplicatedStorage.Shared.Events)
 local Effects = require(UI.Effects)
 local HUD = require(UI.HUD)
 local Makeover = require(UI.Makeover)
@@ -30,7 +32,7 @@ local hud, shop
 
 -- Shared helpers every screen can use
 local ctx = {
-	profile = { coins = 0, owned = {}, passes = {}, superSoaps = 0 },
+	profile = { coins = 0, owned = {}, passes = {}, totalStars = 0 },
 	state = function()
 		return state
 	end,
@@ -42,6 +44,10 @@ local ctx = {
 	end,
 	promptProduct = function(key: string)
 		shop:askProduct(key)
+	end,
+	eventId = function(): string?
+		local event = Events.current(Workspace:GetServerTimeNow())
+		return event and event.id
 	end,
 	isModalOpen = function(): boolean
 		return shop.overlay.Visible or shop.confirm.Visible
@@ -135,21 +141,43 @@ Remotes.Profile.OnClientEvent:Connect(function(profile)
 	shop:refreshProfile()
 end)
 
-Remotes.PowerUp.OnClientEvent:Connect(function(kind)
-	if kind == "SuperSoap" then
-		makeover:superSoap()
-		hud:toast("Super Soap! Squeaky clean in one swipe! 🧼✨", Theme.Colors.green)
-	end
-end)
-
 Remotes.Reaction.OnClientEvent:Connect(function(emoji)
 	showcase:reaction(emoji)
 end)
 
 Remotes.Celebrate.OnClientEvent:Connect(function(info)
 	if info.kind == "daily" then
-		local streak = if info.streak > 1 then "Day " .. info.streak .. " in a row! 🔥" else "Come back tomorrow for more!"
-		Effects.splash(gui, "🎁 Daily Gift! +" .. info.coins .. " 🪙", streak, Theme.Colors.gold, 3.5)
+		local title = if info.item then "🎁 Day 7: " .. info.item .. "!" else "🎁 Day " .. info.day .. " Gift! +" .. info.coins .. " 🪙"
+		local card = Effects.splash(gui, title, " ", Theme.Colors.gold, 4)
+		-- The 7-day calendar row
+		local row = Theme.new("Frame", {
+			Position = UDim2.fromScale(0, 0.62),
+			Size = UDim2.fromScale(1, 0.36),
+			BackgroundTransparency = 1,
+			ZIndex = 262,
+			Parent = card,
+		}, {
+			Theme.new("UIListLayout", {
+				FillDirection = Enum.FillDirection.Horizontal,
+				HorizontalAlignment = Enum.HorizontalAlignment.Center,
+				Padding = UDim.new(0.015, 0),
+			}),
+		})
+		for d = 1, 7 do
+			local past, today = d < info.day, d == info.day
+			Theme.new("TextLabel", {
+				Size = UDim2.fromScale(0.125, 1),
+				BackgroundTransparency = 0,
+				BackgroundColor3 = if today then Theme.Colors.gold elseif past then Theme.Colors.green else Theme.Colors.lavender,
+				TextColor3 = if today or past then Theme.Colors.white else Theme.Colors.text,
+				Text = if past then "✓" elseif d == 7 then "🎁" else tostring(d),
+				ZIndex = 263,
+				Parent = row,
+			}, { Theme.corner(10), Theme.maxText(30) })
+		end
+		Effects.confetti(gui, 40)
+	elseif info.kind == "friend" then
+		Effects.splash(gui, "💞 " .. info.name .. " is your BEST friend!", "Visit #" .. info.visits .. "  +" .. info.coins .. " 🪙", Theme.Colors.hotPink, 3.5)
 		Effects.confetti(gui, 40)
 	elseif info.kind == "level" then
 		Effects.splash(gui, "⭐ Level " .. info.level .. "! ⭐", "You're a " .. info.title .. "!", Theme.Colors.purple, 3.5)

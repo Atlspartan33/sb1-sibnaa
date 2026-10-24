@@ -7,6 +7,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local Events = require(ReplicatedStorage.Shared.Events)
 local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Scoring = require(ReplicatedStorage.Shared.Scoring)
@@ -28,6 +29,7 @@ local SEND_INTERVAL = 0.25
 local WASH_LINES = { "That tickles! 😆", "Scrub scrub! 🧽", "Ooh, bubbles!", "Keep going! 💪", "I can see my face again!" }
 local LIKE_LINES = { "Ooh, cute! 💕", "I like it!", "So pretty! ✨", "Ooh la la!", "Wow!" }
 local THEME_LINES = { "Perfect for %s! 😍", "So %s! I love it!", "That's so %s! 💖" }
+local PERFUME_LINES = { "Hee hee! 🌸", "Ooh, I smell like flowers!", "Achoo! 😆", "Mmm, so fancy! 💕", "Again! Again!" }
 local NONE_LINES = { "Hmm, okay!", "Plain is nice too!", "Let's try something else!" }
 
 local function pick(list: { string }): string
@@ -234,7 +236,7 @@ function Makeover:buildRight()
 	for _, tab in Catalog.Tabs do
 		local b = Theme.button({
 			Text = "",
-			Size = UDim2.fromScale(0.19, 1),
+			Size = UDim2.fromScale(0.158, 1),
 			Color = C.lavender,
 			ZIndex = 13,
 			Parent = tabs,
@@ -322,17 +324,39 @@ function Makeover:buildRight()
 		self:setDone(not self.done)
 	end)
 
-	self.waiting = new("TextLabel", {
+	self.waiting = new("Frame", {
 		Position = UDim2.fromScale(0, 0.09),
 		Size = UDim2.fromScale(1, 0.77),
 		BackgroundColor3 = C.white,
 		BackgroundTransparency = 0.05,
-		Text = "Looking fabulous! 💅\nWaiting for the other stylists...",
-		TextColor3 = C.purple,
 		Visible = false,
 		ZIndex = 30,
 		Parent = right,
-	}, { Theme.corner(18), Theme.maxText(34), Theme.padding(20) })
+	}, { Theme.corner(18), Theme.padding(16) })
+	new("TextLabel", {
+		Size = UDim2.fromScale(1, 0.5),
+		Text = "Looking fabulous! 💅\nWaiting for the other stylists...",
+		TextColor3 = C.purple,
+		ZIndex = 31,
+		Parent = self.waiting,
+	}, { Theme.maxText(34) })
+	-- Something fun to do while waiting
+	local perfume = Theme.button({
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromScale(0.5, 0.58),
+		Size = UDim2.fromScale(0.7, 0.3),
+		Text = "🌸 Spritz perfume!",
+		Color = C.pink,
+		ZIndex = 32,
+		MaxText = 34,
+		Parent = self.waiting,
+	})
+	perfume.Activated:Connect(function()
+		for _ = 1, 4 do
+			Effects.sparkle(self.bubbleLayer, 0.25 + math.random() * 0.5, 0.15 + math.random() * 0.5, if math.random() < 0.5 then "🌸" else "💕")
+		end
+		self:say(pick(PERFUME_LINES), 1.5)
+	end)
 end
 
 function Makeover:buildWashPanel(parent: GuiObject)
@@ -374,8 +398,8 @@ function Makeover:buildWashPanel(parent: GuiObject)
 
 	local bar = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.fromScale(0.5, 0.67),
-		Size = UDim2.fromScale(0.88, 0.11),
+		Position = UDim2.fromScale(0.5, 0.74),
+		Size = UDim2.fromScale(0.88, 0.13),
 		BackgroundColor3 = C.lavender,
 		ZIndex = 13,
 		Parent = panel,
@@ -393,23 +417,6 @@ function Makeover:buildWashPanel(parent: GuiObject)
 		Parent = bar,
 	}, { Theme.maxText(22), Theme.padding(3) })
 
-	self.soapButton = Theme.button({
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.fromScale(0.5, 0.82),
-		Size = UDim2.fromScale(0.7, 0.16),
-		Text = "",
-		Color = C.purple,
-		ZIndex = 14,
-		MaxText = 24,
-		Parent = panel,
-	})
-	self.soapButton.Activated:Connect(function()
-		if (self.ctx.profile.superSoaps or 0) > 0 then
-			Remotes.UseSuperSoap:FireServer()
-		else
-			self.ctx.promptProduct("SuperSoap")
-		end
-	end)
 end
 
 ------------------------------------------------------------------------------
@@ -468,11 +475,16 @@ function Makeover:assign(payload)
 	self.hearts = 0
 	self.tool = "soap"
 	self.tab = "Wash"
-	self.nameTag.Text = "💖 " .. self.client.name
+	local visits = self.client.visits or 1
+	self.nameTag.Text = "💖 " .. self.client.name .. (if visits > 1 then "  ⭐" .. visits else "")
 	self:setDone(self.done, true)
 	self:renderPortrait()
 	self:setTab("Wash")
-	self:say(self.client.story, 5)
+	if visits > 1 then
+		self:say("Hi again! It's me, " .. self.client.name .. "! 💖 " .. self.client.story, 6)
+	else
+		self:say(self.client.story, 5)
+	end
 end
 
 function Makeover:setVisible(visible: boolean)
@@ -554,16 +566,20 @@ function Makeover:renderPortrait()
 		return
 	end
 	local stars = self:previewStars()
-	self.portraitRoot = LookRenderer.render(self.portraitHolder, self.client, self.look, {
-		dirtHealth = self.dirtHealth,
-		mood = Scoring.mood(stars, self:cleanAmount()),
-	})
+	if self.tab == "Nails" then
+		self.portraitRoot = LookRenderer.renderHand(self.portraitHolder, self.client, self.look)
+	else
+		self.portraitRoot = LookRenderer.render(self.portraitHolder, self.client, self.look, {
+			dirtHealth = self.dirtHealth,
+			mood = Scoring.mood(stars, self:cleanAmount()),
+		})
+	end
 	self.dirtFrames = {}
 	for i = 1, #self.client.dirt do
 		self.dirtFrames[i] = self.portraitRoot:FindFirstChild("Dirt" .. i)
 	end
 	local full = math.floor(stars)
-	self.heartsLabel.Text = string.rep("💖", full) .. string.rep("🤍", 5 - full)
+	self.heartsLabel.Text = "Happy: " .. string.rep("💖", full) .. string.rep("🤍", 5 - full)
 	if full > self.hearts and self.hearts > 0 then
 		Theme.pop(self.heartsLabel)
 	end
@@ -602,7 +618,11 @@ function Makeover:refreshChecklist()
 end
 
 function Makeover:setTab(tabId: string)
+	local wasNails = self.tab == "Nails"
 	self.tab = tabId
+	if (tabId == "Nails") ~= wasNails and self.client then
+		self:renderPortrait() -- switch between the face and the hand
+	end
 	self.cursor.Visible = false
 	for id, b in self.tabButtons do
 		local active = id == tabId
@@ -635,6 +655,9 @@ function Makeover:setTab(tabId: string)
 		end
 	end
 	self.chips.Visible = #categories > 1
+	-- Without sub-category chips, the grid moves up to use their space
+	self.grid.Position = UDim2.fromScale(0, if #categories > 1 then 0.33 else 0.24)
+	self.grid.Size = UDim2.fromScale(1, if #categories > 1 then 0.52 else 0.61)
 	for _, category in categories do
 		local active = self.subcategory[tabId] == category.key
 		local chip = Theme.button({
@@ -659,7 +682,7 @@ end
 
 function Makeover:layoutGrid()
 	local width = self.grid.AbsoluteSize.X - 8 - self.grid.ScrollBarThickness - 2
-	local cols = if width >= 560 then 5 elseif width >= 380 then 4 else 3
+	local cols = if width >= 600 then 5 elseif width >= 470 then 4 else 3
 	local gap = 8
 	local cell = math.max(40, math.floor((width - gap * (cols - 1)) / cols))
 	self.gridLayout.CellSize = UDim2.fromOffset(cell, math.floor(cell * 1.08))
@@ -682,16 +705,18 @@ function Makeover:renderGrid()
 
 	local order = 0
 	self.cards = {}
+	local eventId = self.ctx.eventId()
 	for _, it in category.items do
-		if it.hidden then
+		if not Catalog.isAvailable(it, self.ctx.profile, eventId) then
 			continue
 		end
 		order += 1
 		local selected = self.look[key] == it.id
-		local unlocked = Catalog.isUnlocked(it, self.ctx.profile)
+		local unlocked = Catalog.isUnlocked(it, self.ctx.profile, eventId)
 
 		local card = new("TextButton", {
-			LayoutOrder = order,
+			-- "Remove" first, then holiday items, then everything else
+			LayoutOrder = if Catalog.isNone(it.id) then 0 elseif it.event then order else order + 1000,
 			Text = "",
 			BackgroundTransparency = 0,
 			BackgroundColor3 = if selected then C.softPink else C.white,
@@ -715,8 +740,11 @@ function Makeover:renderGrid()
 		if category.preview == "portrait" then
 			local previewLook = table.clone(self.look)
 			previewLook[key] = it.id
-			local zoom = if key == "outfit" then 1 elseif key == "hairStyle" or key == "accessory" then 1.1 else 1.45
-			LookRenderer.render(preview, self.client, previewLook, { headOnly = key ~= "outfit", clean = 1, mood = "smile", zoom = zoom })
+			local body = key == "outfit" or key == "outfitPattern"
+			local zoom = if body then 1 elseif key == "hairStyle" or key == "accessory" then 1.1 else 1.45
+			LookRenderer.render(preview, self.client, previewLook, { headOnly = not body, clean = 1, mood = "smile", zoom = zoom })
+		elseif category.preview == "icon" and it.icon then
+			new("TextLabel", { Size = UDim2.fromScale(1, 1), Text = it.icon, TextColor3 = C.hotPink, ZIndex = 15, Parent = preview }, { Theme.maxText(56) })
 		elseif it.color then
 			local dot = new("Frame", {
 				AnchorPoint = Vector2.new(0.5, 0.5),
@@ -747,12 +775,22 @@ function Makeover:renderGrid()
 				Parent = card,
 			})
 		end
+		if it.event or it.gift then
+			new("TextLabel", {
+				AnchorPoint = Vector2.new(0, 1),
+				Position = UDim2.new(0, 3, 0.76, 0),
+				Size = UDim2.fromScale(0.22, 0.2),
+				Text = if it.gift then "🎁" else (Events.byId[it.event] and Events.byId[it.event].icon or "✨"),
+				ZIndex = 18,
+				Parent = card,
+			})
+		end
 
 		if not unlocked then
 			new("Frame", {
-				Size = UDim2.fromScale(1, 1),
+				Size = UDim2.fromScale(1, 0.76),
 				BackgroundColor3 = C.white,
-				BackgroundTransparency = 0.45,
+				BackgroundTransparency = 0.6,
 				ZIndex = 16,
 				Parent = card,
 			}, { Theme.corner(16) })
@@ -761,9 +799,9 @@ function Makeover:renderGrid()
 				Position = UDim2.new(1, -3, 0, 3),
 				Size = UDim2.fromScale(0.62, 0.18),
 				BackgroundTransparency = 0,
-				BackgroundColor3 = if it.pass then C.gold else C.purple,
+				BackgroundColor3 = if it.pass then C.gold elseif it.level then C.green else C.purple,
 				TextColor3 = C.white,
-				Text = if it.pass then "👑 VIP" else "🪙 " .. it.price,
+				Text = if it.pass == "VIP" then "👑 VIP" elseif it.pass then "👸 Pack" elseif it.level then "⭐ Lv " .. it.level else "🪙 " .. it.price,
 				ZIndex = 17,
 				Parent = card,
 			}, { Theme.round(), Theme.padding(2) })
@@ -805,6 +843,20 @@ function Makeover:choose(key: string, itemId: string)
 
 	local theme = self:theme()
 	local it = Catalog.byId[itemId]
+	if key == "nailColor" or key == "nailArt" then
+		-- paint each nail with a little sparkle, one after another
+		local nails = {}
+		for _, n in self.portraitRoot:GetChildren() do
+			if n.Name == "Nail" and n:IsA("GuiObject") then
+				table.insert(nails, n)
+			end
+		end
+		for i, n in nails do
+			task.delay(i * 0.08, function()
+				Effects.sparkle(self.bubbleLayer, n.Position.X.Scale, n.Position.Y.Scale, if key == "nailArt" then "💫" else "✨")
+			end)
+		end
+	end
 	if self.hearts >= 5 and not self.bestShown then
 		self.bestShown = true
 		self:say("This is my BEST look EVER! 💖", 3)
@@ -860,9 +912,6 @@ function Makeover:refreshWash()
 	end
 	self.cleanFill.Size = UDim2.fromScale(math.clamp(clean, 0, 1), 1)
 	self.cleanText.Text = "Clean: " .. math.floor(clean * 100 + 0.5) .. "%" .. (if bubbles > 0 then "  🫧 " .. bubbles else "")
-	local soaps = self.ctx.profile.superSoaps or 0
-	self.soapButton.Text = if soaps > 0 then "✨ Use Super Soap (" .. soaps .. " left)" else "✨ Super Soap (Robux)"
-	self.soapButton.Visible = not self:isWashed()
 	self:refreshChecklist()
 end
 
@@ -892,11 +941,12 @@ function Makeover:addBubble(rel: Vector2)
 		return
 	end
 	local size = 0.05 + math.random() * 0.05
+	local rainbow = self.ctx.profile.passes and self.ctx.profile.passes.RainbowBubbles
 	local frame = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(rel.X, rel.Y),
 		Size = UDim2.fromScale(size, size),
-		BackgroundColor3 = C.white,
+		BackgroundColor3 = if rainbow then Color3.fromHSV(math.random(), 0.35, 1) else C.white,
 		BackgroundTransparency = 0.25,
 		ZIndex = 101,
 		Parent = self.bubbleLayer,
@@ -974,16 +1024,6 @@ function Makeover:scrub(pos: Vector2, moved: number)
 		self:refreshWash()
 		self:sendWash()
 	end
-end
-
-function Makeover:superSoap()
-	for i = 1, #self.dirtHealth do
-		self.dirtHealth[i] = 0
-	end
-	self:clearBubbles()
-	self:renderPortrait()
-	self:refreshWash()
-	self:sendWash(true)
 end
 
 function Makeover:connectInput()

@@ -16,27 +16,31 @@ Config.COINS_PER_STAR = 10
 Config.COINS_SPOTLESS_BONUS = 10
 Config.COINS_PER_VOTE = 2
 Config.COINS_PLACEMENT = { 50, 30, 15 } -- 1st, 2nd, 3rd (only when 2+ stylists played)
-Config.DAILY_GIFT_COINS = 50 -- coming back each day
-Config.DAILY_STREAK_BONUS = 10 -- extra per day in a row (up to 5 days)
+-- Daily gift calendar: coins on days 1-6, a special accessory on day 7 (missing a day just pauses it)
+Config.CALENDAR_COINS = { 30, 40, 50, 60, 70, 80 }
+Config.CALENDAR_DAY7_COINS = 200 -- once every day-7 accessory has been collected
+Config.RETURNING_CLIENT_CHANCE = 0.35 -- how often a client you styled before comes back
+Config.BEST_FRIEND_VISITS = { 3, 5, 10 } -- visits that earn a best-friend bonus
+Config.BEST_FRIEND_COINS = 25
+Config.LOOKBOOK_SIZE = 24 -- looks saved in the Look Book
 
 -- Robux monetization.
 -- Create these on the Creator Dashboard (create.roblox.com) after publishing,
 -- then paste the IDs here. While an ID is 0 the store shows "Coming soon".
 Config.GamePasses = {
 	VIP = 0, -- "VIP Glam Kit": exclusive hair, makeup and gowns + VIP badge on the runway
+	Princess = 0, -- "Princess Pack": 2 gowns, Princess Curls, Rose Gold hair, tiara, pink gems
 	DoubleCoins = 0, -- "2x Coins": earn double coins every show
 	RunwayStar = 0, -- "Runway Star": sparkles and confetti when your client walks the runway
+	RainbowBubbles = 0, -- "Rainbow Bubbles": washing makes rainbow bubbles (just for looks)
 }
 
 Config.DevProducts = {
-	SuperSoap = 0, -- one Super Soap: instantly washes a client's face
 	CoinsSmall = 0, -- 500 coins
-	CoinsLarge = 0, -- 2000 coins
 }
 
 Config.CoinPackAmounts = {
 	CoinsSmall = 500,
-	CoinsLarge = 2000,
 }
 
 -- Sounds and music. Find free ones in Studio: Toolbox -> Audio (or the Creator Store),
@@ -52,6 +56,11 @@ Config.Sounds = {
 	MakeoverMusic = "", -- loops during the makeover
 	RunwayMusic = "", -- loops during the fashion show
 }
+
+-- Holiday events (Halloween, Harvest Festival, Christmas) turn on by date - see Shared/Events.
+-- To preview one in Studio, set this to "halloween", "thanksgiving" or "christmas".
+Config.FORCE_EVENT = nil :: string?
+Config.EVENT_THEME_CHANCE = 0.5 -- during an event, how often the show uses the holiday theme
 
 -- Studio testing: pretend you own every Game Pass while testing in Roblox Studio.
 -- This never applies in the live game.

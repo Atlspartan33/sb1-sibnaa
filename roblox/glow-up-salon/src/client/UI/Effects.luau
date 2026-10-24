@@ -84,14 +84,14 @@ function Effects.flash(gui: GuiObject)
 	fadeAndDestroy(flash, 0, 0.3)
 end
 
--- A little "✨" that pops at a spot inside `parent` (0..1 position).
-function Effects.sparkle(parent: GuiObject, x: number, y: number)
+-- A little "✨" (or another emoji) that pops at a spot inside `parent` (0..1 position).
+function Effects.sparkle(parent: GuiObject, x: number, y: number, emoji: string?)
 	Sounds.play("Sparkle", 0.15)
 	local s = new("TextLabel", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(x, y),
 		Size = UDim2.fromScale(0.14, 0.14),
-		Text = "✨",
+		Text = emoji or "✨",
 		ZIndex = 120,
 		Parent = parent,
 	}, { new("UIAspectRatioConstraint", { AspectRatio = 1 }) })

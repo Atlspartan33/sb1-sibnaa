@@ -137,7 +137,8 @@ local function drawHair(root: Frame, look, hairItem: Catalog.Item?)
 		hair(0.42, 0.265, 0.24, 0.07, Z.hairFront, 0.5, -14)
 	end
 
-	local style = look.hairStyle
+	local styleItem = Catalog.byId[look.hairStyle]
+	local style = if styleItem and styleItem.draw then styleItem.draw else look.hairStyle
 	if style == "hair_messy" then
 		hair(0.5, 0.3, 0.56, 0.36, Z.hairBack, 0.5)
 		cap()
@@ -317,8 +318,8 @@ local function drawCheeksAndLips(root: Frame, client, look, mood: string?)
 end
 
 local function drawGems(root: Frame, client, look)
-	local gems = look.gems
-	local it = Catalog.byId[gems]
+	local it = Catalog.byId[look.gems]
+	local gems = if it and it.draw then it.draw else look.gems
 	if gems == "gem_freckles" then
 		local c = darken(client.skin, 0.72)
 		for _, p in { { 0.42, 0.49 }, { 0.445, 0.51 }, { 0.41, 0.515 }, { 0.58, 0.49 }, { 0.555, 0.51 }, { 0.59, 0.515 } } do
@@ -331,6 +332,18 @@ local function drawGems(root: Frame, client, look)
 		glyph(root, "★", 0.335, 0.41, 0.06, it.color or WHITE, Z.gems)
 		glyph(root, "★", 0.665, 0.41, 0.06, it.color or WHITE, Z.gems)
 		glyph(root, "★", 0.355, 0.47, 0.035, it.color or WHITE, Z.gems)
+	elseif gems == "gem_bats" then
+		glyph(root, "🦇", 0.34, 0.47, 0.07, WHITE, Z.gems)
+		glyph(root, "🦇", 0.67, 0.4, 0.05, WHITE, Z.gems)
+	elseif gems == "gem_web" then
+		glyph(root, "🕸️", 0.65, 0.48, 0.09, WHITE, Z.gems)
+	elseif gems == "gem_leaves" then
+		glyph(root, "🍁", 0.34, 0.48, 0.06, WHITE, Z.gems)
+		glyph(root, "🍂", 0.66, 0.48, 0.06, WHITE, Z.gems)
+	elseif gems == "gem_snowflakes" then
+		glyph(root, "❄️", 0.34, 0.47, 0.06, WHITE, Z.gems)
+		glyph(root, "❄️", 0.665, 0.41, 0.045, WHITE, Z.gems)
+		glyph(root, "❄️", 0.68, 0.5, 0.035, WHITE, Z.gems)
 	elseif gems == "gem_rhinestones" and it then
 		for side = -1, 1, 2 do
 			for i = 0, 3 do
@@ -341,15 +354,22 @@ local function drawGems(root: Frame, client, look)
 end
 
 local function drawAccessory(root: Frame, look)
-	local acc = look.accessory
-	local it = Catalog.byId[acc]
+	local it = Catalog.byId[look.accessory]
+	local acc = if it and it.draw then it.draw else look.accessory
 	local c = it and it.color or WHITE
+	-- paints a shape with the item's color, or its rainbow gradient
+	local function tint(f: Frame): Frame
+		if it and it.gradient then
+			paint(f, it)
+		end
+		return f
+	end
 	if acc == "acc_bow" then
 		shape(root, 0.32, 0.14, 0.09, 0.07, c, Z.accessory, 0.4, 0, -20)
 		shape(root, 0.42, 0.14, 0.09, 0.07, c, Z.accessory, 0.4, 0, 20)
 		shape(root, 0.37, 0.14, 0.035, 0.035, darken(c, 0.8), Z.accessory, 0.5)
 	elseif acc == "acc_headband" then
-		shape(root, 0.5, 0.2, 0.52, 0.03, c, Z.accessory, 0.5)
+		tint(shape(root, 0.5, 0.2, 0.52, 0.035, c, Z.accessory, 0.5))
 	elseif acc == "acc_flower" then
 		glyph(root, "✿", 0.68, 0.18, 0.13, c, Z.accessory)
 		shape(root, 0.68, 0.185, 0.025, 0.025, Color3.fromRGB(255, 220, 80), Z.accessory, 0.5)
@@ -363,6 +383,85 @@ local function drawAccessory(root: Frame, look)
 		end
 	elseif acc == "acc_crown" then
 		glyph(root, "👑", 0.5, 0.09, 0.18, c, Z.accessory)
+	elseif acc == "acc_butterfly" then
+		glyph(root, "🦋", 0.68, 0.17, 0.12, WHITE, Z.accessory)
+	elseif acc == "acc_halo" then
+		local ring = shape(root, 0.5, 0.06, 0.4, 0.06, c, Z.accessory, 0.5)
+		shape(ring, 0.5, 0.5, 0.8, 0.45, Color3.fromRGB(255, 250, 225), Z.accessory, 0.5)
+		for i = 0, 4 do
+			glyph(root, "✦", 0.34 + i * 0.08, 0.06, 0.04, Color3.fromRGB(255, 240, 150), Z.accessory)
+		end
+	elseif acc == "acc_tiara" then
+		shape(root, 0.5, 0.17, 0.36, 0.025, c, Z.accessory, 0.5)
+		for i = -2, 2 do
+			local h = if i == 0 then 0.07 else (if math.abs(i) == 1 then 0.05 else 0.035)
+			shape(root, 0.5 + i * 0.07, 0.165 - h / 2, 0.025, h, c, Z.accessory, 0.5)
+		end
+		shape(root, 0.5, 0.12, 0.035, 0.035, Color3.fromRGB(255, 120, 190), Z.accessory, 0.5)
+		shape(root, 0.43, 0.135, 0.022, 0.022, Color3.fromRGB(140, 200, 255), Z.accessory, 0.5)
+		shape(root, 0.57, 0.135, 0.022, 0.022, Color3.fromRGB(140, 200, 255), Z.accessory, 0.5)
+	elseif acc == "acc_witchhat" then
+		local band = it and it.accent or Color3.fromRGB(150, 80, 220)
+		shape(root, 0.5, 0.165, 0.66, 0.05, c, Z.accessory, 0.5)
+		shape(root, 0.5, 0.115, 0.34, 0.07, c, Z.accessory, 0.3)
+		shape(root, 0.51, 0.065, 0.25, 0.06, c, Z.accessory, 0.3, 0, 4)
+		shape(root, 0.53, 0.025, 0.16, 0.05, c, Z.accessory, 0.3, 0, 10)
+		shape(root, 0.57, 0.0, 0.08, 0.04, c, Z.accessory, 0.5, 0, 25)
+		shape(root, 0.5, 0.14, 0.35, 0.022, band, Z.accessory, 0.2)
+		glyph(root, "⭐", 0.6, 0.11, 0.04, WHITE, Z.accessory)
+	elseif acc == "acc_pumpkin" then
+		glyph(root, "🎃", 0.69, 0.17, 0.12, WHITE, Z.accessory)
+	elseif acc == "acc_leafcrown" then
+		for i, p in { { 0.31, 0.19, "🍂" }, { 0.39, 0.14, "🍁" }, { 0.5, 0.12, "🍂" }, { 0.61, 0.14, "🍁" }, { 0.69, 0.19, "🍂" } } do
+			glyph(root, p[3], p[1], p[2], if i == 3 then 0.1 else 0.08, WHITE, Z.accessory)
+		end
+	elseif acc == "acc_santahat" then
+		shape(root, 0.5, 0.135, 0.5, 0.11, c, Z.accessory, 0.45)
+		shape(root, 0.61, 0.075, 0.3, 0.08, c, Z.accessory, 0.45, 0, 22)
+		shape(root, 0.72, 0.06, 0.12, 0.06, c, Z.accessory, 0.45, 0, 50)
+		shape(root, 0.5, 0.185, 0.56, 0.055, WHITE, Z.accessory, 0.5)
+		shape(root, 0.79, 0.09, 0.075, 0.075, WHITE, Z.accessory, 0.5)
+	elseif acc == "acc_antlers" then
+		for side = -1, 1, 2 do
+			shape(root, 0.5 + side * 0.17, 0.09, 0.03, 0.15, c, Z.accessory, 0.5, 0, side * 18)
+			shape(root, 0.5 + side * 0.215, 0.07, 0.025, 0.08, c, Z.accessory, 0.5, 0, side * 55)
+			shape(root, 0.5 + side * 0.14, 0.04, 0.022, 0.07, c, Z.accessory, 0.5, 0, -side * 25)
+		end
+		shape(root, 0.5, 0.505, 0.055, 0.05, Color3.fromRGB(230, 30, 40), Z.accessory, 0.5)
+		shape(root, 0.49, 0.495, 0.015, 0.013, WHITE, Z.accessory, 0.5, 0.2)
+	elseif acc == "acc_earmuffs" then
+		local band = it and it.accent or Color3.fromRGB(110, 170, 255)
+		shape(root, 0.5, 0.15, 0.56, 0.03, band, Z.accessory, 0.5)
+		for side = -1, 1, 2 do
+			shape(root, 0.5 + side * 0.24, 0.45, 0.11, 0.13, c, Z.accessory, 0.5)
+			shape(root, 0.5 + side * 0.24, 0.45, 0.06, 0.07, Color3.fromRGB(230, 240, 255), Z.accessory, 0.5)
+		end
+	end
+end
+
+-- Dots, stripes, hearts... drawn on top of the outfit
+local PATTERN_SPOTS = { { 0.14, 0.2 }, { 0.32, 0.36 }, { 0.5, 0.18 }, { 0.68, 0.36 }, { 0.86, 0.2 }, { 0.23, 0.52 }, { 0.77, 0.52 }, { 0.5, 0.5 } }
+
+local function drawPattern(body: Frame, patternId: string?, color: Color3)
+	if patternId == "pat_dots" then
+		for _, p in PATTERN_SPOTS do
+			local dot = shape(body, p[1], p[2], 0.05, 0.13, color, body.ZIndex, 0.5, 0.1)
+			dot.Name = "Pattern"
+		end
+	elseif patternId == "pat_stripes" then
+		for i = 0, 3 do
+			local stripe = shape(body, 0.5, 0.14 + i * 0.15, 0.86, 0.055, color, body.ZIndex, 0.5, 0.15)
+			stripe.Name = "Pattern"
+		end
+	else
+		local symbol = ({ pat_hearts = "♥", pat_stars = "★", pat_flowers = "✿" })[patternId or ""]
+		if symbol then
+			for _, p in PATTERN_SPOTS do
+				local t = glyph(body, symbol, p[1], p[2], 0.12, color, body.ZIndex)
+				t.Size = UDim2.fromScale(0.09, 0.22)
+				t.Name = "Pattern"
+			end
+		end
 	end
 end
 
@@ -370,7 +469,19 @@ local function drawOutfit(root: Frame, client, look)
 	local outfit = Catalog.byId[look.outfit]
 	shape(root, 0.5, 0.77, 0.15, 0.14, client.skin, Z.neck, 0.3)
 	local body = shape(root, 0.5, 0.97, 0.78, 0.3, Color3.new(), Z.outfit, 0.35)
-	paint(body, outfit, Color3.fromRGB(110, 120, 135))
+	-- A custom color from the 🎨 palette replaces the outfit's own colors
+	local custom = Catalog.byId[look.outfitColor or ""]
+	if custom and custom.color then
+		body.BackgroundColor3 = custom.color
+	else
+		paint(body, outfit, Color3.fromRGB(110, 120, 135))
+	end
+	local patternColor = if outfit and outfit.accent then outfit.accent else WHITE
+	if custom and custom.color then
+		local _, _, v = custom.color:ToHSV()
+		patternColor = if v > 0.8 then Color3.fromRGB(255, 120, 190) else WHITE
+	end
+	drawPattern(body, look.outfitPattern, patternColor)
 	shape(root, 0.5, 0.83, 0.14, 0.06, client.skin, Z.ears, 0.5)
 	local accent = outfit and outfit.accent or WHITE
 	shape(root, 0.43, 0.86, 0.06, 0.02, accent, Z.ears, 0.5, 0, 25)
@@ -399,6 +510,68 @@ local function drawDirt(root: Frame, client, options: Options?)
 end
 
 ------------------------------------------------------------------------------
+
+-- The nail station: a close-up of the client's hand.
+local FINGERS = { { 0.335, 0.27 }, { 0.445, 0.17 }, { 0.555, 0.2 }, { 0.665, 0.28 } } -- x, fingertip y
+
+function LookRenderer.renderHand(container: GuiObject, client, look): Frame
+	local old = container:FindFirstChild("Portrait")
+	if old then
+		old:Destroy()
+	end
+	local root = Instance.new("Frame")
+	root.Name = "Portrait"
+	root.AnchorPoint = Vector2.new(0.5, 0.5)
+	root.Position = UDim2.fromScale(0.5, 0.5)
+	root.Size = UDim2.fromScale(1, 1)
+	root.BackgroundTransparency = 1
+	root.ClipsDescendants = true
+	root.ZIndex = container.ZIndex
+	local aspect = Instance.new("UIAspectRatioConstraint")
+	aspect.AspectRatio = 1
+	aspect.Parent = root
+
+	local skin = client.skin
+	local polish = Catalog.byId[look.nailColor]
+	local art = Catalog.byId[look.nailArt]
+	local natural = skin:Lerp(Color3.fromRGB(255, 220, 225), 0.55)
+
+	local outfit = Catalog.byId[look.outfit]
+	local sleeve = shape(root, 0.5, 1.02, 0.46, 0.16, Color3.new(), 1, 0.3)
+	paint(sleeve, outfit, Color3.fromRGB(110, 120, 135))
+	shape(root, 0.5, 0.92, 0.34, 0.2, skin, 2, 0.3)
+	shape(root, 0.5, 0.72, 0.46, 0.38, skin, 3, 0.3)
+
+	local nails = {}
+	for _, f in FINGERS do
+		local x, top = f[1], f[2]
+		local h = 0.62 - top
+		shape(root, x, top + h / 2, 0.1, h, skin, 3, 0.5)
+		table.insert(nails, { x = x, y = top + 0.055, rot = 0 })
+	end
+	shape(root, 0.255, 0.6, 0.1, 0.28, skin, 3, 0.5, 0, -38)
+	table.insert(nails, { x = 0.185, y = 0.505, rot = -38 })
+	-- little knuckle lines
+	for _, f in FINGERS do
+		shape(root, f[1], 0.47, 0.05, 0.008, darken(skin, 0.85), 4, 0.5)
+	end
+
+	for _, n in nails do
+		local nail = shape(root, n.x, n.y, 0.074, 0.09, natural, 5, 0.45, 0, n.rot)
+		nail.Name = "Nail"
+		if polish and polish.color then
+			paint(nail, polish)
+		end
+		shape(nail, 0.3, 0.3, 0.2, 0.35, WHITE, 6, 0.5, 0.45)
+		if art and art.icon then
+			local dark = polish and polish.color and select(3, polish.color:ToHSV()) > 0.75
+			local t = glyph(nail, art.icon, 0.5, 0.55, 0.9, if dark then Color3.fromRGB(80, 40, 100) else WHITE, 7)
+			t.Size = UDim2.fromScale(0.9, 0.7)
+		end
+	end
+	root.Parent = container
+	return root
+end
 
 -- Colors any UI frame like an item (used for the color swatches in the menus).
 LookRenderer.paint = paint

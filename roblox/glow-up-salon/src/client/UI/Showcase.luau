@@ -64,33 +64,26 @@ function Showcase.new(gui: ScreenGui, ctx)
 		}),
 	})
 	self.starRow = row
-	self.starButtons = {}
-	for i = 1, 5 do
-		local b = new("TextButton", {
-			Size = UDim2.new(0, 56, 0, 56),
-			Text = "☆",
-			TextColor3 = C.gold,
+	self.voteButtons = {}
+	-- Kind voting: every choice is nice. 💖 = 3 stars, 💖💖 = 4, 💖💖💖 = 5
+	for i, choice in { { 3, "💖", "Cute!" }, { 4, "💖💖", "So pretty!" }, { 5, "💖💖💖", "WOW!" } } do
+		local b = Theme.button({
+			Text = choice[2] .. " " .. choice[3],
+			Size = UDim2.new(0.3, 0, 1, 0),
+			Color = C.softPink,
+			TextColor3 = C.hotPink,
 			ZIndex = 42,
+			MaxText = 24,
 			Parent = row,
 		})
+		b.LayoutOrder = i
 		b.Activated:Connect(function()
-			self:vote(i)
+			self:vote(choice[1])
 		end)
-		b.MouseEnter:Connect(function()
-			if not self.voted then
-				self:showStars(i)
-			end
-		end)
-		b.MouseLeave:Connect(function()
-			if not self.voted then
-				self:showStars(0)
-			end
-		end)
-		self.starButtons[i] = b
+		self.voteButtons[choice[1]] = b
 	end
 
-	task.spawn(function()
-		-- Cheer buttons: everyone can tap these, and the emoji float up on every screen
+	-- Cheer buttons: everyone can tap these, and the emoji float up on every screen
 	local cheers = new("Frame", {
 		Position = UDim2.new(0, 0, 0, 128),
 		Size = UDim2.new(1, 0, 0, 44),
@@ -119,7 +112,8 @@ function Showcase.new(gui: ScreenGui, ctx)
 	end
 	self.gui = gui
 
-	self:buildScreen()
+	task.spawn(function()
+		self:buildScreen()
 	end)
 	return self
 end
@@ -257,9 +251,10 @@ end
 ------------------------------------------------------------------------------
 -- Voting
 
-function Showcase:showStars(n: number)
-	for i, b in self.starButtons do
-		b.Text = if i <= n then "★" else "☆"
+function Showcase:showVote(stars: number)
+	for value, b in self.voteButtons do
+		b.BackgroundColor3 = if value == stars then C.hotPink else C.softPink
+		b.TextColor3 = if value == stars then C.white else C.hotPink
 	end
 end
 
@@ -270,7 +265,7 @@ function Showcase:vote(stars: number)
 	end
 	local first = not self.voted
 	self.voted = true
-	self:showStars(stars)
+	self:showVote(stars)
 	Remotes.Vote:FireServer(current.userId, stars)
 	self.prompt.Text = "Thanks for voting! 💖 Tap to cheer!"
 	if first then
@@ -281,7 +276,7 @@ end
 function Showcase:show(payload)
 	self.current = payload
 	self.voted = false
-	self:showStars(0)
+	self:showVote(0)
 	self.panel.Visible = true
 	Theme.pop(self.panel)
 	self:setCamera("Showcase")
@@ -294,7 +289,7 @@ function Showcase:show(payload)
 		self.prompt.Text = "This is YOUR client! Cheer for them! 📣"
 		self.starRow.Visible = false
 	else
-		self.prompt.Text = "How many stars? ⭐"
+		self.prompt.Text = "How much do you love it?"
 		self.starRow.Visible = true
 	end
 	-- Camera flashes from the photographers

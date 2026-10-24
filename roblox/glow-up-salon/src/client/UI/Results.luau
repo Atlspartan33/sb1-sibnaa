@@ -5,7 +5,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
-local Scoring = require(ReplicatedStorage.Shared.Scoring)
 local Effects = require(script.Parent.Effects)
 local Theme = require(script.Parent.Theme)
 
@@ -38,19 +37,32 @@ function Results.new(gui: ScreenGui)
 		ZIndex = 41,
 		Parent = self.panel,
 	}, { Theme.maxText(32) })
-	self.mine = new("TextLabel", {
+	-- Your own client, big, with what the judges said (only you see this)
+	local mineCard = new("Frame", {
 		Position = UDim2.new(0, 0, 0, 44),
-		Size = UDim2.new(1, 0, 0, 96),
-		BackgroundTransparency = 0,
+		Size = UDim2.new(1, 0, 0, 130),
 		BackgroundColor3 = C.softPink,
-		Text = "",
-		TextWrapped = true,
 		ZIndex = 41,
 		Parent = self.panel,
-	}, { Theme.corner(14), Theme.maxText(19), Theme.padding(8) })
+	}, { Theme.corner(14) })
+	self.minePortrait = new("Frame", {
+		Position = UDim2.new(0, 6, 0, 6),
+		Size = UDim2.new(0, 118, 0, 118),
+		BackgroundColor3 = C.white,
+		ZIndex = 42,
+		Parent = mineCard,
+	}, { Theme.corner(12) })
+	self.mine = new("TextLabel", {
+		Position = UDim2.new(0, 130, 0, 0),
+		Size = UDim2.new(1, -134, 1, 0),
+		Text = "",
+		TextWrapped = true,
+		ZIndex = 42,
+		Parent = mineCard,
+	}, { Theme.maxText(19), Theme.padding(6) })
 	self.list = new("ScrollingFrame", {
-		Position = UDim2.new(0, 0, 0, 148),
-		Size = UDim2.new(1, 0, 1, -148),
+		Position = UDim2.new(0, 0, 0, 182),
+		Size = UDim2.new(1, 0, 1, -182),
 		BackgroundTransparency = 1,
 		ScrollBarThickness = 6,
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
@@ -70,13 +82,22 @@ function Results:show(results)
 		end
 	end
 
-	self.mine.Text = "Watch the show next round! 👀"
+	self.mine.Text = "Watch the show, then style a client next round! 👀"
+	local old = self.minePortrait:FindFirstChild("Portrait")
+	if old then
+		old:Destroy()
+	end
 	for _, row in results.rows do
 		local isMe = row.userId == Players.LocalPlayer.UserId
 		if isMe then
 			local comments = table.concat(row.comments, "  ", 1, math.min(#row.comments, 3))
-			self.mine.Text = string.format("You placed #%d with %s  (+%d 🪙)\n%s", row.rank, Theme.stars(row.stars), row.coins, comments)
+			self.mine.Text = string.format("Your %s: %s\n+%d 🪙\n%s", row.client.name, Theme.stars(row.stars), row.coins, comments)
+			LookRenderer.render(self.minePortrait, row.client, row.look, { clean = 1, mood = if row.stars >= 4 then "grin" else "smile" })
 			self:celebrate(row, #results.rows)
+		end
+		-- Only the top 3 and your own look are listed, so nobody is shown in last place
+		if row.rank > 3 and not isMe then
+			continue
 		end
 
 		local card = new("Frame", {
@@ -100,7 +121,7 @@ function Results:show(results)
 			ZIndex = 43,
 			Parent = card,
 		}, { Theme.corner(12) })
-		LookRenderer.render(face, row.client, row.look, { clean = row.clean, mood = Scoring.mood(row.stars, row.clean) })
+		LookRenderer.render(face, row.client, row.look, { clean = 1, mood = if row.stars >= 4 then "grin" else "smile" })
 		new("TextLabel", {
 			Position = UDim2.new(0, 130, 0, 6),
 			Size = UDim2.new(1, -136, 0, 32),
@@ -112,7 +133,7 @@ function Results:show(results)
 		new("TextLabel", {
 			Position = UDim2.new(0, 130, 0, 40),
 			Size = UDim2.new(1, -136, 0, 30),
-			Text = Theme.stars(row.stars) .. (if row.voteCount > 0 then "  (" .. row.voteCount .. " votes)" else ""),
+			Text = (if row.stars < 3 and not isMe then "💖 Great effort!" else Theme.stars(row.stars)) .. (if row.voteCount == 1 then "  (1 vote)" elseif row.voteCount > 1 then "  (" .. row.voteCount .. " votes)" else ""),
 			TextColor3 = C.gold,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			ZIndex = 43,

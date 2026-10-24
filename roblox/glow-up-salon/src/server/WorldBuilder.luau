@@ -65,13 +65,22 @@ local function plant(parent: Instance, position: Vector3)
 	ball(parent, "Flower", 0.9, position + Vector3.new(-1, 5.2, -0.4), rgb(255, 220, 90))
 end
 
+-- Lighting for everyday and for each holiday event
+local LOOKS = {
+	everyday = { clock = 14.5, tint = rgb(255, 245, 252), air = rgb(255, 214, 236), decay = rgb(200, 170, 255), strip = PINK },
+	halloween = { clock = 18.4, tint = rgb(250, 230, 255), air = rgb(200, 150, 255), decay = rgb(255, 140, 60), strip = rgb(255, 130, 30) },
+	thanksgiving = { clock = 16.8, tint = rgb(255, 238, 220), air = rgb(255, 210, 160), decay = rgb(230, 140, 80), strip = rgb(255, 160, 50) },
+	christmas = { clock = 15.5, tint = rgb(245, 250, 255), air = rgb(225, 240, 255), decay = rgb(180, 210, 255), strip = rgb(230, 40, 50) },
+}
+
 -- Soft, glowy, pastel look for the whole game
-local function setupLighting()
+local function setupLighting(look)
 	for _, effect in Lighting:GetChildren() do
 		if effect.Name == "GlowUp" then
 			effect:Destroy()
 		end
 	end
+	Lighting.ClockTime = look.clock
 	local bloom = Instance.new("BloomEffect")
 	bloom.Name = "GlowUp"
 	bloom.Intensity = 0.7
@@ -83,16 +92,179 @@ local function setupLighting()
 	color.Saturation = 0.15
 	color.Brightness = 0.03
 	color.Contrast = 0.05
-	color.TintColor = rgb(255, 245, 252)
+	color.TintColor = look.tint
 	color.Parent = Lighting
 	local atmosphere = Instance.new("Atmosphere")
 	atmosphere.Name = "GlowUp"
 	atmosphere.Density = 0.28
-	atmosphere.Color = rgb(255, 214, 236)
-	atmosphere.Decay = rgb(200, 170, 255)
+	atmosphere.Color = look.air
+	atmosphere.Decay = look.decay
 	atmosphere.Haze = 1.2
 	atmosphere.Glare = 0.4
 	atmosphere.Parent = Lighting
+end
+
+-- An emoji floating in the air (bats, ghosts, leaves, snowflakes)
+local function floater(parent: Instance, emoji: string, position: Vector3, size: number)
+	local anchor = part(parent, "Floater", Vector3.new(0.2, 0.2, 0.2), CFrame.new(position), rgb(255, 255, 255))
+	anchor.Transparency = 1
+	anchor.CanCollide = false
+	anchor.CanQuery = false
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromScale(size, size)
+	gui.LightInfluence = 0
+	gui.MaxDistance = 300
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Text = emoji
+	label.TextScaled = true
+	label.Parent = gui
+	gui.Parent = anchor
+end
+
+local function pumpkin(parent: Instance, position: Vector3, size: number)
+	local body = ball(parent, "Pumpkin", size, position + Vector3.new(0, size / 2, 0), rgb(245, 130, 30))
+	local stem = part(parent, "Stem", Vector3.new(size * 0.25, size * 0.12, size * 0.12), CFrame.new(position + Vector3.new(0, size * 1.02, 0)) * CFrame.Angles(0, 0, math.rad(90)), rgb(70, 130, 50))
+	stem.Shape = Enum.PartType.Cylinder
+	local face = Instance.new("SurfaceGui")
+	face.Face = Enum.NormalId.Back
+	face.LightInfluence = 0
+	face.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	face.PixelsPerStud = 40
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Text = "▲ ▲\n◡◡◡"
+	label.TextScaled = true
+	label.Font = Enum.Font.FredokaOne
+	label.TextColor3 = rgb(60, 25, 10)
+	label.Parent = face
+	face.Parent = body
+end
+
+local function christmasTree(parent: Instance, position: Vector3, height: number)
+	local trunk = part(parent, "Trunk", Vector3.new(height * 0.15, height * 0.12, height * 0.12), CFrame.new(position + Vector3.new(0, height * 0.075, 0)) * CFrame.Angles(0, 0, math.rad(90)), rgb(110, 70, 40))
+	trunk.Shape = Enum.PartType.Cylinder
+	local layers = 8
+	for i = 0, layers - 1 do
+		local w = height * (0.66 - i * 0.075)
+		local y = height * (0.2 + i * 0.09)
+		local green = if i % 2 == 0 then rgb(40, 140, 70) else rgb(55, 165, 85)
+		local layer = part(parent, "Branches", Vector3.new(height * 0.1, w, w), CFrame.new(position + Vector3.new(0, y, 0)) * CFrame.Angles(0, 0, math.rad(90)), green)
+		layer.Shape = Enum.PartType.Cylinder
+		local colors = { rgb(230, 40, 50), GOLD, rgb(90, 170, 255), PINK }
+		for j = 0, (if i % 2 == 0 then 4 else -1) do
+			local a = math.rad(j * 72 + i * 25)
+			ball(parent, "Ornament", height * 0.05, position + Vector3.new(math.cos(a) * w * 0.47, y - height * 0.05, math.sin(a) * w * 0.47), colors[(i + j) % #colors + 1], Enum.Material.Neon)
+		end
+	end
+	ball(parent, "TreeStar", height * 0.1, position + Vector3.new(0, height * 0.95, 0), GOLD, Enum.Material.Neon)
+end
+
+local function present(parent: Instance, position: Vector3, size: number, color: Color3)
+	part(parent, "Present", Vector3.new(size, size * 0.8, size), CFrame.new(position + Vector3.new(0, size * 0.4, 0)), color)
+	part(parent, "Ribbon", Vector3.new(size * 1.02, size * 0.82, size * 0.18), CFrame.new(position + Vector3.new(0, size * 0.4, 0)), rgb(255, 255, 255))
+	part(parent, "Ribbon", Vector3.new(size * 0.18, size * 0.82, size * 1.02), CFrame.new(position + Vector3.new(0, size * 0.4, 0)), rgb(255, 255, 255))
+end
+
+local function autumnTree(parent: Instance, position: Vector3)
+	local trunk = part(parent, "Trunk", Vector3.new(7, 1.4, 1.4), CFrame.new(position + Vector3.new(0, 3.5, 0)) * CFrame.Angles(0, 0, math.rad(90)), rgb(110, 70, 40))
+	trunk.Shape = Enum.PartType.Cylinder
+	ball(parent, "Leaves", 7, position + Vector3.new(0, 9, 0), rgb(230, 110, 30), Enum.Material.Grass)
+	ball(parent, "Leaves", 5, position + Vector3.new(1.8, 10.5, 1), rgb(200, 60, 30), Enum.Material.Grass)
+	ball(parent, "Leaves", 4.5, position + Vector3.new(-2, 10, -1), rgb(240, 180, 40), Enum.Material.Grass)
+end
+
+-- Spots around the salon, runway and podium where decorations go
+local DECOR_SPOTS = {
+	Vector3.new(-30, 0, 36), Vector3.new(30, 0, 36), Vector3.new(-30, 0, 62), Vector3.new(30, 0, 62),
+	Vector3.new(-18, 0, -30), Vector3.new(18, 0, -30), Vector3.new(-22, 0, -50), Vector3.new(22, 0, -50),
+	Vector3.new(-44, 0, -6), Vector3.new(-20, 0, -14), Vector3.new(8, 0, 20), Vector3.new(-8, 0, 20),
+}
+
+local built = nil
+
+-- Swaps in the decorations and lighting for a holiday event (or nil for everyday).
+function WorldBuilder.setDecor(eventId: string?)
+	if not built then
+		return
+	end
+	local old = built.folder:FindFirstChild("Decor")
+	if old then
+		old:Destroy()
+	end
+	local look = LOOKS[eventId or "everyday"] or LOOKS.everyday
+	setupLighting(look)
+	for _, p in built.folder:GetDescendants() do
+		if p:IsA("BasePart") and p.Name == "LightStrip" then
+			p.Color = look.strip
+			local light = p:FindFirstChildOfClass("PointLight")
+			if light then
+				light.Color = look.strip
+			end
+		end
+	end
+	if not eventId then
+		return
+	end
+
+	local decor = Instance.new("Folder")
+	decor.Name = "Decor"
+	if eventId == "halloween" then
+		for i, spot in DECOR_SPOTS do
+			pumpkin(decor, spot, if i % 3 == 0 then 3.2 else 2.4)
+			pumpkin(decor, spot + Vector3.new(2.6, 0, 1), 1.6)
+		end
+		for i = 1, 10 do
+			floater(decor, if i % 3 == 0 then "👻" else "🦇", Vector3.new(-16 + (i % 5) * 8, 16 + (i % 3) * 3, -50 + i * 6), 3)
+		end
+		for i = 1, 6 do
+			floater(decor, "🦇", Vector3.new(-20 + i * 6, 14 + (i % 2) * 3, 50), 2.5)
+		end
+	elseif eventId == "thanksgiving" then
+		for i, spot in DECOR_SPOTS do
+			if i % 2 == 0 then
+				autumnTree(decor, spot)
+			else
+				part(decor, "HayBale", Vector3.new(4, 2.4, 2.6), CFrame.new(spot + Vector3.new(0, 1.2, 0)), rgb(230, 200, 110), Enum.Material.Sand)
+				pumpkin(decor, spot + Vector3.new(0, 2.4, 0), 1.6)
+			end
+			for j = 0, 4 do
+				ball(decor, "Leaf", 0.9, spot + Vector3.new(3 + (j % 3) * 0.8, 0.2, -1 + j * 0.5), ({ rgb(220, 90, 30), rgb(200, 50, 30), rgb(240, 180, 40) })[j % 3 + 1])
+			end
+		end
+		for i = 1, 12 do
+			floater(decor, if i % 2 == 0 then "🍂" else "🍁", Vector3.new(-18 + (i % 6) * 7, 12 + (i % 4) * 3, -52 + i * 8), 2.2)
+		end
+	elseif eventId == "christmas" then
+		for i, spot in DECOR_SPOTS do
+			if i % 2 == 1 then
+				christmasTree(decor, spot, if i <= 4 then 16 else 12)
+			end
+			local colors = { rgb(230, 40, 50), rgb(40, 150, 70), GOLD, PURPLE }
+			present(decor, spot + Vector3.new(3, 0, 2), 1.8, colors[i % #colors + 1])
+			present(decor, spot + Vector3.new(-2.5, 0, 2.5), 1.3, colors[(i + 1) % #colors + 1])
+			part(decor, "Snow", Vector3.new(10, 0.25, 8), CFrame.new(spot + Vector3.new(0, 0.12, 0)), rgb(250, 252, 255), Enum.Material.Snow)
+		end
+		local cloud = part(decor, "SnowCloud", Vector3.new(160, 1, 190), CFrame.new(0, 60, 10), rgb(255, 255, 255))
+		cloud.Transparency = 1
+		cloud.CanCollide = false
+		cloud.CanQuery = false
+		local snow = Instance.new("ParticleEmitter")
+		snow.Rate = 120
+		snow.Lifetime = NumberRange.new(10, 14)
+		snow.Speed = NumberRange.new(4, 7)
+		snow.Size = NumberSequence.new(0.35)
+		snow.EmissionDirection = Enum.NormalId.Bottom
+		snow.SpreadAngle = Vector2.new(15, 15)
+		snow.LightEmission = 0.3
+		snow.Parent = cloud
+		for i = 1, 8 do
+			floater(decor, "❄️", Vector3.new(-16 + (i % 4) * 10, 15 + (i % 3) * 3, -50 + i * 8), 2.4)
+		end
+	end
+	decor.Parent = built.folder
 end
 
 local function cameraMarker(parent: Instance, name: string, from: Vector3, to: Vector3)
@@ -277,9 +449,9 @@ function WorldBuilder.build(): World
 	end
 
 	folder.Parent = Workspace
-	setupLighting()
+	setupLighting(LOOKS.everyday)
 
-	return {
+	built = {
 		folder = folder,
 		screen = screen,
 		runwayStart = Vector3.new(0, runwayTopY, runwayStartZ),
@@ -287,6 +459,7 @@ function WorldBuilder.build(): World
 		podium = podium,
 		confetti = confetti,
 	}
+	return built
 end
 
 return WorldBuilder
