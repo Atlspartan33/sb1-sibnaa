@@ -23,6 +23,8 @@ Config.RETURNING_CLIENT_CHANCE = 0.35 -- how often a client you styled before co
 Config.BEST_FRIEND_VISITS = { 3, 5, 10 } -- visits that earn a best-friend bonus
 Config.BEST_FRIEND_COINS = 25
 Config.LOOKBOOK_SIZE = 24 -- looks saved in the Look Book
+Config.WEEKLY_GOAL_SHOWS = 5 -- shows to play each week for the weekly prize
+Config.WEEKLY_GOAL_COINS = 150 -- weekly prize once every weekly clip is collected
 
 -- Robux monetization.
 -- Create these on the Creator Dashboard (create.roblox.com) after publishing,

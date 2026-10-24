@@ -528,6 +528,31 @@ local function scoreAll()
 				end)
 			end
 
+			-- Weekly goal: play a few shows this week for a prize
+			local week = os.time() // 604800
+			if profile.week ~= week then
+				profile.week, profile.weekShows, profile.weekClaimed = week, 0, false
+			end
+			profile.weekShows += 1
+			if profile.weekShows >= Config.WEEKLY_GOAL_SHOWS and not profile.weekClaimed then
+				profile.weekClaimed = true
+				local prizeId = Catalog.WeeklyItems[profile.weeklyGiven + 1]
+				local info = { kind = "weekly", coins = 0, item = nil :: string? }
+				if prizeId then
+					profile.weeklyGiven += 1
+					profile.owned[prizeId] = true
+					info.item = Catalog.byId[prizeId].name
+				else
+					info.coins = Config.WEEKLY_GOAL_COINS
+					profile.coins += info.coins
+				end
+				task.delay(8, function()
+					if player.Parent then
+						Remotes.Celebrate:FireClient(player, info)
+					end
+				end)
+			end
+
 			-- Save the look in the Look Book (newest first)
 			table.insert(profile.lookbook, 1, {
 				name = client.name,

@@ -485,6 +485,10 @@ Catalog.Categories = {
 			item({ id = "acc_tiara", name = "Princess Tiara", pass = "Princess", color = rgb(245, 205, 90), tags = { "gold", "sparkle", "pink" } }),
 			item({ id = "acc_goldbow", name = "Golden Bow", gift = true, draw = "acc_bow", color = rgb(245, 195, 60), tags = { "gold", "sparkle" } }),
 			item({ id = "acc_rainbowband", name = "Rainbow Headband", gift = true, draw = "acc_headband", color = rgb(255, 120, 160), gradient = { rgb(255, 90, 120), rgb(255, 210, 80), rgb(90, 210, 140), rgb(110, 150, 255) }, tags = { "bright", "pink", "blue" } }),
+			item({ id = "acc_clover", name = "Lucky Clover", gift = true, icon = "🍀", tags = { "green", "bright" } }),
+			item({ id = "acc_rainbowclip", name = "Rainbow Clip", gift = true, icon = "🌈", tags = { "bright", "pink", "blue" } }),
+			item({ id = "acc_unicorn", name = "Unicorn Clip", gift = true, icon = "🦄", tags = { "pink", "purple", "sparkle" } }),
+			item({ id = "acc_strawberry", name = "Strawberry Clip", gift = true, icon = "🍓", tags = { "red", "pink" } }),
 			item({ id = "acc_pearls", name = "Pearl Earrings", gift = true, draw = "acc_earrings", color = rgb(250, 245, 240), tags = { "white", "sparkle" } }),
 			item({ id = "acc_witchhat", name = "Witch Hat", color = rgb(35, 25, 45), accent = rgb(150, 80, 220), price = 60, event = "halloween", tags = { "dark", "purple" } }),
 			item({ id = "acc_pumpkin", name = "Pumpkin Clip", color = rgb(245, 130, 30), event = "halloween", tags = { "orange", "green" } }),
@@ -514,6 +518,9 @@ Catalog.Themes = {
 
 -- Day-7 prizes of the daily gift calendar, given in this order
 Catalog.GiftItems = { "acc_goldbow", "acc_rainbowband", "acc_pearls" }
+
+-- Prizes for finishing the weekly goal, given in this order
+Catalog.WeeklyItems = { "acc_clover", "acc_unicorn", "acc_rainbowclip", "acc_strawberry" }
 
 -- Lookup tables -------------------------------------------------------------
 
@@ -804,6 +811,8 @@ Config.RETURNING_CLIENT_CHANCE = 0.35 -- how often a client you styled before co
 Config.BEST_FRIEND_VISITS = { 3, 5, 10 } -- visits that earn a best-friend bonus
 Config.BEST_FRIEND_COINS = 25
 Config.LOOKBOOK_SIZE = 24 -- looks saved in the Look Book
+Config.WEEKLY_GOAL_SHOWS = 5 -- shows to play each week for the weekly prize
+Config.WEEKLY_GOAL_COINS = 150 -- weekly prize once every weekly clip is collected
 
 -- Robux monetization.
 -- Create these on the Creator Dashboard (create.roblox.com) after publishing,
@@ -1299,6 +1308,9 @@ local function drawAccessory(root: Frame, look)
 		end
 	elseif acc == "acc_crown" then
 		glyph(root, "👑", 0.5, 0.09, 0.18, c, Z.accessory)
+	elseif it and it.icon then
+		-- a cute hair clip
+		glyph(root, it.icon, 0.69, 0.17, 0.12, WHITE, Z.accessory)
 	elseif acc == "acc_butterfly" then
 		glyph(root, "🦋", 0.68, 0.17, 0.12, WHITE, Z.accessory)
 	elseif acc == "acc_halo" then
@@ -1834,6 +1846,10 @@ export type Profile = {
 	giftsGiven: number, -- day-7 accessories collected
 	friends: { [string]: { visits: number, skin: number, eyes: number } }, -- regular clients
 	lookbook: { any }, -- saved finished looks, newest first
+	week: number, -- which week the weekly goal counts (weeks since 1970)
+	weekShows: number,
+	weekClaimed: boolean,
+	weeklyGiven: number, -- weekly prizes collected
 	receipts: { string },
 	passes: { [string]: boolean }, -- not saved; checked with Roblox every visit
 	canSave: boolean, -- false if loading failed, so we never overwrite good data with an empty profile
@@ -1878,6 +1894,10 @@ local function newProfile(saved): Profile
 		giftsGiven = tonumber(saved.giftsGiven) or 0,
 		friends = saved.friends or {},
 		lookbook = saved.lookbook or {},
+		week = tonumber(saved.week) or 0,
+		weekShows = tonumber(saved.weekShows) or 0,
+		weekClaimed = saved.weekClaimed == true,
+		weeklyGiven = tonumber(saved.weeklyGiven) or 0,
 		receipts = saved.receipts or {},
 		passes = {},
 		canSave = true,
@@ -1919,6 +1939,9 @@ function DataService.push(player: Player)
 			totalStars = p.stats.totalStars,
 			calendarDay = p.streak,
 			lookbook = p.lookbook,
+			weekShows = if p.week == os.time() // 604800 then p.weekShows else 0,
+			weekClaimed = p.week == os.time() // 604800 and p.weekClaimed,
+			weeklyNext = Catalog.WeeklyItems[p.weeklyGiven + 1],
 		})
 	end
 end
@@ -1968,6 +1991,10 @@ function DataService.save(player: Player, release: boolean?): boolean
 					giftsGiven = p.giftsGiven,
 					friends = p.friends,
 					lookbook = p.lookbook,
+					week = p.week,
+					weekShows = p.weekShows,
+					weekClaimed = p.weekClaimed,
+					weeklyGiven = p.weeklyGiven,
 					session = if release then nil else game.JobId,
 					lockTime = os.time(),
 				}
@@ -2668,6 +2695,31 @@ local function scoreAll()
 				task.delay(6, function()
 					if player.Parent then
 						Remotes.Celebrate:FireClient(player, { kind = "friend", name = client.name, visits = client.visits, coins = Config.BEST_FRIEND_COINS })
+					end
+				end)
+			end
+
+			-- Weekly goal: play a few shows this week for a prize
+			local week = os.time() // 604800
+			if profile.week ~= week then
+				profile.week, profile.weekShows, profile.weekClaimed = week, 0, false
+			end
+			profile.weekShows += 1
+			if profile.weekShows >= Config.WEEKLY_GOAL_SHOWS and not profile.weekClaimed then
+				profile.weekClaimed = true
+				local prizeId = Catalog.WeeklyItems[profile.weeklyGiven + 1]
+				local info = { kind = "weekly", coins = 0, item = nil :: string? }
+				if prizeId then
+					profile.weeklyGiven += 1
+					profile.owned[prizeId] = true
+					info.item = Catalog.byId[prizeId].name
+				else
+					info.coins = Config.WEEKLY_GOAL_COINS
+					profile.coins += info.coins
+				end
+				task.delay(8, function()
+					if player.Parent then
+						Remotes.Celebrate:FireClient(player, info)
 					end
 				end)
 			end
@@ -3592,6 +3644,7 @@ Remotes.Profile.OnClientEvent:Connect(function(profile)
 	ctx.profile = profile
 	hud:setCoins(profile.coins)
 	hud:setLevel(profile.totalStars or 0)
+	hud:setWeekly(profile)
 	makeover:refreshProfile()
 	shop:refreshProfile()
 end)
@@ -3631,6 +3684,9 @@ Remotes.Celebrate.OnClientEvent:Connect(function(info)
 			}, { Theme.corner(10), Theme.maxText(30) })
 		end
 		Effects.confetti(gui, 40)
+	elseif info.kind == "weekly" then
+		Effects.splash(gui, "🎯 Weekly goal done!", if info.item then "You got the " .. info.item .. "! 🎁" else "+" .. info.coins .. " 🪙", Theme.Colors.purple, 4)
+		Effects.confetti(gui, 60)
 	elseif info.kind == "friend" then
 		Effects.splash(gui, "💞 " .. info.name .. " is your BEST friend!", "Visit #" .. info.visits .. "  +" .. info.coins .. " 🪙", Theme.Colors.hotPink, 3.5)
 		Effects.confetti(gui, 40)
@@ -3841,6 +3897,7 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local Config = require(ReplicatedStorage.Shared.Config)
 local Events = require(ReplicatedStorage.Shared.Events)
 local Progress = require(ReplicatedStorage.Shared.Progress)
 local Theme = require(script.Parent.Theme)
@@ -3951,7 +4008,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 		Name = "Lobby",
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 1, -24),
-		Size = UDim2.new(0.5, 0, 0, 226),
+		Size = UDim2.new(0.5, 0, 0, 262),
 		BackgroundColor3 = C.white,
 		BackgroundTransparency = 0.05,
 		Visible = false,
@@ -3975,6 +4032,15 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 		ZIndex = 41,
 		Parent = self.lobby,
 	}, { Theme.round(), Theme.maxText(22), Theme.padding(4) })
+	self.lobbyWeekly = new("TextLabel", {
+		LayoutOrder = 3,
+		Size = UDim2.new(1, 0, 0, 28),
+		BackgroundTransparency = 0,
+		BackgroundColor3 = C.lavender,
+		Text = "",
+		ZIndex = 41,
+		Parent = self.lobby,
+	}, { Theme.round(), Theme.maxText(20), Theme.padding(4) })
 	self.lobbyTheme = new("TextLabel", {
 		LayoutOrder = 2,
 		Size = UDim2.new(1, 0, 0, 44),
@@ -3985,7 +4051,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 	}, { Theme.maxText(40) })
 	new("TextLabel", {
 		Size = UDim2.new(1, 0, 0, 104),
-		LayoutOrder = 3,
+		LayoutOrder = 4,
 		Text = "1. 🧼 Wash your client's dirty face\n2. 💇 Do their hair   3. 💄 Put on makeup\n4. 👗 Pick an outfit that fits the theme\n5. 📸 Walk the runway - you only get 5 minutes!",
 		TextColor3 = C.text,
 		ZIndex = 41,
@@ -4008,6 +4074,19 @@ function HUD:setState(state)
 	self.lobbyEvent.Visible = event ~= nil
 	if event then
 		self.lobbyEvent.Text = event.icon .. " " .. event.name .. " event! New looks " .. event.endsText .. " " .. event.icon
+	end
+end
+
+-- "🎯 Weekly goal: 2/5 shows → 🍀 Lucky Clover"
+function HUD:setWeekly(profile)
+	local goal = Config.WEEKLY_GOAL_SHOWS
+	local done = math.min(profile.weekShows or 0, goal)
+	if profile.weekClaimed then
+		self.lobbyWeekly.Text = "🎯 Weekly goal done! New prize next week 🎁"
+	else
+		local prize = profile.weeklyNext and Catalog.byId[profile.weeklyNext]
+		local prizeText = if prize then (prize.icon or "🎁") .. " " .. prize.name else Config.WEEKLY_GOAL_COINS .. " 🪙"
+		self.lobbyWeekly.Text = "🎯 Weekly goal: " .. done .. "/" .. goal .. " shows → " .. prizeText
 	end
 end
 

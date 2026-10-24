@@ -456,6 +456,10 @@ Catalog.Categories = {
 			item({ id = "acc_tiara", name = "Princess Tiara", pass = "Princess", color = rgb(245, 205, 90), tags = { "gold", "sparkle", "pink" } }),
 			item({ id = "acc_goldbow", name = "Golden Bow", gift = true, draw = "acc_bow", color = rgb(245, 195, 60), tags = { "gold", "sparkle" } }),
 			item({ id = "acc_rainbowband", name = "Rainbow Headband", gift = true, draw = "acc_headband", color = rgb(255, 120, 160), gradient = { rgb(255, 90, 120), rgb(255, 210, 80), rgb(90, 210, 140), rgb(110, 150, 255) }, tags = { "bright", "pink", "blue" } }),
+			item({ id = "acc_clover", name = "Lucky Clover", gift = true, icon = "🍀", tags = { "green", "bright" } }),
+			item({ id = "acc_rainbowclip", name = "Rainbow Clip", gift = true, icon = "🌈", tags = { "bright", "pink", "blue" } }),
+			item({ id = "acc_unicorn", name = "Unicorn Clip", gift = true, icon = "🦄", tags = { "pink", "purple", "sparkle" } }),
+			item({ id = "acc_strawberry", name = "Strawberry Clip", gift = true, icon = "🍓", tags = { "red", "pink" } }),
 			item({ id = "acc_pearls", name = "Pearl Earrings", gift = true, draw = "acc_earrings", color = rgb(250, 245, 240), tags = { "white", "sparkle" } }),
 			item({ id = "acc_witchhat", name = "Witch Hat", color = rgb(35, 25, 45), accent = rgb(150, 80, 220), price = 60, event = "halloween", tags = { "dark", "purple" } }),
 			item({ id = "acc_pumpkin", name = "Pumpkin Clip", color = rgb(245, 130, 30), event = "halloween", tags = { "orange", "green" } }),
@@ -485,6 +489,9 @@ Catalog.Themes = {
 
 -- Day-7 prizes of the daily gift calendar, given in this order
 Catalog.GiftItems = { "acc_goldbow", "acc_rainbowband", "acc_pearls" }
+
+-- Prizes for finishing the weekly goal, given in this order
+Catalog.WeeklyItems = { "acc_clover", "acc_unicorn", "acc_rainbowclip", "acc_strawberry" }
 
 -- Lookup tables -------------------------------------------------------------
 

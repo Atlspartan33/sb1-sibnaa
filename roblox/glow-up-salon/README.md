@@ -21,6 +21,8 @@ The salon and runway build themselves when the game starts. In Studio you automa
 
 **Coins look high in Studio?** Studio pretends you own the 2x Coins pass too, so coins double.
 
+**Want to see the Halloween, Harvest Festival or Christmas event before its date?** Set `Config.FORCE_EVENT = "halloween"` (or `"thanksgiving"`, `"christmas"`) and press Play. Set it back to `nil` before publishing; events then turn on by date automatically.
+
 **Want the round shorter while testing?** Open `ReplicatedStorage > Shared > Config` and change `MAKEOVER_SECONDS` (it's `5 * 60`).
 
 ## 2. Put it on Roblox so anyone can play
@@ -39,19 +41,19 @@ On Roblox, nobody "downloads" a game. Once it's **public**, anyone can find it a
 
    **Passes** (one-time purchases that last forever):
 
-   | Name | Suggested price |
-   |---|---|
-   | VIP Glam Kit | 199 |
-   | 2x Coins | 149 |
-   | Runway Star | 99 |
+   | Name | Config key | Suggested price |
+   |---|---|---|
+   | VIP Glam Kit | `VIP` | 199 |
+   | Princess Pack | `Princess` | 149 |
+   | 2x Coins | `DoubleCoins` | 149 |
+   | Runway Star | `RunwayStar` | 99 |
+   | Rainbow Bubbles | `RainbowBubbles` | 49 |
 
    **Developer Products** (can be bought again and again):
 
-   | Name | Suggested price |
-   |---|---|
-   | Super Soap | 15 |
-   | 500 Coins | 49 |
-   | 2000 Coins | 149 |
+   | Name | Config key | Suggested price |
+   |---|---|---|
+   | 500 Coins | `CoinsSmall` | 49 |
 
 2. Copy each item's **ID number** into `ReplicatedStorage > Shared > Config` (`Config.GamePasses` and `Config.DevProducts`).
 3. **File → Publish to Roblox** again.
@@ -60,7 +62,20 @@ Until an ID is filled in, that item shows **"Soon!"** in the shop, so it's safe 
 
 ## 4. Add sounds and music (optional)
 
-The game is quiet until you pick sounds. In Studio, open **Toolbox → Audio** (or the Creator Store), find sounds you like, then right-click → **Copy Asset ID**. Paste each one into `Config.Sounds`:
+**Do this one!** Sound makes the biggest difference for young kids, and the game is quiet until you pick sounds. Roblox's Creator Store has thousands of free sounds and licensed music that any game may use.
+
+| Config key | Search the Toolbox for |
+|---|---|
+| `Click` | "pop", "bubble pop" |
+| `Pop` | "cute pop", "boing" |
+| `Scrub` | "scrub", "bubbles" |
+| `Sparkle` | "sparkle", "chime", "twinkle" |
+| `Cheer` | "kids cheer", "yay", "applause" |
+| `Camera` | "camera shutter" |
+| `MakeoverMusic` | music: "happy", "pop", "cute" |
+| `RunwayMusic` | music: "fashion", "runway", "dance" |
+
+ In Studio, open **Toolbox → Audio** (or the Creator Store), find sounds you like, then right-click → **Copy Asset ID**. Paste each one into `Config.Sounds`:
 
 ```lua
 Config.Sounds = {
@@ -83,7 +98,8 @@ All the code is in Studio under:
 |---|---|
 | `ReplicatedStorage > Shared > Config` | Timer, coin rewards, Game Pass / product IDs |
 | `ReplicatedStorage > Shared > Catalog` | **Every hairstyle, color, makeup, outfit and theme.** Add new ones here: name, color, price, tags |
-| `ReplicatedStorage > Shared > Clients` | Customer names, skin tones, and "came from the shop" stories |
+| `ReplicatedStorage > Shared > Clients` | Customer names, skin tones, and "came from the shop" stories (plus holiday stories) |
+| `ReplicatedStorage > Shared > Events` | Holiday event dates (Halloween, Harvest Festival, Christmas) |
 | `ReplicatedStorage > Shared > LookRenderer` | How faces, hair and outfits are drawn |
 | `ReplicatedStorage > Shared > Scoring` | How the judges give stars |
 | `ServerScriptService > Server` | Round timer, fashion show, saving, shop |
@@ -95,7 +111,12 @@ All the code is in Studio under:
 item({ id = "lip_coral", name = "Coral", color = rgb(255, 120, 90), tags = { "bright" } }),
 ```
 
-and change the `id`, `name` and color. Add `price = 50` to make it cost coins, or `pass = "VIP"` to make it VIP-only.
+and change the `id`, `name` and color. Then add one of these if you want:
+
+- `price = 50` to make it cost coins
+- `pass = "VIP"` to make it VIP-only
+- `level = 4` to unlock it at stylist level 4
+- `event = "christmas"` to make it a holiday item
 
 ### For developers (optional): edit with VS Code + Rojo
 
@@ -110,4 +131,4 @@ If you edit scripts directly in Studio instead, save from Studio. `GlowUpSalon.r
 
 ### Play-test without Studio (optional)
 
-`tools/playtest/run.sh` runs the real game scripts in a small fake Roblox engine: a server and two players, a full round (wash, styling, shop, runway, voting, results), purchases, leaving and rejoining, and 15 minutes of rounds. It fails if any script errors. `./run.sh --screens` also saves screenshots and 3D renders (needs Node + Playwright). It's a safety net, not a replacement for pressing Play in Studio.
+`tools/playtest/run.sh` runs the real game scripts in a small fake Roblox engine: a server and two players, a full round (wash, styling, nails, shop, runway, voting, results), purchases, cheating attempts, leaving and rejoining, all three holiday events, the weekly goal, and half an hour of rounds. It also checks that every theme can be matched with free items. It fails if any script errors. `./run.sh --screens` also saves screenshots and 3D renders (needs Node + Playwright). It's a safety net, not a replacement for pressing Play in Studio.

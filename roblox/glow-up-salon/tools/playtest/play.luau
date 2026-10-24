@@ -198,7 +198,17 @@ print("  coins before leaving:", coinsBefore, " after rejoining:", coinsAfter)
 H.check(coinsBefore == coinsAfter, "rejoining loads saved coins")
 
 print("== Idle rounds for stability")
-E.runFor(60 * 14)
+local function weeklyText(p)
+	for _, d in H.ui(p):GetDescendants() do
+		if E.D[d].class == "TextLabel" and string.find(d.Text, "Weekly goal", 1, true) then return d.Text end
+	end
+	return ""
+end
+print("  " .. weeklyText(mia))
+H.check(string.find(weeklyText(mia), "/5 shows", 1, true) ~= nil and not string.find(weeklyText(mia), "0/5", 1, true), "weekly goal counts shows")
+E.runFor(60 * 26)
+print("  " .. weeklyText(mia))
+H.check(string.find(weeklyText(mia), "done", 1, true) ~= nil, "weekly goal completes after 5 shows")
 print("  after idle rounds, phase pill:", H.findText(mia, "Makeover") ~= nil or H.findText(mia, "show") ~= nil or H.findText(mia, "Results") ~= nil)
 
 local counts = {}

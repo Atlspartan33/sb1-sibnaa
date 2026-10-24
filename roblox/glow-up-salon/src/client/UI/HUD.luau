@@ -6,6 +6,7 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local Config = require(ReplicatedStorage.Shared.Config)
 local Events = require(ReplicatedStorage.Shared.Events)
 local Progress = require(ReplicatedStorage.Shared.Progress)
 local Theme = require(script.Parent.Theme)
@@ -116,7 +117,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 		Name = "Lobby",
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 1, -24),
-		Size = UDim2.new(0.5, 0, 0, 226),
+		Size = UDim2.new(0.5, 0, 0, 262),
 		BackgroundColor3 = C.white,
 		BackgroundTransparency = 0.05,
 		Visible = false,
@@ -140,6 +141,15 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 		ZIndex = 41,
 		Parent = self.lobby,
 	}, { Theme.round(), Theme.maxText(22), Theme.padding(4) })
+	self.lobbyWeekly = new("TextLabel", {
+		LayoutOrder = 3,
+		Size = UDim2.new(1, 0, 0, 28),
+		BackgroundTransparency = 0,
+		BackgroundColor3 = C.lavender,
+		Text = "",
+		ZIndex = 41,
+		Parent = self.lobby,
+	}, { Theme.round(), Theme.maxText(20), Theme.padding(4) })
 	self.lobbyTheme = new("TextLabel", {
 		LayoutOrder = 2,
 		Size = UDim2.new(1, 0, 0, 44),
@@ -150,7 +160,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 	}, { Theme.maxText(40) })
 	new("TextLabel", {
 		Size = UDim2.new(1, 0, 0, 104),
-		LayoutOrder = 3,
+		LayoutOrder = 4,
 		Text = "1. 🧼 Wash your client's dirty face\n2. 💇 Do their hair   3. 💄 Put on makeup\n4. 👗 Pick an outfit that fits the theme\n5. 📸 Walk the runway - you only get 5 minutes!",
 		TextColor3 = C.text,
 		ZIndex = 41,
@@ -173,6 +183,19 @@ function HUD:setState(state)
 	self.lobbyEvent.Visible = event ~= nil
 	if event then
 		self.lobbyEvent.Text = event.icon .. " " .. event.name .. " event! New looks " .. event.endsText .. " " .. event.icon
+	end
+end
+
+-- "🎯 Weekly goal: 2/5 shows → 🍀 Lucky Clover"
+function HUD:setWeekly(profile)
+	local goal = Config.WEEKLY_GOAL_SHOWS
+	local done = math.min(profile.weekShows or 0, goal)
+	if profile.weekClaimed then
+		self.lobbyWeekly.Text = "🎯 Weekly goal done! New prize next week 🎁"
+	else
+		local prize = profile.weeklyNext and Catalog.byId[profile.weeklyNext]
+		local prizeText = if prize then (prize.icon or "🎁") .. " " .. prize.name else Config.WEEKLY_GOAL_COINS .. " 🪙"
+		self.lobbyWeekly.Text = "🎯 Weekly goal: " .. done .. "/" .. goal .. " shows → " .. prizeText
 	end
 end
 

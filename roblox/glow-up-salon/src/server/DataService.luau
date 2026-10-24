@@ -21,6 +21,10 @@ export type Profile = {
 	giftsGiven: number, -- day-7 accessories collected
 	friends: { [string]: { visits: number, skin: number, eyes: number } }, -- regular clients
 	lookbook: { any }, -- saved finished looks, newest first
+	week: number, -- which week the weekly goal counts (weeks since 1970)
+	weekShows: number,
+	weekClaimed: boolean,
+	weeklyGiven: number, -- weekly prizes collected
 	receipts: { string },
 	passes: { [string]: boolean }, -- not saved; checked with Roblox every visit
 	canSave: boolean, -- false if loading failed, so we never overwrite good data with an empty profile
@@ -65,6 +69,10 @@ local function newProfile(saved): Profile
 		giftsGiven = tonumber(saved.giftsGiven) or 0,
 		friends = saved.friends or {},
 		lookbook = saved.lookbook or {},
+		week = tonumber(saved.week) or 0,
+		weekShows = tonumber(saved.weekShows) or 0,
+		weekClaimed = saved.weekClaimed == true,
+		weeklyGiven = tonumber(saved.weeklyGiven) or 0,
 		receipts = saved.receipts or {},
 		passes = {},
 		canSave = true,
@@ -106,6 +114,9 @@ function DataService.push(player: Player)
 			totalStars = p.stats.totalStars,
 			calendarDay = p.streak,
 			lookbook = p.lookbook,
+			weekShows = if p.week == os.time() // 604800 then p.weekShows else 0,
+			weekClaimed = p.week == os.time() // 604800 and p.weekClaimed,
+			weeklyNext = Catalog.WeeklyItems[p.weeklyGiven + 1],
 		})
 	end
 end
@@ -155,6 +166,10 @@ function DataService.save(player: Player, release: boolean?): boolean
 					giftsGiven = p.giftsGiven,
 					friends = p.friends,
 					lookbook = p.lookbook,
+					week = p.week,
+					weekShows = p.weekShows,
+					weekClaimed = p.weekClaimed,
+					weeklyGiven = p.weeklyGiven,
 					session = if release then nil else game.JobId,
 					lockTime = os.time(),
 				}

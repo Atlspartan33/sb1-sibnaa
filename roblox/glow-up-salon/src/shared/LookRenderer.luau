@@ -383,6 +383,9 @@ local function drawAccessory(root: Frame, look)
 		end
 	elseif acc == "acc_crown" then
 		glyph(root, "👑", 0.5, 0.09, 0.18, c, Z.accessory)
+	elseif it and it.icon then
+		-- a cute hair clip
+		glyph(root, it.icon, 0.69, 0.17, 0.12, WHITE, Z.accessory)
 	elseif acc == "acc_butterfly" then
 		glyph(root, "🦋", 0.68, 0.17, 0.12, WHITE, Z.accessory)
 	elseif acc == "acc_halo" then

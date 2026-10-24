@@ -137,6 +137,7 @@ Remotes.Profile.OnClientEvent:Connect(function(profile)
 	ctx.profile = profile
 	hud:setCoins(profile.coins)
 	hud:setLevel(profile.totalStars or 0)
+	hud:setWeekly(profile)
 	makeover:refreshProfile()
 	shop:refreshProfile()
 end)
@@ -176,6 +177,9 @@ Remotes.Celebrate.OnClientEvent:Connect(function(info)
 			}, { Theme.corner(10), Theme.maxText(30) })
 		end
 		Effects.confetti(gui, 40)
+	elseif info.kind == "weekly" then
+		Effects.splash(gui, "🎯 Weekly goal done!", if info.item then "You got the " .. info.item .. "! 🎁" else "+" .. info.coins .. " 🪙", Theme.Colors.purple, 4)
+		Effects.confetti(gui, 60)
 	elseif info.kind == "friend" then
 		Effects.splash(gui, "💞 " .. info.name .. " is your BEST friend!", "Visit #" .. info.visits .. "  +" .. info.coins .. " 🪙", Theme.Colors.hotPink, 3.5)
 		Effects.confetti(gui, 40)
