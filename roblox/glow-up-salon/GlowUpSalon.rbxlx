@@ -1,0 +1,4305 @@
+<roblox version="4">
+  <Item class="Lighting" referent="0">
+    <Properties>
+      <string name="Name">Lighting</string>
+      <Color3 name="Ambient">
+        <R>0.55</R>
+        <G>0.45</G>
+        <B>0.55</B>
+      </Color3>
+      <float name="Brightness">2</float>
+      <float name="ClockTime">14.5</float>
+      <Color3 name="OutdoorAmbient">
+        <R>0.7</R>
+        <G>0.6</G>
+        <B>0.7</B>
+      </Color3>
+    </Properties>
+  </Item>
+  <Item class="ReplicatedStorage" referent="1">
+    <Properties>
+      <string name="Name">ReplicatedStorage</string>
+    </Properties>
+    <Item class="Folder" referent="2">
+      <Properties>
+        <string name="Name">Shared</string>
+      </Properties>
+      <Item class="ModuleScript" referent="3">
+        <Properties>
+          <string name="Name">Catalog</string>
+          <string name="Source"><![CDATA[-- Everything a stylist can put on a client: hairstyles, colors, makeup, outfits and extras.
+--
+-- Item fields:
+--   id      unique id (also what gets saved when a player unlocks it)
+--   name    shown to players
+--   price   coins to unlock (0 = free)
+--   pass    "VIP" means it comes with the VIP Glam Kit Game Pass
+--   hidden  starting items that can't be picked from the menu
+--   color / accent / gradient / sparkle   how it's drawn
+--   tags    used by the judges to check if a look matches the show's theme
+
+local Catalog = {}
+
+export type Item = {
+	id: string,
+	name: string,
+	category: string,
+	price: number,
+	pass: string?,
+	hidden: boolean?,
+	color: Color3?,
+	accent: Color3?,
+	gradient: { Color3 }?,
+	sparkle: boolean?,
+	tags: { string },
+}
+
+export type Category = {
+	key: string,
+	label: string,
+	tab: string,
+	preview: string, -- "portrait" (mini face preview) or "swatch" (color dot)
+	items: { Item },
+}
+
+export type Theme = {
+	id: string,
+	name: string,
+	tags: { string },
+	color: Color3,
+}
+
+local rgb = Color3.fromRGB
+
+local function item(def): Item
+	def.price = def.price or 0
+	def.tags = def.tags or {}
+	return def :: Item
+end
+
+Catalog.Tabs = {
+	{ id = "Wash", label = "Wash", icon = "🧼" },
+	{ id = "Hair", label = "Hair", icon = "💇" },
+	{ id = "Makeup", label = "Makeup", icon = "💄" },
+	{ id = "Outfit", label = "Outfit", icon = "👗" },
+	{ id = "Extras", label = "Extras", icon = "✨" },
+}
+
+Catalog.Categories = {
+	{
+		key = "hairStyle",
+		label = "Hairstyle",
+		tab = "Hair",
+		preview = "portrait",
+		items = {
+			item({ id = "hair_messy", name = "Messy", hidden = true }),
+			item({ id = "hair_long", name = "Long & Silky" }),
+			item({ id = "hair_bob", name = "Cute Bob" }),
+			item({ id = "hair_pixie", name = "Pixie Cut" }),
+			item({ id = "hair_puff", name = "High Puff" }),
+			item({ id = "hair_curls", name = "Big Curls" }),
+			item({ id = "hair_pigtails", name = "Pigtails", price = 60 }),
+			item({ id = "hair_buns", name = "Space Buns", price = 80 }),
+			item({ id = "hair_braid", name = "Side Braid", price = 120 }),
+			item({ id = "hair_updo", name = "Royal Updo", pass = "VIP", tags = { "sparkle" } }),
+			item({ id = "hair_mermaid", name = "Mermaid Waves", pass = "VIP", tags = { "sparkle" } }),
+		},
+	},
+	{
+		key = "hairColor",
+		label = "Hair Color",
+		tab = "Hair",
+		preview = "swatch",
+		items = {
+			item({ id = "hc_black", name = "Black", color = rgb(35, 30, 32), tags = { "dark" } }),
+			item({ id = "hc_brown", name = "Brown", color = rgb(105, 66, 40) }),
+			item({ id = "hc_blonde", name = "Blonde", color = rgb(240, 205, 120), tags = { "gold", "bright" } }),
+			item({ id = "hc_ginger", name = "Ginger", color = rgb(200, 95, 45), tags = { "red", "bright" } }),
+			item({ id = "hc_pink", name = "Bubblegum", color = rgb(255, 130, 190), price = 50, tags = { "pink", "pastel" } }),
+			item({ id = "hc_blue", name = "Ocean Blue", color = rgb(70, 140, 235), price = 50, tags = { "blue" } }),
+			item({ id = "hc_purple", name = "Grape", color = rgb(145, 80, 210), price = 50, tags = { "purple" } }),
+			item({ id = "hc_mint", name = "Mint", color = rgb(120, 220, 180), price = 50, tags = { "green", "pastel" } }),
+			item({ id = "hc_silver", name = "Silver", color = rgb(215, 220, 230), price = 75, tags = { "white" } }),
+			item({
+				id = "hc_rainbow",
+				name = "Rainbow",
+				pass = "VIP",
+				color = rgb(255, 120, 160),
+				gradient = { rgb(255, 90, 120), rgb(255, 200, 80), rgb(90, 210, 140), rgb(90, 150, 255), rgb(190, 110, 255) },
+				tags = { "bright", "sparkle", "pink", "blue" },
+			}),
+			item({
+				id = "hc_galaxy",
+				name = "Galaxy",
+				pass = "VIP",
+				color = rgb(90, 60, 170),
+				gradient = { rgb(40, 20, 90), rgb(120, 60, 200), rgb(240, 110, 200) },
+				tags = { "purple", "blue", "sparkle", "dark" },
+			}),
+		},
+	},
+	{
+		key = "eyeshadow",
+		label = "Eyeshadow",
+		tab = "Makeup",
+		preview = "swatch",
+		items = {
+			item({ id = "es_none", name = "None" }),
+			item({ id = "es_pink", name = "Pink", color = rgb(255, 150, 200), tags = { "pink", "pastel" } }),
+			item({ id = "es_peach", name = "Peach", color = rgb(255, 180, 140), tags = { "pastel", "bright" } }),
+			item({ id = "es_blue", name = "Sky Blue", color = rgb(110, 170, 255), tags = { "blue" } }),
+			item({ id = "es_purple", name = "Lilac", color = rgb(170, 120, 230), tags = { "purple" } }),
+			item({ id = "es_green", name = "Emerald", color = rgb(60, 180, 120), tags = { "green" } }),
+			item({ id = "es_smoky", name = "Smoky", color = rgb(70, 60, 75), price = 40, tags = { "dark" } }),
+			item({ id = "es_gold", name = "Gold Glitter", color = rgb(235, 190, 80), sparkle = true, price = 100, tags = { "gold", "sparkle" } }),
+			item({ id = "es_ice", name = "Ice Glitter", color = rgb(200, 230, 255), sparkle = true, price = 100, tags = { "white", "blue", "sparkle" } }),
+			item({
+				id = "es_galaxy",
+				name = "Galaxy Glitter",
+				pass = "VIP",
+				color = rgb(120, 70, 200),
+				gradient = { rgb(60, 40, 160), rgb(200, 90, 220) },
+				sparkle = true,
+				tags = { "purple", "dark", "sparkle" },
+			}),
+		},
+	},
+	{
+		key = "lashes",
+		label = "Lashes",
+		tab = "Makeup",
+		preview = "portrait",
+		items = {
+			item({ id = "lash_none", name = "None" }),
+			item({ id = "lash_natural", name = "Natural" }),
+			item({ id = "lash_glam", name = "Glam Flick", price = 60 }),
+			item({ id = "lash_star", name = "Starry Lashes", pass = "VIP", tags = { "sparkle", "gold" } }),
+		},
+	},
+	{
+		key = "blush",
+		label = "Blush",
+		tab = "Makeup",
+		preview = "swatch",
+		items = {
+			item({ id = "bl_none", name = "None" }),
+			item({ id = "bl_rosy", name = "Rosy", color = rgb(255, 120, 140), tags = { "pink" } }),
+			item({ id = "bl_peach", name = "Peachy", color = rgb(255, 160, 120), tags = { "pastel", "bright" } }),
+			item({ id = "bl_berry", name = "Berry", color = rgb(190, 60, 110), price = 30, tags = { "purple", "red" } }),
+			item({ id = "bl_shimmer", name = "Shimmer", color = rgb(255, 170, 210), sparkle = true, price = 80, tags = { "pink", "sparkle" } }),
+		},
+	},
+	{
+		key = "lipstick",
+		label = "Lipstick",
+		tab = "Makeup",
+		preview = "swatch",
+		items = {
+			item({ id = "lip_none", name = "None" }),
+			item({ id = "lip_nude", name = "Nude", color = rgb(200, 130, 115) }),
+			item({ id = "lip_pink", name = "Pink", color = rgb(250, 110, 170), tags = { "pink", "pastel" } }),
+			item({ id = "lip_red", name = "Classic Red", color = rgb(210, 30, 50), tags = { "red" } }),
+			item({ id = "lip_coral", name = "Coral", color = rgb(255, 120, 90), tags = { "bright" } }),
+			item({ id = "lip_berry", name = "Berry", color = rgb(150, 40, 100), tags = { "purple", "red" } }),
+			item({ id = "lip_black", name = "Midnight", color = rgb(40, 30, 45), price = 40, tags = { "dark" } }),
+			item({ id = "lip_blue", name = "Mermaid Blue", color = rgb(60, 150, 220), price = 40, tags = { "blue", "green" } }),
+			item({ id = "lip_gloss", name = "Pink Gloss", color = rgb(255, 150, 200), sparkle = true, price = 80, tags = { "pink", "pastel", "sparkle" } }),
+			item({ id = "lip_gold", name = "Golden Glam", color = rgb(225, 175, 60), sparkle = true, pass = "VIP", tags = { "gold", "sparkle" } }),
+		},
+	},
+	{
+		key = "outfit",
+		label = "Outfit",
+		tab = "Outfit",
+		preview = "portrait",
+		items = {
+			item({ id = "outfit_work", name = "Work Overalls", hidden = true, color = rgb(110, 120, 135), accent = rgb(80, 85, 95) }),
+			item({ id = "outfit_tee", name = "Comfy Tee", color = rgb(245, 245, 250), accent = rgb(255, 150, 190), tags = { "white" } }),
+			item({ id = "outfit_denim", name = "Denim Jacket", color = rgb(80, 120, 190), accent = rgb(230, 230, 240), tags = { "blue" } }),
+			item({ id = "outfit_party", name = "Pink Party Dress", color = rgb(255, 140, 195), accent = rgb(255, 230, 240), tags = { "pink", "pastel" } }),
+			item({ id = "outfit_sunny", name = "Sunny Sundress", color = rgb(255, 210, 70), accent = rgb(255, 255, 255), price = 60, tags = { "bright", "gold" } }),
+			item({ id = "outfit_black", name = "Little Black Dress", color = rgb(30, 28, 35), accent = rgb(200, 200, 210), price = 60, tags = { "dark" } }),
+			item({ id = "outfit_rock", name = "Rockstar Jacket", color = rgb(110, 40, 160), accent = rgb(20, 20, 25), price = 100, tags = { "purple", "dark" } }),
+			item({ id = "outfit_mermaid", name = "Mermaid Top", color = rgb(60, 190, 170), accent = rgb(120, 200, 255), sparkle = true, price = 100, tags = { "green", "blue", "sparkle" } }),
+			item({ id = "outfit_red", name = "Red Carpet Gown", color = rgb(200, 25, 45), accent = rgb(240, 200, 90), price = 120, tags = { "red", "gold" } }),
+			item({ id = "outfit_snow", name = "Snow Princess", color = rgb(200, 230, 255), accent = rgb(255, 255, 255), sparkle = true, price = 150, tags = { "white", "blue", "sparkle" } }),
+			item({ id = "outfit_gold", name = "Golden Gala Gown", color = rgb(230, 180, 60), accent = rgb(255, 240, 180), sparkle = true, pass = "VIP", tags = { "gold", "sparkle" } }),
+			item({
+				id = "outfit_galaxy",
+				name = "Galaxy Gown",
+				pass = "VIP",
+				color = rgb(70, 40, 150),
+				accent = rgb(240, 120, 220),
+				gradient = { rgb(30, 20, 80), rgb(110, 50, 190), rgb(230, 100, 200) },
+				sparkle = true,
+				tags = { "purple", "dark", "sparkle", "blue" },
+			}),
+		},
+	},
+	{
+		key = "gems",
+		label = "Face Art",
+		tab = "Extras",
+		preview = "portrait",
+		items = {
+			item({ id = "gem_none", name = "None" }),
+			item({ id = "gem_freckles", name = "Freckles" }),
+			item({ id = "gem_hearts", name = "Heart Stickers", price = 40, color = rgb(255, 80, 130), tags = { "pink", "red" } }),
+			item({ id = "gem_stars", name = "Star Stickers", price = 40, color = rgb(255, 200, 60), tags = { "gold", "bright" } }),
+			item({ id = "gem_rhinestones", name = "Rhinestones", pass = "VIP", color = rgb(220, 240, 255), tags = { "sparkle", "white" } }),
+		},
+	},
+	{
+		key = "accessory",
+		label = "Accessory",
+		tab = "Extras",
+		preview = "portrait",
+		items = {
+			item({ id = "acc_none", name = "None" }),
+			item({ id = "acc_bow", name = "Big Bow", color = rgb(255, 110, 170), tags = { "pink" } }),
+			item({ id = "acc_headband", name = "Headband", color = rgb(90, 150, 255), tags = { "blue" } }),
+			item({ id = "acc_flower", name = "Flower", color = rgb(255, 120, 90), tags = { "bright" } }),
+			item({ id = "acc_earrings", name = "Gold Hoops", color = rgb(240, 195, 70), price = 50, tags = { "gold" } }),
+			item({ id = "acc_catears", name = "Cat Ears", color = rgb(40, 35, 45), price = 80, tags = { "dark" } }),
+			item({ id = "acc_crown", name = "Royal Crown", color = rgb(245, 200, 60), pass = "VIP", tags = { "gold", "sparkle" } }),
+		},
+	},
+}
+
+-- Fashion show themes. The judges reward looks whose tags match.
+Catalog.Themes = {
+	{ id = "pink_party", name = "Pink Party 🎀", tags = { "pink", "pastel", "sparkle" }, color = rgb(255, 130, 190) },
+	{ id = "rock_star", name = "Rock Star 🎸", tags = { "dark", "red", "purple" }, color = rgb(120, 40, 160) },
+	{ id = "under_sea", name = "Under the Sea 🐚", tags = { "blue", "green", "sparkle" }, color = rgb(50, 170, 200) },
+	{ id = "royal_ball", name = "Royal Ball 👑", tags = { "gold", "purple", "sparkle" }, color = rgb(220, 170, 60) },
+	{ id = "candy_land", name = "Candy Land 🍭", tags = { "pink", "pastel", "bright" }, color = rgb(255, 160, 210) },
+	{ id = "spooky", name = "Spooky Glam 🦇", tags = { "dark", "purple", "green" }, color = rgb(90, 50, 130) },
+	{ id = "beach", name = "Sunny Beach 🌴", tags = { "bright", "gold", "blue" }, color = rgb(255, 200, 70) },
+	{ id = "winter", name = "Winter Wonderland ❄️", tags = { "white", "blue", "sparkle" }, color = rgb(150, 200, 255) },
+	{ id = "red_carpet", name = "Red Carpet 🌟", tags = { "red", "gold", "dark" }, color = rgb(200, 30, 50) },
+} :: { Theme }
+
+-- Lookup tables -------------------------------------------------------------
+
+Catalog.byId = {} :: { [string]: Item }
+Catalog.categoryByKey = {} :: { [string]: Category }
+Catalog.themeById = {} :: { [string]: Theme }
+
+for _, category in Catalog.Categories do
+	Catalog.categoryByKey[category.key] = category
+	for _, it in category.items do
+		it.category = category.key
+		Catalog.byId[it.id] = it
+	end
+end
+
+for _, theme in Catalog.Themes do
+	Catalog.themeById[theme.id] = theme
+end
+
+-- What every client looks like when they walk in the door.
+function Catalog.defaultLook(): { [string]: string }
+	return {
+		hairStyle = "hair_messy",
+		hairColor = "hc_brown",
+		eyeshadow = "es_none",
+		lashes = "lash_none",
+		blush = "bl_none",
+		lipstick = "lip_none",
+		outfit = "outfit_work",
+		gems = "gem_none",
+		accessory = "acc_none",
+	}
+end
+
+-- Is this item usable by a player with this profile?
+-- profile = { owned = { [itemId] = true }, passes = { VIP = true } }
+function Catalog.isUnlocked(it: Item, profile): boolean
+	if it.hidden then
+		return false
+	end
+	if it.pass then
+		return profile ~= nil and profile.passes ~= nil and profile.passes[it.pass] == true
+	end
+	if it.price <= 0 then
+		return true
+	end
+	return profile ~= nil and profile.owned ~= nil and profile.owned[it.id] == true
+end
+
+function Catalog.hasTag(it: Item?, tag: string): boolean
+	if not it then
+		return false
+	end
+	for _, t in it.tags do
+		if t == tag then
+			return true
+		end
+	end
+	return false
+end
+
+function Catalog.matchesTheme(it: Item?, theme: Theme): boolean
+	if not it then
+		return false
+	end
+	for _, tag in theme.tags do
+		if Catalog.hasTag(it, tag) then
+			return true
+		end
+	end
+	return false
+end
+
+function Catalog.isNone(itemId: string?): boolean
+	return itemId == nil or string.sub(itemId, -5) == "_none" or itemId == "hair_messy" or itemId == "outfit_work"
+end
+
+return Catalog
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="4">
+        <Properties>
+          <string name="Name">Clients</string>
+          <string name="Source"><![CDATA[-- Makes the customers who walk into the salon: who they are, where they've been,
+-- and how dirty their face is.
+
+local Clients = {}
+
+export type DirtSpot = {
+	x: number, -- 0..1 across the portrait
+	y: number, -- 0..1 down the portrait
+	size: number, -- 0..1 of the portrait width
+	color: Color3,
+}
+
+export type Client = {
+	name: string,
+	story: string,
+	skin: Color3,
+	eyes: Color3,
+	dirt: { DirtSpot },
+}
+
+local rgb = Color3.fromRGB
+
+local NAMES = {
+	"Jasmine", "Mia", "Zoe", "Aaliyah", "Sofia", "Kayla", "Nia", "Lily", "Maya", "Chloe",
+	"Ava", "Destiny", "Riley", "Jordan", "Grace", "Imani", "Bella", "Harper", "Luna", "Ruby",
+	"Kai", "Leo", "Amara", "Skye", "Isla", "Nova", "Ellie", "Jada", "Rosa", "Mila",
+}
+
+local SKIN_TONES = {
+	rgb(255, 224, 196),
+	rgb(250, 205, 175),
+	rgb(241, 194, 160),
+	rgb(224, 172, 128),
+	rgb(198, 134, 94),
+	rgb(161, 102, 66),
+	rgb(124, 78, 50),
+	rgb(92, 57, 38),
+}
+
+local EYE_COLORS = {
+	rgb(101, 67, 33),
+	rgb(60, 40, 25),
+	rgb(142, 118, 40),
+	rgb(60, 140, 80),
+	rgb(70, 130, 200),
+	rgb(115, 125, 140),
+}
+
+-- Where the client is coming from, and what's all over their face.
+local STORIES = {
+	{ text = "just finished a long shift at the auto shop. Their face is covered in grease!", colors = { rgb(55, 55, 58), rgb(35, 32, 30) } },
+	{ text = "spent all day fixing bikes at the bike shop. Oil everywhere!", colors = { rgb(45, 40, 35), rgb(80, 70, 55) } },
+	{ text = "worked at the bakery shop and got into a frosting fight!", colors = { rgb(255, 180, 210), rgb(90, 50, 30), rgb(255, 250, 240) } },
+	{ text = "cleaned the chimney at the hardware shop. So much soot!", colors = { rgb(35, 35, 38), rgb(70, 70, 75) } },
+	{ text = "helped at the paint shop and got paint all over their face!", colors = { rgb(235, 80, 80), rgb(80, 140, 235), rgb(250, 205, 60) } },
+	{ text = "worked at the garden shop and fell in the mud!", colors = { rgb(110, 75, 40), rgb(90, 140, 60) } },
+	{ text = "ran the smoothie shop and the blender exploded!", colors = { rgb(200, 60, 120), rgb(120, 200, 80), rgb(255, 170, 60) } },
+}
+
+-- Face area (matches LookRenderer's face oval) so dirt lands on the face.
+local FACE_MIN_X, FACE_MAX_X = 0.31, 0.69
+local FACE_MIN_Y, FACE_MAX_Y = 0.24, 0.7
+
+function Clients.generate(rng: Random?): Client
+	local r = rng or Random.new()
+	local story = STORIES[r:NextInteger(1, #STORIES)]
+
+	local dirt = {}
+	for _ = 1, r:NextInteger(9, 13) do
+		table.insert(dirt, {
+			x = r:NextNumber(FACE_MIN_X, FACE_MAX_X),
+			y = r:NextNumber(FACE_MIN_Y, FACE_MAX_Y),
+			size = r:NextNumber(0.05, 0.11),
+			color = story.colors[r:NextInteger(1, #story.colors)],
+		})
+	end
+
+	return {
+		name = NAMES[r:NextInteger(1, #NAMES)],
+		story = story.text,
+		skin = SKIN_TONES[r:NextInteger(1, #SKIN_TONES)],
+		eyes = EYE_COLORS[r:NextInteger(1, #EYE_COLORS)],
+		dirt = dirt,
+	}
+end
+
+return Clients
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="5">
+        <Properties>
+          <string name="Name">Config</string>
+          <string name="Source"><![CDATA[-- Game settings. Change numbers here to tune the game without touching the rest of the code.
+
+local Config = {}
+
+-- Round timing (seconds)
+Config.MAKEOVER_SECONDS = 5 * 60 -- Tori's rule: 5 minutes to do everything!
+Config.INTERMISSION_SECONDS = 20
+Config.SHOWCASE_SECONDS_PER_LOOK = 9
+Config.RESULTS_SECONDS = 15
+Config.MIN_PLAYERS = 1
+
+-- Coins
+Config.STARTING_COINS = 100
+Config.COINS_PARTICIPATION = 20
+Config.COINS_PER_STAR = 10
+Config.COINS_SPOTLESS_BONUS = 10
+Config.COINS_PER_VOTE = 2
+Config.COINS_PLACEMENT = { 50, 30, 15 } -- 1st, 2nd, 3rd (only when 2+ stylists played)
+
+-- Robux monetization.
+-- Create these on the Creator Dashboard (create.roblox.com) after publishing,
+-- then paste the IDs here. While an ID is 0 the store shows "Coming soon".
+Config.GamePasses = {
+	VIP = 0, -- "VIP Glam Kit": exclusive hair, makeup and gowns + VIP badge on the runway
+	DoubleCoins = 0, -- "2x Coins": earn double coins every show
+	RunwayStar = 0, -- "Runway Star": sparkles and confetti when your client walks the runway
+}
+
+Config.DevProducts = {
+	SuperSoap = 0, -- one Super Soap: instantly washes a client's face
+	CoinsSmall = 0, -- 500 coins
+	CoinsLarge = 0, -- 2000 coins
+}
+
+Config.CoinPackAmounts = {
+	CoinsSmall = 500,
+	CoinsLarge = 2000,
+}
+
+-- Studio testing: pretend you own every Game Pass while testing in Roblox Studio.
+-- This never applies in the live game.
+Config.STUDIO_OWNS_ALL_PASSES = true
+
+-- Saving. Changing the name starts everyone over with fresh data.
+Config.DATASTORE_NAME = "GlowUpSalon_v1"
+Config.AUTOSAVE_SECONDS = 120
+
+return Config
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="6">
+        <Properties>
+          <string name="Name">LookRenderer</string>
+          <string name="Source"><![CDATA[-- Draws a client's face (and shoulders) out of UI shapes, so the game needs no uploaded images.
+-- The same drawing is used in the makeover screen, the item previews, the runway screen,
+-- and the face of the client walking the runway.
+--
+-- Everything is placed in a square, using 0..1 coordinates (0.5, 0.5 is the middle).
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
+
+local LookRenderer = {}
+
+export type Options = {
+	headOnly: boolean?, -- skip neck and outfit (used for the runway head)
+	dirtHealth: { number }?, -- per-spot dirt left (1 = dirty, 0 = clean); used while washing
+	clean: number?, -- 0..1 overall cleanliness, used when dirtHealth isn't given
+}
+
+-- Layers, back to front
+local Z = {
+	hairBack = 1,
+	neck = 2,
+	outfit = 3,
+	ears = 4,
+	face = 5,
+	makeup = 6,
+	eyes = 7,
+	details = 8,
+	gems = 9,
+	hairFront = 10,
+	accessory = 11,
+	dirt = 12,
+}
+
+local WHITE = Color3.new(1, 1, 1)
+local LASH = Color3.fromRGB(30, 25, 30)
+local TIE = Color3.fromRGB(255, 110, 170)
+
+local SPARKLE_SPOTS = { { 0.25, 0.3 }, { 0.7, 0.22 }, { 0.5, 0.65 }, { 0.3, 0.8 }, { 0.8, 0.7 } }
+
+local function darken(c: Color3, f: number): Color3
+	return Color3.new(c.R * f, c.G * f, c.B * f)
+end
+
+local function shape(
+	parent: Instance,
+	x: number,
+	y: number,
+	w: number,
+	h: number,
+	color: Color3,
+	z: number,
+	radius: number?,
+	transparency: number?,
+	rotation: number?
+): Frame
+	local f = Instance.new("Frame")
+	f.AnchorPoint = Vector2.new(0.5, 0.5)
+	f.Position = UDim2.fromScale(x, y)
+	f.Size = UDim2.fromScale(w, h)
+	f.BackgroundColor3 = color
+	f.BackgroundTransparency = transparency or 0
+	f.BorderSizePixel = 0
+	f.ZIndex = z
+	f.Rotation = rotation or 0
+	if radius and radius > 0 then
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(radius, 0)
+		corner.Parent = f
+	end
+	f.Parent = parent
+	return f
+end
+
+local function glyph(parent: Instance, text: string, x: number, y: number, size: number, color: Color3, z: number): TextLabel
+	local t = Instance.new("TextLabel")
+	t.AnchorPoint = Vector2.new(0.5, 0.5)
+	t.Position = UDim2.fromScale(x, y)
+	t.Size = UDim2.fromScale(size, size)
+	t.BackgroundTransparency = 1
+	t.Text = text
+	t.TextColor3 = color
+	t.TextScaled = true
+	t.Font = Enum.Font.FredokaOne
+	t.ZIndex = z
+	t.Parent = parent
+	return t
+end
+
+-- Colors a shape with an item's color, gradient and sparkles.
+local function paint(f: Frame, it: Catalog.Item?, fallback: Color3?)
+	if not it then
+		if fallback then
+			f.BackgroundColor3 = fallback
+		end
+		return
+	end
+	f.BackgroundColor3 = it.color or fallback or WHITE
+	if it.gradient then
+		local keypoints = {}
+		local n = #it.gradient
+		for i, c in it.gradient do
+			table.insert(keypoints, ColorSequenceKeypoint.new((i - 1) / math.max(n - 1, 1), c))
+		end
+		f.BackgroundColor3 = WHITE
+		local g = Instance.new("UIGradient")
+		g.Color = ColorSequence.new(keypoints)
+		g.Rotation = 90
+		g.Parent = f
+	end
+	if it.sparkle then
+		for _, spot in SPARKLE_SPOTS do
+			local dot = shape(f, spot[1], spot[2], 0.12, 0.12, WHITE, f.ZIndex, 0.5, 0.15)
+			local aspect = Instance.new("UIAspectRatioConstraint")
+			aspect.AspectRatio = 1
+			aspect.Parent = dot
+		end
+	end
+end
+
+------------------------------------------------------------------------------
+-- Hair
+
+local function drawHair(root: Frame, look, hairItem: Catalog.Item?)
+	local hc = hairItem and hairItem.color or Color3.fromRGB(105, 66, 40)
+	local function hair(x, y, w, h, z, r, rot): Frame
+		local f = shape(root, x, y, w, h, hc, z, r, 0, rot)
+		paint(f, hairItem, hc)
+		return f
+	end
+	local function cap()
+		hair(0.5, 0.215, 0.5, 0.16, Z.hairFront, 0.5)
+	end
+	local function fringe()
+		hair(0.42, 0.265, 0.24, 0.07, Z.hairFront, 0.5, -14)
+	end
+
+	local style = look.hairStyle
+	if style == "hair_messy" then
+		hair(0.5, 0.3, 0.56, 0.36, Z.hairBack, 0.5)
+		cap()
+		local tufts = { { 0.27, 0.17, 30 }, { 0.36, 0.11, -20 }, { 0.49, 0.09, 10 }, { 0.62, 0.11, 35 }, { 0.73, 0.18, -30 }, { 0.76, 0.3, 15 }, { 0.24, 0.31, -10 } }
+		for _, t in tufts do
+			hair(t[1], t[2], 0.1, 0.07, Z.hairFront, 0.4, t[3])
+		end
+		hair(0.3, 0.06, 0.02, 0.09, Z.hairFront, 0.5, -30)
+		hair(0.68, 0.05, 0.02, 0.1, Z.hairFront, 0.5, 25)
+		hair(0.45, 0.29, 0.14, 0.05, Z.hairFront, 0.5, 25)
+		hair(0.58, 0.28, 0.12, 0.045, Z.hairFront, 0.5, -30)
+	elseif style == "hair_long" then
+		hair(0.5, 0.52, 0.62, 0.72, Z.hairBack, 0.25)
+		cap()
+		fringe()
+	elseif style == "hair_bob" then
+		hair(0.5, 0.43, 0.6, 0.5, Z.hairBack, 0.35)
+		cap()
+		fringe()
+		hair(0.285, 0.45, 0.075, 0.38, Z.hairFront, 0.5)
+		hair(0.715, 0.45, 0.075, 0.38, Z.hairFront, 0.5)
+	elseif style == "hair_pixie" then
+		hair(0.5, 0.3, 0.52, 0.3, Z.hairBack, 0.5)
+		hair(0.5, 0.2, 0.48, 0.13, Z.hairFront, 0.5)
+		hair(0.4, 0.25, 0.26, 0.07, Z.hairFront, 0.5, -22)
+		hair(0.28, 0.36, 0.05, 0.12, Z.hairFront, 0.5)
+		hair(0.72, 0.36, 0.05, 0.12, Z.hairFront, 0.5)
+	elseif style == "hair_puff" then
+		hair(0.5, 0.08, 0.32, 0.32, Z.hairBack, 0.5)
+		hair(0.5, 0.21, 0.48, 0.13, Z.hairFront, 0.5)
+		shape(root, 0.5, 0.17, 0.12, 0.03, TIE, Z.hairFront, 0.5)
+	elseif style == "hair_curls" then
+		hair(0.5, 0.4, 0.8, 0.8, Z.hairBack, 0.5)
+		for i = 0, 6 do
+			hair(0.29 + i * 0.07, 0.17 + (i % 2) * 0.03, 0.11, 0.11, Z.hairFront, 0.5)
+		end
+		for _, p in { { 0.2, 0.3 }, { 0.8, 0.35 }, { 0.17, 0.55 }, { 0.83, 0.58 }, { 0.3, 0.1 }, { 0.7, 0.1 } } do
+			local curl = hair(p[1], p[2], 0.08, 0.08, Z.hairBack, 0.5)
+			curl.BackgroundTransparency = 0.6
+			curl.BackgroundColor3 = darken(hc, 0.6)
+		end
+	elseif style == "hair_pigtails" then
+		hair(0.5, 0.35, 0.54, 0.42, Z.hairBack, 0.5)
+		hair(0.19, 0.56, 0.2, 0.2, Z.hairBack, 0.5)
+		hair(0.81, 0.56, 0.2, 0.2, Z.hairBack, 0.5)
+		hair(0.19, 0.74, 0.14, 0.18, Z.hairBack, 0.5)
+		hair(0.81, 0.74, 0.14, 0.18, Z.hairBack, 0.5)
+		cap()
+		fringe()
+		shape(root, 0.24, 0.45, 0.05, 0.05, TIE, Z.hairFront, 0.5)
+		shape(root, 0.76, 0.45, 0.05, 0.05, TIE, Z.hairFront, 0.5)
+	elseif style == "hair_buns" then
+		hair(0.5, 0.38, 0.56, 0.46, Z.hairBack, 0.4)
+		hair(0.3, 0.11, 0.2, 0.2, Z.hairBack, 0.5)
+		hair(0.7, 0.11, 0.2, 0.2, Z.hairBack, 0.5)
+		cap()
+		fringe()
+	elseif style == "hair_braid" then
+		hair(0.5, 0.38, 0.58, 0.44, Z.hairBack, 0.4)
+		cap()
+		hair(0.56, 0.26, 0.3, 0.07, Z.hairFront, 0.5, 14)
+		for i = 0, 5 do
+			local s = 0.11 - i * 0.008
+			hair(0.73 + (i % 2) * 0.015, 0.5 + i * 0.075, s, s, Z.hairFront, 0.5)
+		end
+		shape(root, 0.74, 0.9, 0.05, 0.03, TIE, Z.hairFront, 0.5)
+	elseif style == "hair_updo" then
+		hair(0.5, 0.07, 0.28, 0.26, Z.hairBack, 0.5)
+		hair(0.5, 0.21, 0.5, 0.14, Z.hairFront, 0.5)
+		hair(0.275, 0.42, 0.02, 0.18, Z.hairFront, 0.5, 8)
+		hair(0.725, 0.42, 0.02, 0.18, Z.hairFront, 0.5, -8)
+		glyph(root, "✦", 0.38, 0.12, 0.06, Color3.fromRGB(255, 240, 170), Z.hairFront)
+		glyph(root, "✦", 0.62, 0.12, 0.05, Color3.fromRGB(255, 240, 170), Z.hairFront)
+	elseif style == "hair_mermaid" then
+		hair(0.5, 0.55, 0.7, 0.8, Z.hairBack, 0.3)
+		for i = 0, 4 do
+			hair(0.155, 0.3 + i * 0.13, 0.13, 0.13, Z.hairBack, 0.5)
+			hair(0.845, 0.3 + i * 0.13, 0.13, 0.13, Z.hairBack, 0.5)
+		end
+		cap()
+		fringe()
+		glyph(root, "🐚", 0.68, 0.16, 0.08, WHITE, Z.hairFront)
+	end
+end
+
+------------------------------------------------------------------------------
+-- Face
+
+local function drawEyes(root: Frame, client, look, hairItem: Catalog.Item?)
+	local shadow = Catalog.byId[look.eyeshadow]
+	local lashes = look.lashes
+	local browColor = darken(hairItem and hairItem.color or Color3.fromRGB(80, 50, 30), 0.7)
+
+	for side = -1, 1, 2 do
+		local x = 0.5 + side * 0.09
+
+		if shadow and shadow.color then
+			local s = shape(root, x, 0.405, 0.115, 0.07, shadow.color, Z.makeup, 0.5, 0.1)
+			paint(s, shadow)
+		end
+
+		local eye = shape(root, x, 0.42, 0.085, 0.055, WHITE, Z.eyes, 0.5)
+		local iris = shape(eye, 0.5, 0.5, 0.5, 0.85, client.eyes, Z.eyes, 0.5)
+		shape(iris, 0.5, 0.5, 0.5, 0.5, Color3.fromRGB(20, 15, 20), Z.eyes, 0.5)
+		shape(iris, 0.68, 0.3, 0.3, 0.3, WHITE, Z.eyes, 0.5)
+
+		shape(root, x, 0.355, 0.085, 0.016, browColor, Z.details, 0.5, 0, side * 8)
+
+		if lashes == "lash_natural" or lashes == "lash_star" then
+			shape(root, x, 0.395, 0.09, 0.012, LASH, Z.details, 0.5)
+		elseif lashes == "lash_glam" then
+			shape(root, x, 0.395, 0.095, 0.018, LASH, Z.details, 0.5)
+			shape(root, x + side * 0.05, 0.385, 0.035, 0.013, LASH, Z.details, 0.5, -side * 28)
+		end
+		if lashes == "lash_star" then
+			glyph(root, "★", x + side * 0.055, 0.38, 0.035, Color3.fromRGB(255, 215, 80), Z.details)
+		end
+	end
+end
+
+local function drawCheeksAndLips(root: Frame, client, look)
+	local blush = Catalog.byId[look.blush]
+	if blush and blush.color then
+		for side = -1, 1, 2 do
+			local b = shape(root, 0.5 + side * 0.14, 0.53, 0.08, 0.05, blush.color, Z.makeup, 0.5, 0.45)
+			paint(b, blush)
+		end
+	end
+
+	shape(root, 0.5, 0.5, 0.035, 0.045, darken(client.skin, 0.88), Z.makeup, 0.5)
+
+	local lipstick = Catalog.byId[look.lipstick]
+	local natural = client.skin:Lerp(Color3.fromRGB(190, 80, 85), 0.4)
+	local lips = shape(root, 0.5, 0.6, 0.11, 0.042, natural, Z.details, 0.5)
+	if lipstick and lipstick.color then
+		lips.BackgroundColor3 = lipstick.color
+	end
+	shape(root, 0.5, 0.598, 0.08, 0.005, darken(lips.BackgroundColor3, 0.6), Z.gems, 0.5)
+	if lipstick and lipstick.sparkle then
+		shape(root, 0.52, 0.612, 0.03, 0.009, WHITE, Z.gems, 0.5, 0.3)
+	end
+end
+
+local function drawGems(root: Frame, client, look)
+	local gems = look.gems
+	local it = Catalog.byId[gems]
+	if gems == "gem_freckles" then
+		local c = darken(client.skin, 0.72)
+		for _, p in { { 0.42, 0.49 }, { 0.445, 0.51 }, { 0.41, 0.515 }, { 0.58, 0.49 }, { 0.555, 0.51 }, { 0.59, 0.515 } } do
+			shape(root, p[1], p[2], 0.012, 0.012, c, Z.gems, 0.5)
+		end
+	elseif gems == "gem_hearts" and it then
+		glyph(root, "♥", 0.345, 0.47, 0.06, it.color or WHITE, Z.gems)
+		glyph(root, "♥", 0.655, 0.47, 0.06, it.color or WHITE, Z.gems)
+	elseif gems == "gem_stars" and it then
+		glyph(root, "★", 0.335, 0.41, 0.06, it.color or WHITE, Z.gems)
+		glyph(root, "★", 0.665, 0.41, 0.06, it.color or WHITE, Z.gems)
+		glyph(root, "★", 0.355, 0.47, 0.035, it.color or WHITE, Z.gems)
+	elseif gems == "gem_rhinestones" and it then
+		for side = -1, 1, 2 do
+			for i = 0, 3 do
+				shape(root, 0.5 + side * (0.06 + i * 0.022), 0.46 + i * 0.006, 0.016, 0.016, it.color or WHITE, Z.gems, 0.5)
+			end
+		end
+	end
+end
+
+local function drawAccessory(root: Frame, look)
+	local acc = look.accessory
+	local it = Catalog.byId[acc]
+	local c = it and it.color or WHITE
+	if acc == "acc_bow" then
+		shape(root, 0.32, 0.14, 0.09, 0.07, c, Z.accessory, 0.4, 0, -20)
+		shape(root, 0.42, 0.14, 0.09, 0.07, c, Z.accessory, 0.4, 0, 20)
+		shape(root, 0.37, 0.14, 0.035, 0.035, darken(c, 0.8), Z.accessory, 0.5)
+	elseif acc == "acc_headband" then
+		shape(root, 0.5, 0.2, 0.52, 0.03, c, Z.accessory, 0.5)
+	elseif acc == "acc_flower" then
+		glyph(root, "✿", 0.68, 0.18, 0.13, c, Z.accessory)
+		shape(root, 0.68, 0.185, 0.025, 0.025, Color3.fromRGB(255, 220, 80), Z.accessory, 0.5)
+	elseif acc == "acc_earrings" then
+		shape(root, 0.275, 0.55, 0.03, 0.03, c, Z.accessory, 0.5)
+		shape(root, 0.725, 0.55, 0.03, 0.03, c, Z.accessory, 0.5)
+	elseif acc == "acc_catears" then
+		for side = -1, 1, 2 do
+			shape(root, 0.5 + side * 0.17, 0.12, 0.09, 0.09, c, Z.accessory, 0.15, 0, 45)
+			shape(root, 0.5 + side * 0.17, 0.125, 0.045, 0.045, Color3.fromRGB(255, 160, 190), Z.accessory, 0.15, 0, 45)
+		end
+	elseif acc == "acc_crown" then
+		glyph(root, "👑", 0.5, 0.09, 0.18, c, Z.accessory)
+	end
+end
+
+local function drawOutfit(root: Frame, client, look)
+	local outfit = Catalog.byId[look.outfit]
+	shape(root, 0.5, 0.77, 0.15, 0.14, client.skin, Z.neck, 0.3)
+	local body = shape(root, 0.5, 0.97, 0.78, 0.3, Color3.new(), Z.outfit, 0.35)
+	paint(body, outfit, Color3.fromRGB(110, 120, 135))
+	shape(root, 0.5, 0.83, 0.14, 0.06, client.skin, Z.ears, 0.5)
+	local accent = outfit and outfit.accent or WHITE
+	shape(root, 0.43, 0.86, 0.06, 0.02, accent, Z.ears, 0.5, 0, 25)
+	shape(root, 0.57, 0.86, 0.06, 0.02, accent, Z.ears, 0.5, 0, -25)
+	if look.outfit == "outfit_work" then
+		-- overall straps
+		shape(root, 0.38, 0.92, 0.05, 0.12, accent, Z.ears, 0.2)
+		shape(root, 0.62, 0.92, 0.05, 0.12, accent, Z.ears, 0.2)
+	end
+end
+
+local function drawDirt(root: Frame, client, options: Options?)
+	local health = options and options.dirtHealth
+	local n = #client.dirt
+	local cleanedCount = math.floor(((options and options.clean) or 0) * n + 0.5)
+	for i, spot in client.dirt do
+		local h = if health then health[i] or 0 else (if i <= cleanedCount then 0 else 1)
+		local f = shape(root, spot.x, spot.y, spot.size, spot.size * 0.8, spot.color, Z.dirt, 0.5, 0, (i * 47) % 180)
+		f.Name = "Dirt" .. i
+		LookRenderer.setDirtHealth(f, h)
+	end
+end
+
+------------------------------------------------------------------------------
+
+-- Colors any UI frame like an item (used for the color swatches in the menus).
+LookRenderer.paint = paint
+
+function LookRenderer.setDirtHealth(f: GuiObject, health: number)
+	f.BackgroundTransparency = 1 - 0.92 * math.clamp(health, 0, 1)
+	f.Visible = health > 0.02
+end
+
+-- Draws the client into `container`, replacing any older drawing. Returns the square root frame.
+function LookRenderer.render(container: GuiObject, client, look, options: Options?): Frame
+	local old = container:FindFirstChild("Portrait")
+	if old then
+		old:Destroy()
+	end
+
+	local root = Instance.new("Frame")
+	root.Name = "Portrait"
+	root.AnchorPoint = Vector2.new(0.5, 0.5)
+	root.Position = UDim2.fromScale(0.5, 0.5)
+	root.Size = UDim2.fromScale(1, 1)
+	root.BackgroundTransparency = 1
+	root.ClipsDescendants = true
+	root.ZIndex = container.ZIndex
+	local aspect = Instance.new("UIAspectRatioConstraint")
+	aspect.AspectRatio = 1
+	aspect.Parent = root
+
+	local hairItem = Catalog.byId[look.hairColor]
+
+	drawHair(root, look, hairItem)
+	if not (options and options.headOnly) then
+		drawOutfit(root, client, look)
+	end
+	for side = -1, 1, 2 do
+		local ear = shape(root, 0.5 + side * 0.22, 0.47, 0.06, 0.09, client.skin, Z.ears, 0.5)
+		shape(ear, 0.5, 0.5, 0.45, 0.55, darken(client.skin, 0.85), Z.ears, 0.5)
+	end
+	shape(root, 0.5, 0.46, 0.44, 0.56, client.skin, Z.face, 0.5)
+	drawEyes(root, client, look, hairItem)
+	drawCheeksAndLips(root, client, look)
+	drawGems(root, client, look)
+	drawAccessory(root, look)
+	drawDirt(root, client, options)
+
+	root.Parent = container
+	return root
+end
+
+return LookRenderer
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="7">
+        <Properties>
+          <string name="Name">Remotes</string>
+          <string name="Source"><![CDATA[-- All the messages the server and players send each other.
+-- The server creates them; players wait for them.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local EVENTS = {
+	"State", -- server -> all: round phase, timer, theme
+	"AssignClient", -- server -> player: your new customer for this round
+	"UpdateLook", -- player -> server: (lookKey, itemId)
+	"WashProgress", -- player -> server: (clean 0..1, rinsed)
+	"Done", -- player -> server: (isDone)
+	"Showcase", -- server -> all: who is on the runway now
+	"Vote", -- player -> server: (targetUserId, stars)
+	"Results", -- server -> all: fashion show results
+	"Profile", -- server -> player: coins, unlocked items, passes
+	"PowerUp", -- server -> player: e.g. Super Soap was used
+	"Notify", -- server -> player: a little message
+	"UseSuperSoap", -- player -> server
+}
+
+local FUNCTIONS = {
+	"Hello", -- player -> server: returns everything a newly joined player needs
+	"BuyItem", -- player -> server: unlock an item with coins
+}
+
+local Remotes = {}
+
+local folder: Instance
+if RunService:IsServer() then
+	folder = Instance.new("Folder")
+	folder.Name = "Remotes"
+	for _, name in EVENTS do
+		local e = Instance.new("RemoteEvent")
+		e.Name = name
+		e.Parent = folder
+	end
+	for _, name in FUNCTIONS do
+		local f = Instance.new("RemoteFunction")
+		f.Name = name
+		f.Parent = folder
+	end
+	folder.Parent = ReplicatedStorage
+else
+	folder = ReplicatedStorage:WaitForChild("Remotes")
+end
+
+for _, name in EVENTS do
+	Remotes[name] = folder:WaitForChild(name) :: RemoteEvent
+end
+for _, name in FUNCTIONS do
+	Remotes[name] = folder:WaitForChild(name) :: RemoteFunction
+end
+
+return Remotes
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="8">
+        <Properties>
+          <string name="Name">Scoring</string>
+          <string name="Source"><![CDATA[-- The judges! Gives a look 1-5 stars and says what they liked (or what to fix next time).
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
+
+local Scoring = {}
+
+export type Entry = {
+	look: { [string]: string },
+	clean: number,
+	rinsed: boolean,
+}
+
+local MAKEUP_KEYS = { "eyeshadow", "lashes", "blush", "lipstick" }
+local COLOR_MAKEUP_KEYS = { "eyeshadow", "blush", "lipstick" }
+
+function Scoring.roundToHalf(stars: number): number
+	return math.clamp(math.floor(stars * 2 + 0.5) / 2, 1, 5)
+end
+
+-- Returns stars (1..5, in half steps) and a list of judge comments.
+function Scoring.judge(entry: Entry, theme: Catalog.Theme): (number, { string })
+	local look = entry.look
+	local points = 0
+	local comments = {}
+
+	-- Washing (1 point)
+	local clean = math.clamp(entry.clean or 0, 0, 1)
+	points += clean
+	if clean < 0.5 then
+		table.insert(comments, "Their face is still dirty! Wash it first 🧼")
+	elseif clean < 0.98 then
+		table.insert(comments, "Almost clean... you missed a spot!")
+	elseif not entry.rinsed then
+		points -= 0.2
+		table.insert(comments, "Squeaky clean, but rinse off the soap bubbles! 🚿")
+	else
+		table.insert(comments, "Squeaky clean! ✨")
+	end
+
+	-- Hair (1.25 points)
+	if Catalog.isNone(look.hairStyle) then
+		table.insert(comments, "That hair is still a mess! 💇")
+	else
+		points += 0.75
+	end
+	if Catalog.matchesTheme(Catalog.byId[look.hairColor], theme) then
+		points += 0.5
+		table.insert(comments, "Love the hair color for " .. theme.name .. "!")
+	end
+
+	-- Makeup (1.75 points)
+	local applied = 0
+	for _, key in MAKEUP_KEYS do
+		if not Catalog.isNone(look[key]) then
+			applied += 1
+		end
+	end
+	points += applied / #MAKEUP_KEYS
+	if applied == 0 then
+		table.insert(comments, "Don't forget the makeup! 💄")
+	end
+	local matched = 0
+	for _, key in COLOR_MAKEUP_KEYS do
+		if Catalog.matchesTheme(Catalog.byId[look[key]], theme) then
+			matched += 1
+		end
+	end
+	points += 0.75 * matched / #COLOR_MAKEUP_KEYS
+	if matched >= 2 then
+		table.insert(comments, "The makeup totally fits the theme!")
+	end
+
+	-- Outfit (1 point)
+	if Catalog.isNone(look.outfit) then
+		table.insert(comments, "They walked the runway in work overalls! 👗")
+	else
+		points += 0.5
+		if Catalog.matchesTheme(Catalog.byId[look.outfit], theme) then
+			points += 0.5
+		else
+			table.insert(comments, "Try an outfit that matches " .. theme.name)
+		end
+	end
+
+	-- Extras (bonus, up to 0.75)
+	if not Catalog.isNone(look.gems) then
+		points += 0.25
+	end
+	if not Catalog.isNone(look.accessory) then
+		points += 0.25
+		if Catalog.matchesTheme(Catalog.byId[look.accessory], theme) then
+			points += 0.25
+		end
+	end
+
+	local stars = Scoring.roundToHalf(points)
+	if stars >= 4.5 then
+		table.insert(comments, 1, "ABSOLUTELY STUNNING! 😍")
+	elseif stars >= 3.5 then
+		table.insert(comments, 1, "What a glow up!")
+	end
+	return stars, comments
+end
+
+-- Mixes the judges' stars with the other players' votes (half and half).
+function Scoring.final(judgeStars: number, votes: { number }): number
+	if #votes == 0 then
+		return judgeStars
+	end
+	local total = 0
+	for _, v in votes do
+		total += v
+	end
+	return (judgeStars + total / #votes) / 2
+end
+
+return Scoring
+]]></string>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="ServerScriptService" referent="9">
+    <Properties>
+      <string name="Name">ServerScriptService</string>
+    </Properties>
+    <Item class="Folder" referent="10">
+      <Properties>
+        <string name="Name">Server</string>
+      </Properties>
+      <Item class="ModuleScript" referent="11">
+        <Properties>
+          <string name="Name">DataService</string>
+          <string name="Source"><![CDATA[-- Saves each player's coins, unlocked items and Super Soaps between visits.
+
+local DataStoreService = game:GetService("DataStoreService")
+local MarketplaceService = game:GetService("MarketplaceService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local DataService = {}
+
+export type Profile = {
+	coins: number,
+	owned: { [string]: boolean },
+	superSoaps: number,
+	stats: { shows: number, wins: number, bestStars: number },
+	receipts: { string },
+	passes: { [string]: boolean }, -- not saved; checked with Roblox every visit
+	canSave: boolean, -- false if loading failed, so we never overwrite good data with an empty profile
+}
+
+local profiles: { [Player]: Profile } = {}
+
+local store: DataStore? = nil
+do
+	local ok, result = pcall(function()
+		return DataStoreService:GetDataStore(Config.DATASTORE_NAME)
+	end)
+	if ok then
+		store = result
+	else
+		warn("[GlowUp] Saving is off (turn on 'Enable Studio Access to API Services' to test it):", result)
+	end
+end
+
+local function keyFor(player: Player): string
+	return "player_" .. player.UserId
+end
+
+local function newProfile(saved): Profile
+	saved = saved or {}
+	local stats = saved.stats or {}
+	return {
+		coins = tonumber(saved.coins) or Config.STARTING_COINS,
+		owned = saved.owned or {},
+		superSoaps = tonumber(saved.superSoaps) or 0,
+		stats = {
+			shows = stats.shows or 0,
+			wins = stats.wins or 0,
+			bestStars = stats.bestStars or 0,
+		},
+		receipts = saved.receipts or {},
+		passes = {},
+		canSave = true,
+	}
+end
+
+local function checkPasses(player: Player, profile: Profile)
+	for name, id in Config.GamePasses do
+		if RunService:IsStudio() and Config.STUDIO_OWNS_ALL_PASSES then
+			profile.passes[name] = true
+		elseif id ~= 0 then
+			local ok, owns = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, player.UserId, id)
+			profile.passes[name] = ok and owns == true
+		end
+	end
+end
+
+function DataService.get(player: Player): Profile?
+	return profiles[player]
+end
+
+-- Waits (a little) for a player's data to finish loading.
+function DataService.waitFor(player: Player): Profile?
+	local deadline = os.clock() + 15
+	while not profiles[player] and player.Parent and os.clock() < deadline do
+		task.wait(0.1)
+	end
+	return profiles[player]
+end
+
+-- Sends the player's latest coins/unlocks to their screen.
+function DataService.push(player: Player)
+	local p = profiles[player]
+	if p then
+		Remotes.Profile:FireClient(player, {
+			coins = p.coins,
+			owned = p.owned,
+			passes = p.passes,
+			superSoaps = p.superSoaps,
+		})
+	end
+end
+
+function DataService.addCoins(player: Player, amount: number)
+	local p = profiles[player]
+	if p then
+		p.coins = math.max(0, p.coins + math.floor(amount))
+		DataService.push(player)
+	end
+end
+
+function DataService.save(player: Player): boolean
+	local p = profiles[player]
+	if not p or not p.canSave or not store then
+		return false
+	end
+	local data = {
+		coins = p.coins,
+		owned = p.owned,
+		superSoaps = p.superSoaps,
+		stats = p.stats,
+		receipts = p.receipts,
+	}
+	for attempt = 1, 3 do
+		local ok, err = pcall(function()
+			(store :: DataStore):UpdateAsync(keyFor(player), function()
+				return data
+			end)
+		end)
+		if ok then
+			return true
+		end
+		warn("[GlowUp] Save failed (try " .. attempt .. "):", err)
+		task.wait(attempt)
+	end
+	return false
+end
+
+local function load(player: Player)
+	local saved = nil
+	local loaded = store == nil -- no store (e.g. Studio without API access): play with a fresh profile
+	if store then
+		for attempt = 1, 3 do
+			local ok, result = pcall(function()
+				return (store :: DataStore):GetAsync(keyFor(player))
+			end)
+			if ok then
+				saved = result
+				loaded = true
+				break
+			end
+			if RunService:IsStudio() then
+				-- Usually "Enable Studio Access to API Services" is off. Play without saving.
+				warn("[GlowUp] Saving is off in Studio:", result)
+				store = nil
+				loaded = true
+				break
+			end
+			warn("[GlowUp] Load failed (try " .. attempt .. "):", result)
+			task.wait(attempt)
+		end
+	end
+	if not player.Parent then
+		return
+	end
+
+	local profile = newProfile(saved)
+	profile.canSave = loaded and store ~= nil
+	if not loaded then
+		Remotes.Notify:FireClient(player, "Couldn't load your saved coins. Progress this visit won't be saved.")
+	end
+	checkPasses(player, profile)
+	profiles[player] = profile
+	DataService.push(player)
+end
+
+function DataService.init()
+	Players.PlayerAdded:Connect(load)
+	for _, player in Players:GetPlayers() do
+		task.spawn(load, player)
+	end
+
+	Players.PlayerRemoving:Connect(function(player)
+		DataService.save(player)
+		profiles[player] = nil
+	end)
+
+	game:BindToClose(function()
+		local pending = 0
+		for player in profiles do
+			pending += 1
+			task.spawn(function()
+				DataService.save(player)
+				pending -= 1
+			end)
+		end
+		local deadline = os.clock() + 25
+		while pending > 0 and os.clock() < deadline do
+			task.wait(0.2)
+		end
+	end)
+
+	task.spawn(function()
+		while true do
+			task.wait(Config.AUTOSAVE_SECONDS)
+			for player in profiles do
+				task.spawn(DataService.save, player)
+			end
+		end
+	end)
+end
+
+return DataService
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="12">
+        <Properties>
+          <string name="Name">Main</string>
+          <token name="RunContext">0</token>
+          <string name="Source"><![CDATA[-- Starts the game on the server.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local DataService = require(script.Parent.DataService)
+local RoundService = require(script.Parent.RoundService)
+local ShopService = require(script.Parent.ShopService)
+local WorldBuilder = require(script.Parent.WorldBuilder)
+
+local world = WorldBuilder.build()
+
+DataService.init()
+ShopService.init()
+RoundService.init(world)
+
+Remotes.Hello.OnServerInvoke = function(player: Player)
+	local snapshot = RoundService.snapshot(player)
+	DataService.push(player)
+	return snapshot
+end
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="13">
+        <Properties>
+          <string name="Name">RoundService</string>
+          <string name="Source"><![CDATA[-- Runs the game loop that everyone in the server plays together:
+--   Intermission -> Makeover (5 minutes) -> Fashion Show -> Results -> repeat
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
+
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local Clients = require(ReplicatedStorage.Shared.Clients)
+local Config = require(ReplicatedStorage.Shared.Config)
+local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Scoring = require(ReplicatedStorage.Shared.Scoring)
+
+local DataService = require(script.Parent.DataService)
+local WorldBuilder = require(script.Parent.WorldBuilder)
+
+local RoundService = {}
+
+type Entry = {
+	player: Player,
+	client: Clients.Client,
+	look: { [string]: string },
+	clean: number,
+	rinsed: boolean,
+	done: boolean,
+	votes: { [number]: number }, -- voter UserId -> stars
+}
+
+local world: WorldBuilder.World
+local rng = Random.new()
+
+local state = {
+	phase = "Waiting",
+	endsAt = 0,
+	themeId = Catalog.Themes[1].id,
+}
+local entries: { [number]: Entry } = {} -- by UserId
+local showcase = nil -- payload of the look currently on the runway
+local results = nil -- payload of the last results
+local spawnedModels: { Model } = {}
+
+local WALK_ANIMATION = "rbxassetid://507777826" -- Roblox's default R15 walk
+
+local function now(): number
+	return Workspace:GetServerTimeNow()
+end
+
+local function setState(phase: string, seconds: number)
+	state.phase = phase
+	state.endsAt = now() + seconds
+	Remotes.State:FireAllClients(state)
+end
+
+local function theme(): Catalog.Theme
+	return Catalog.themeById[state.themeId]
+end
+
+local function entryPayload(entry: Entry)
+	return {
+		client = entry.client,
+		look = entry.look,
+		clean = entry.clean,
+		rinsed = entry.rinsed,
+		done = entry.done,
+	}
+end
+
+local function hasPass(player: Player, pass: string): boolean
+	local profile = DataService.get(player)
+	return profile ~= nil and profile.passes[pass] == true
+end
+
+------------------------------------------------------------------------------
+-- Makeover
+
+local function assignClient(player: Player)
+	local entry: Entry = {
+		player = player,
+		client = Clients.generate(rng),
+		look = Catalog.defaultLook(),
+		clean = 0,
+		rinsed = false,
+		done = false,
+		votes = {},
+	}
+	entries[player.UserId] = entry
+	Remotes.AssignClient:FireClient(player, entryPayload(entry))
+end
+
+local function activeEntry(player: Player): Entry?
+	if state.phase ~= "Makeover" then
+		return nil
+	end
+	return entries[player.UserId]
+end
+
+local function allDone(): boolean
+	local any = false
+	for _, entry in entries do
+		if entry.player.Parent then
+			any = true
+			if not entry.done then
+				return false
+			end
+		end
+	end
+	return any
+end
+
+local function onUpdateLook(player: Player, key: unknown, itemId: unknown)
+	local entry = activeEntry(player)
+	if not entry or type(key) ~= "string" or type(itemId) ~= "string" then
+		return
+	end
+	local it = Catalog.byId[itemId]
+	if not it or it.category ~= key then
+		return
+	end
+	if not Catalog.isUnlocked(it, DataService.get(player)) then
+		Remotes.Notify:FireClient(player, "Unlock " .. it.name .. " in the shop first!")
+		return
+	end
+	entry.look[key] = itemId
+end
+
+local function onWashProgress(player: Player, clean: unknown, rinsed: unknown)
+	local entry = activeEntry(player)
+	if not entry or type(clean) ~= "number" or clean ~= clean then
+		return
+	end
+	entry.clean = math.max(entry.clean, math.clamp(clean, 0, 1))
+	entry.rinsed = rinsed == true
+end
+
+local function onDone(player: Player, isDone: unknown)
+	local entry = activeEntry(player)
+	if entry then
+		entry.done = isDone == true
+	end
+end
+
+-- Used by the shop when a player uses a Super Soap. Returns true if it was used.
+function RoundService.applySuperSoap(player: Player): boolean
+	local entry = activeEntry(player)
+	if not entry or (entry.clean >= 0.98 and entry.rinsed) then
+		return false
+	end
+	entry.clean = 1
+	entry.rinsed = true
+	Remotes.PowerUp:FireClient(player, "SuperSoap")
+	return true
+end
+
+------------------------------------------------------------------------------
+-- Runway models
+
+local function buildBlockModel(skin: Color3, top: Color3, bottom: Color3): Model
+	local model = Instance.new("Model")
+	local function block(name, size, offset, color)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Size = size
+		p.Color = color
+		p.CanCollide = false
+		p.CFrame = CFrame.new(offset)
+		p.Parent = model
+		return p
+	end
+	local root = block("HumanoidRootPart", Vector3.new(2, 2, 1), Vector3.new(0, 3, 0), top)
+	root.Transparency = 1
+	local parts = {
+		block("Torso", Vector3.new(2, 2, 1), Vector3.new(0, 3, 0), top),
+		block("LeftLeg", Vector3.new(1, 2, 1), Vector3.new(-0.5, 1, 0), bottom),
+		block("RightLeg", Vector3.new(1, 2, 1), Vector3.new(0.5, 1, 0), bottom),
+		block("LeftArm", Vector3.new(1, 2, 1), Vector3.new(-1.5, 3, 0), skin),
+		block("RightArm", Vector3.new(1, 2, 1), Vector3.new(1.5, 3, 0), skin),
+		block("Head", Vector3.new(1.2, 1.2, 1.2), Vector3.new(0, 4.6, 0), skin),
+	}
+	for _, p in parts do
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = root
+		weld.Part1 = p
+		weld.Parent = p
+	end
+	model.PrimaryPart = root
+	return model
+end
+
+-- Makes a 3D client with the face the stylist designed.
+local function buildClientModel(entry: Entry): Model
+	local outfit = Catalog.byId[entry.look.outfit]
+	local skin = entry.client.skin
+	local top = outfit and outfit.color or Color3.new(0.5, 0.5, 0.5)
+	local bottom = outfit and outfit.accent or top
+
+	local model: Model
+	local ok, result = pcall(function()
+		local desc = Instance.new("HumanoidDescription")
+		desc.HeadColor = skin
+		desc.LeftArmColor = skin
+		desc.RightArmColor = skin
+		desc.TorsoColor = top
+		desc.LeftLegColor = bottom
+		desc.RightLegColor = bottom
+		return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
+	end)
+	if ok and result then
+		model = result
+		local humanoid = model:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+		end
+	else
+		model = buildBlockModel(skin, top, bottom)
+	end
+	model.Name = entry.client.name
+
+	-- Swap the plain head for the face the stylist made
+	local head = model:FindFirstChild("Head") :: BasePart?
+	if head then
+		head.Transparency = 1
+		for _, d in head:GetChildren() do
+			if d:IsA("Decal") then
+				d:Destroy()
+			end
+		end
+		local billboard = Instance.new("BillboardGui")
+		billboard.Name = "Face"
+		billboard.Size = UDim2.fromScale(3.6, 3.6)
+		billboard.StudsOffset = Vector3.new(0, 0.3, 0)
+		billboard.LightInfluence = 0
+		billboard.MaxDistance = 250
+		billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+		local holder = Instance.new("Frame")
+		holder.Size = UDim2.fromScale(1, 1)
+		holder.BackgroundTransparency = 1
+		holder.Parent = billboard
+		LookRenderer.render(holder, entry.client, entry.look, { headOnly = true, clean = entry.clean })
+		billboard.Adornee = head
+		billboard.Parent = head
+	end
+
+	if hasPass(entry.player, "RunwayStar") then
+		local root = model.PrimaryPart or model:FindFirstChild("HumanoidRootPart")
+		if root then
+			Instance.new("Sparkles").Parent = root
+		end
+	end
+
+	for _, p in model:GetDescendants() do
+		if p:IsA("BasePart") then
+			p.CanCollide = false
+			p.CanQuery = false
+		end
+	end
+	model.Parent = world.folder
+	table.insert(spawnedModels, model)
+	return model
+end
+
+local function rootHeight(model: Model): number
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	local root = model.PrimaryPart or model:FindFirstChild("HumanoidRootPart") :: BasePart
+	if humanoid and humanoid.RigType == Enum.HumanoidRigType.R15 then
+		return humanoid.HipHeight + root.Size.Y / 2
+	end
+	return 3
+end
+
+local function placeModel(model: Model, groundPosition: Vector3, facing: Vector3): BasePart
+	local root = model.PrimaryPart or model:FindFirstChild("HumanoidRootPart") :: BasePart
+	root.Anchored = true
+	local pos = groundPosition + Vector3.new(0, rootHeight(model), 0)
+	root.CFrame = CFrame.lookAt(pos, pos + facing)
+	return root
+end
+
+local function playWalk(model: Model): AnimationTrack?
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return nil
+	end
+	local animator = humanoid:FindFirstChildOfClass("Animator")
+	if not animator then
+		animator = Instance.new("Animator")
+		animator.Parent = humanoid
+	end
+	local anim = Instance.new("Animation")
+	anim.AnimationId = WALK_ANIMATION
+	local ok, track = pcall(function()
+		return animator:LoadAnimation(anim)
+	end)
+	if ok and track then
+		track:Play()
+		return track
+	end
+	return nil
+end
+
+local function clearModels()
+	for _, m in spawnedModels do
+		m:Destroy()
+	end
+	table.clear(spawnedModels)
+end
+
+local function walkRunway(entry: Entry)
+	local model = buildClientModel(entry)
+	local root = placeModel(model, world.runwayStart, Vector3.new(0, 0, 1))
+	local walk = playWalk(model)
+
+	if hasPass(entry.player, "RunwayStar") then
+		for _, emitter in world.confetti do
+			emitter:Emit(80)
+		end
+	end
+
+	local walkTime = Config.SHOWCASE_SECONDS_PER_LOOK * 0.6
+	local target = world.runwayEnd + Vector3.new(0, rootHeight(model), 0)
+	local tween = TweenService:Create(root, TweenInfo.new(walkTime, Enum.EasingStyle.Linear), {
+		CFrame = CFrame.lookAt(target, target + Vector3.new(0, 0, 1)),
+	})
+	tween:Play()
+	tween.Completed:Wait()
+	if walk then
+		walk:Stop()
+	end
+	-- A twirl at the end of the runway!
+	for _ = 1, 30 do
+		if not root.Parent then
+			break
+		end
+		root.CFrame *= CFrame.Angles(0, math.rad(12), 0)
+		task.wait(1 / 30)
+	end
+end
+
+------------------------------------------------------------------------------
+-- Voting
+
+local function onVote(player: Player, targetUserId: unknown, stars: unknown)
+	if state.phase ~= "Showcase" or not showcase or showcase.userId ~= targetUserId then
+		return
+	end
+	if player.UserId == targetUserId or type(stars) ~= "number" then
+		return
+	end
+	local entry = entries[targetUserId :: number]
+	if not entry then
+		return
+	end
+	local firstVote = entry.votes[player.UserId] == nil
+	entry.votes[player.UserId] = math.clamp(math.floor(stars), 1, 5)
+	if firstVote then
+		DataService.addCoins(player, Config.COINS_PER_VOTE)
+	end
+end
+
+------------------------------------------------------------------------------
+-- Results
+
+local function scoreAll()
+	local rows = {}
+	local count = 0
+	for userId, entry in entries do
+		if entry.player.Parent then
+			count += 1
+			local judgeStars, comments = Scoring.judge(entry, theme())
+			local votes = {}
+			for _, v in entry.votes do
+				table.insert(votes, v)
+			end
+			local final = Scoring.final(judgeStars, votes)
+			table.insert(rows, {
+				userId = userId,
+				stylist = entry.player.DisplayName,
+				client = entry.client,
+				look = entry.look,
+				clean = entry.clean,
+				judgeStars = judgeStars,
+				voteCount = #votes,
+				score = final,
+				stars = Scoring.roundToHalf(final),
+				comments = comments,
+				coins = 0,
+				spotless = entry.clean >= 0.98 and entry.rinsed,
+			})
+		end
+	end
+	table.sort(rows, function(a, b)
+		return a.score > b.score
+	end)
+
+	for rank, row in rows do
+		row.rank = rank
+		local player = entries[row.userId].player
+		local coins = Config.COINS_PARTICIPATION + math.floor(row.score * Config.COINS_PER_STAR)
+		if row.spotless then
+			coins += Config.COINS_SPOTLESS_BONUS
+		end
+		if count >= 2 and Config.COINS_PLACEMENT[rank] then
+			coins += Config.COINS_PLACEMENT[rank]
+		end
+		if hasPass(player, "DoubleCoins") then
+			coins *= 2
+		end
+		row.coins = coins
+		DataService.addCoins(player, coins)
+
+		local profile = DataService.get(player)
+		if profile then
+			profile.stats.shows += 1
+			profile.stats.bestStars = math.max(profile.stats.bestStars, row.stars)
+			if rank == 1 and count >= 2 then
+				profile.stats.wins += 1
+			end
+		end
+	end
+	return rows
+end
+
+------------------------------------------------------------------------------
+-- Main loop
+
+local function runRound()
+	-- Intermission
+	results = nil
+	showcase = nil
+	table.clear(entries)
+	while #Players:GetPlayers() < Config.MIN_PLAYERS do
+		setState("Waiting", 0)
+		task.wait(2)
+	end
+	state.themeId = Catalog.Themes[rng:NextInteger(1, #Catalog.Themes)].id
+	setState("Intermission", Config.INTERMISSION_SECONDS)
+	task.wait(Config.INTERMISSION_SECONDS)
+
+	-- Makeover: 5 minutes!
+	for _, player in Players:GetPlayers() do
+		assignClient(player)
+	end
+	setState("Makeover", Config.MAKEOVER_SECONDS)
+	while now() < state.endsAt do
+		task.wait(0.5)
+		if allDone() then
+			break
+		end
+	end
+
+	-- Fashion show
+	local order = {}
+	for _, entry in entries do
+		table.insert(order, entry)
+	end
+	rng:Shuffle(order)
+	for index, entry in order do
+		if entry.player.Parent then
+			showcase = {
+				userId = entry.player.UserId,
+				stylist = entry.player.DisplayName,
+				vip = hasPass(entry.player, "VIP"),
+				client = entry.client,
+				look = entry.look,
+				clean = entry.clean,
+				index = index,
+				total = #order,
+			}
+			setState("Showcase", Config.SHOWCASE_SECONDS_PER_LOOK)
+			Remotes.Showcase:FireAllClients(showcase)
+			local started = os.clock()
+			walkRunway(entry)
+			task.wait(math.max(0, Config.SHOWCASE_SECONDS_PER_LOOK - (os.clock() - started)))
+			clearModels()
+		end
+	end
+	showcase = nil
+
+	-- Results
+	local rows = scoreAll()
+	if #rows > 0 then
+		results = { themeId = state.themeId, rows = rows }
+		setState("Results", Config.RESULTS_SECONDS)
+		Remotes.Results:FireAllClients(results)
+		for place = 1, math.min(3, #rows) do
+			local entry = entries[rows[place].userId]
+			if entry then
+				placeModel(buildClientModel(entry), world.podium[place], Vector3.new(0, 0, 1))
+			end
+		end
+		task.wait(Config.RESULTS_SECONDS)
+		clearModels()
+	end
+end
+
+-- Everything a player needs when they join or their screen restarts.
+function RoundService.snapshot(player: Player)
+	local entry = entries[player.UserId]
+	return {
+		state = state,
+		entry = if entry and state.phase == "Makeover" then entryPayload(entry) else nil,
+		showcase = if state.phase == "Showcase" then showcase else nil,
+		results = if state.phase == "Results" then results else nil,
+	}
+end
+
+function RoundService.init(builtWorld: WorldBuilder.World)
+	world = builtWorld
+
+	Remotes.UpdateLook.OnServerEvent:Connect(onUpdateLook)
+	Remotes.WashProgress.OnServerEvent:Connect(onWashProgress)
+	Remotes.Done.OnServerEvent:Connect(onDone)
+	Remotes.Vote.OnServerEvent:Connect(onVote)
+
+	-- Late joiners still get a client if a makeover is running
+	Players.PlayerAdded:Connect(function(player)
+		if state.phase == "Makeover" and not entries[player.UserId] then
+			DataService.waitFor(player)
+			if state.phase == "Makeover" and player.Parent then
+				assignClient(player)
+			end
+		end
+	end)
+	Players.PlayerRemoving:Connect(function(player)
+		entries[player.UserId] = nil
+	end)
+
+	task.spawn(function()
+		while true do
+			local ok, err = pcall(runRound)
+			if not ok then
+				warn("[GlowUp] Round error:", err)
+				clearModels()
+				task.wait(3)
+			end
+		end
+	end)
+end
+
+return RoundService
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="14">
+        <Properties>
+          <string name="Name">ShopService</string>
+          <string name="Source"><![CDATA[-- Unlocking items with coins, plus Robux Game Passes and Developer Products.
+
+local MarketplaceService = game:GetService("MarketplaceService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local DataService = require(script.Parent.DataService)
+local RoundService = require(script.Parent.RoundService)
+
+local ShopService = {}
+
+local MAX_RECEIPTS = 50
+
+local function buyItem(player: Player, itemId: unknown): (boolean, string)
+	if type(itemId) ~= "string" then
+		return false, "That item doesn't exist."
+	end
+	local profile = DataService.get(player)
+	local it = Catalog.byId[itemId]
+	if not profile or not it or it.hidden or it.pass or it.price <= 0 then
+		return false, "That item can't be bought with coins."
+	end
+	if profile.owned[it.id] then
+		return true, "You already have " .. it.name .. "!"
+	end
+	if profile.coins < it.price then
+		return false, "You need " .. (it.price - profile.coins) .. " more coins."
+	end
+	profile.coins -= it.price
+	profile.owned[it.id] = true
+	DataService.push(player)
+	return true, "Unlocked " .. it.name .. "! ✨"
+end
+
+local function useSuperSoap(player: Player)
+	local profile = DataService.get(player)
+	if not profile then
+		return
+	end
+	if profile.superSoaps <= 0 then
+		Remotes.Notify:FireClient(player, "You don't have any Super Soap yet.")
+		return
+	end
+	if RoundService.applySuperSoap(player) then
+		profile.superSoaps -= 1
+		DataService.push(player)
+	else
+		Remotes.Notify:FireClient(player, "Super Soap works during a makeover on a dirty face!")
+	end
+end
+
+local function productName(productId: number): string?
+	for name, id in Config.DevProducts do
+		if id ~= 0 and id == productId then
+			return name
+		end
+	end
+	return nil
+end
+
+local function processReceipt(receipt)
+	local player = Players:GetPlayerByUserId(receipt.PlayerId)
+	local profile = player and DataService.get(player)
+	if not player or not profile then
+		-- They left or their data isn't loaded yet; Roblox will try again next time they join.
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+	if table.find(profile.receipts, receipt.PurchaseId) then
+		return Enum.ProductPurchaseDecision.PurchaseGranted
+	end
+
+	local name = productName(receipt.ProductId)
+	if name == "SuperSoap" then
+		profile.superSoaps += 1
+		Remotes.Notify:FireClient(player, "You got a Super Soap! 🧼✨")
+		-- Use it right away if they're in the middle of washing
+		if RoundService.applySuperSoap(player) then
+			profile.superSoaps -= 1
+		end
+	elseif name and Config.CoinPackAmounts[name] then
+		profile.coins += Config.CoinPackAmounts[name]
+		Remotes.Notify:FireClient(player, "+" .. Config.CoinPackAmounts[name] .. " coins! 🪙")
+	else
+		warn("[GlowUp] Unknown product purchased:", receipt.ProductId)
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+
+	table.insert(profile.receipts, receipt.PurchaseId)
+	while #profile.receipts > MAX_RECEIPTS do
+		table.remove(profile.receipts, 1)
+	end
+	DataService.push(player)
+
+	-- Only confirm the purchase once it's safely saved (or saving is off in Studio).
+	if profile.canSave and not DataService.save(player) then
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+	return Enum.ProductPurchaseDecision.PurchaseGranted
+end
+
+function ShopService.init()
+	Remotes.BuyItem.OnServerInvoke = buyItem
+	Remotes.UseSuperSoap.OnServerEvent:Connect(useSuperSoap)
+	MarketplaceService.ProcessReceipt = processReceipt
+
+	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passId, purchased)
+		if not purchased then
+			return
+		end
+		local profile = DataService.get(player)
+		if not profile then
+			return
+		end
+		for name, id in Config.GamePasses do
+			if id == passId then
+				profile.passes[name] = true
+				Remotes.Notify:FireClient(player, "Thank you! Your Game Pass is ready to use! 💖")
+			end
+		end
+		DataService.push(player)
+	end)
+end
+
+return ShopService
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="15">
+        <Properties>
+          <string name="Name">WorldBuilder</string>
+          <string name="Source"><![CDATA[-- Builds the salon, runway, big screen, audience seats and winners' podium when the game starts.
+-- Building with code means the place works straight away; you can still decorate around it in Studio.
+
+local Workspace = game:GetService("Workspace")
+
+local WorldBuilder = {}
+
+export type World = {
+	folder: Folder,
+	screen: BasePart,
+	runwayStart: Vector3, -- runway floor height where clients start walking
+	runwayEnd: Vector3,
+	podium: { Vector3 }, -- top of 1st, 2nd, 3rd place blocks
+	confetti: { ParticleEmitter },
+}
+
+local rgb = Color3.fromRGB
+local PINK = rgb(255, 120, 190)
+local PURPLE = rgb(150, 90, 220)
+local GOLD = rgb(245, 200, 70)
+
+local function part(parent: Instance, name: string, size: Vector3, cframe: CFrame, color: Color3, material: Enum.Material?): Part
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = true
+	p.Size = size
+	p.CFrame = cframe
+	p.Color = color
+	p.Material = material or Enum.Material.SmoothPlastic
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Parent = parent
+	return p
+end
+
+local function sign(p: BasePart, face: Enum.NormalId, text: string, textColor: Color3)
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = face
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 30
+	gui.LightInfluence = 0
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Text = text
+	label.TextScaled = true
+	label.Font = Enum.Font.FredokaOne
+	label.TextColor3 = textColor
+	label.Parent = gui
+	gui.Parent = p
+end
+
+local function cameraMarker(parent: Instance, name: string, from: Vector3, to: Vector3)
+	local p = part(parent, name, Vector3.new(1, 1, 1), CFrame.lookAt(from, to), Color3.new(1, 1, 1))
+	p.Transparency = 1
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+end
+
+function WorldBuilder.build(): World
+	local old = Workspace:FindFirstChild("GlowUpWorld")
+	if old then
+		old:Destroy()
+	end
+	local folder = Instance.new("Folder")
+	folder.Name = "GlowUpWorld"
+
+	-- Floor
+	part(folder, "Floor", Vector3.new(160, 1, 190), CFrame.new(0, -0.5, 15), rgb(255, 225, 238))
+
+	-- Salon (where everyone spawns)
+	local salon = Instance.new("Folder")
+	salon.Name = "Salon"
+	salon.Parent = folder
+	part(salon, "SalonFloor", Vector3.new(70, 0.2, 40), CFrame.new(0, 0.1, 50), rgb(250, 250, 255), Enum.Material.Marble)
+	local spawn = Instance.new("SpawnLocation")
+	spawn.Name = "Spawn"
+	spawn.Anchored = true
+	spawn.Size = Vector3.new(10, 1, 10)
+	spawn.CFrame = CFrame.new(0, 0.5, 42)
+	spawn.Color = PINK
+	spawn.Material = Enum.Material.SmoothPlastic
+	spawn.Duration = 0
+	spawn.Neutral = true
+	spawn.Parent = salon
+
+	for i = -2, 2 do
+		local x = i * 13
+		part(salon, "Mirror", Vector3.new(6, 8, 0.4), CFrame.new(x, 6, 66), rgb(200, 230, 255), Enum.Material.Glass).Reflectance = 0.35
+		part(salon, "MirrorFrame", Vector3.new(7, 9, 0.3), CFrame.new(x, 6, 66.4), PINK, Enum.Material.Neon)
+		part(salon, "Counter", Vector3.new(8, 3, 2.5), CFrame.new(x, 1.5, 64.5), rgb(255, 255, 255))
+		local seat = Instance.new("Seat")
+		seat.Name = "SalonChair"
+		seat.Anchored = true
+		seat.Size = Vector3.new(3, 1, 3)
+		seat.CFrame = CFrame.new(x, 2, 59) * CFrame.Angles(0, math.pi, 0)
+		seat.Color = PURPLE
+		seat.Parent = salon
+		part(salon, "ChairBack", Vector3.new(3, 3, 0.6), CFrame.new(x, 3.5, 60.3), PURPLE)
+		part(salon, "ChairBase", Vector3.new(1, 1.5, 1), CFrame.new(x, 0.75, 59), rgb(200, 200, 210), Enum.Material.Metal)
+	end
+	local salonSign = part(salon, "SalonSign", Vector3.new(36, 7, 1), CFrame.new(0, 15, 67), rgb(255, 255, 255))
+	sign(salonSign, Enum.NormalId.Front, "✨ 5 Minute Glow Up Salon ✨", PINK)
+
+	-- Runway
+	local runway = Instance.new("Folder")
+	runway.Name = "Runway"
+	runway.Parent = folder
+	local runwayTopY = 2
+	local runwayStartZ, runwayEndZ = -50, -12
+	local length = math.abs(runwayEndZ - runwayStartZ) + 6
+	local midZ = (runwayStartZ + runwayEndZ) / 2
+	part(runway, "Catwalk", Vector3.new(8, runwayTopY, length), CFrame.new(0, runwayTopY / 2, midZ), rgb(255, 255, 255), Enum.Material.Marble)
+	for side = -1, 1, 2 do
+		local strip = part(runway, "LightStrip", Vector3.new(0.4, 0.3, length), CFrame.new(side * 4.2, runwayTopY + 0.15, midZ), PINK, Enum.Material.Neon)
+		local light = Instance.new("PointLight")
+		light.Color = PINK
+		light.Range = 12
+		light.Brightness = 1.5
+		light.Parent = strip
+	end
+
+	-- Big screen behind the runway
+	local screen = part(runway, "Screen", Vector3.new(44, 24, 1), CFrame.new(0, 14, -57), rgb(25, 18, 35))
+	part(runway, "ScreenFrame", Vector3.new(46, 26, 0.8), CFrame.new(0, 14, -57.6), PURPLE, Enum.Material.Neon)
+	for side = -1, 1, 2 do
+		part(runway, "Pillar", Vector3.new(4, 28, 4), CFrame.new(side * 25, 14, -56), PURPLE)
+		local cap = part(runway, "PillarLight", Vector3.new(4.4, 1, 4.4), CFrame.new(side * 25, 28.5, -56), GOLD, Enum.Material.Neon)
+		local spot = Instance.new("SpotLight")
+		spot.Face = Enum.NormalId.Bottom
+		spot.Angle = 60
+		spot.Range = 60
+		spot.Brightness = 3
+		spot.Color = rgb(255, 230, 245)
+		spot.Parent = cap
+	end
+
+	-- Confetti cannons for Runway Star pass holders
+	local confetti = {}
+	for side = -1, 1, 2 do
+		local cannon = part(runway, "ConfettiCannon", Vector3.new(1.5, 1.5, 1.5), CFrame.new(side * 6, 1, runwayEndZ), GOLD, Enum.Material.Neon)
+		local emitter = Instance.new("ParticleEmitter")
+		emitter.Enabled = false
+		emitter.Rate = 0
+		emitter.Lifetime = NumberRange.new(2, 3)
+		emitter.Speed = NumberRange.new(25, 40)
+		emitter.SpreadAngle = Vector2.new(30, 30)
+		emitter.Acceleration = Vector3.new(0, -20, 0)
+		emitter.Size = NumberSequence.new(0.5)
+		emitter.Rotation = NumberRange.new(0, 360)
+		emitter.RotSpeed = NumberRange.new(-200, 200)
+		emitter.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, rgb(255, 100, 170)),
+			ColorSequenceKeypoint.new(0.33, rgb(255, 220, 80)),
+			ColorSequenceKeypoint.new(0.66, rgb(100, 200, 255)),
+			ColorSequenceKeypoint.new(1, rgb(180, 120, 255)),
+		})
+		emitter.EmissionDirection = Enum.NormalId.Top
+		emitter.Parent = cannon
+		table.insert(confetti, emitter)
+	end
+
+	-- Audience seats along both sides of the runway
+	for _, x in { -9, -13, 9, 13 } do
+		for z = runwayStartZ + 4, runwayEndZ - 2, 6 do
+			local seat = Instance.new("Seat")
+			seat.Name = "AudienceSeat"
+			seat.Anchored = true
+			seat.Size = Vector3.new(3, 1, 3)
+			seat.CFrame = CFrame.new(x, 0.5, z) * CFrame.Angles(0, if x < 0 then -math.pi / 2 else math.pi / 2, 0)
+			seat.Color = if math.abs(x) == 9 then PINK else PURPLE
+			seat.Parent = runway
+		end
+	end
+
+	-- Winners' podium at the front of the runway
+	local podiumFolder = Instance.new("Folder")
+	podiumFolder.Name = "Podium"
+	podiumFolder.Parent = folder
+	local podiumZ = -2
+	local blocks = {
+		{ x = 0, h = 5, color = GOLD, label = "1" },
+		{ x = -7, h = 3.5, color = rgb(200, 205, 215), label = "2" },
+		{ x = 7, h = 2.5, color = rgb(215, 140, 80), label = "3" },
+	}
+	local podium = {}
+	for _, b in blocks do
+		local block = part(podiumFolder, "Place" .. b.label, Vector3.new(6, b.h, 6), CFrame.new(b.x, b.h / 2, podiumZ), b.color)
+		sign(block, Enum.NormalId.Back, b.label, rgb(255, 255, 255))
+		table.insert(podium, Vector3.new(b.x, b.h, podiumZ))
+	end
+
+	-- Where the camera goes during the show and the results
+	local cameras = Instance.new("Folder")
+	cameras.Name = "Cameras"
+	cameras.Parent = folder
+	cameraMarker(cameras, "Showcase", Vector3.new(0, 9, 14), Vector3.new(0, 6, -36))
+	cameraMarker(cameras, "Results", Vector3.new(0, 8, 16), Vector3.new(0, 5, -2))
+
+	folder.Parent = Workspace
+
+	return {
+		folder = folder,
+		screen = screen,
+		runwayStart = Vector3.new(0, runwayTopY, runwayStartZ),
+		runwayEnd = Vector3.new(0, runwayTopY, runwayEndZ),
+		podium = podium,
+		confetti = confetti,
+	}
+end
+
+return WorldBuilder
+]]></string>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="StarterPlayer" referent="16">
+    <Properties>
+      <string name="Name">StarterPlayer</string>
+    </Properties>
+    <Item class="StarterPlayerScripts" referent="17">
+      <Properties>
+        <string name="Name">StarterPlayerScripts</string>
+      </Properties>
+      <Item class="Folder" referent="18">
+        <Properties>
+          <string name="Name">Client</string>
+        </Properties>
+        <Item class="LocalScript" referent="19">
+          <Properties>
+            <string name="Name">Main</string>
+            <string name="Source"><![CDATA[-- Starts the game on each player's screen and connects it to the server.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local UI = script.Parent:WaitForChild("UI")
+local HUD = require(UI.HUD)
+local Makeover = require(UI.Makeover)
+local Results = require(UI.Results)
+local Shop = require(UI.Shop)
+local Showcase = require(UI.Showcase)
+local Theme = require(UI.Theme)
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "GlowUpUI"
+gui.IgnoreGuiInset = true
+gui.ResetOnSpawn = false
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+
+local state = { phase = "Waiting", endsAt = 0, themeId = "" }
+local hud, shop
+
+-- Shared helpers every screen can use
+local ctx = {
+	profile = { coins = 0, owned = {}, passes = {}, superSoaps = 0 },
+	state = function()
+		return state
+	end,
+	toast = function(message: string, color: Color3?)
+		hud:toast(message, color)
+	end,
+	askUnlock = function(item)
+		shop:askUnlock(item)
+	end,
+	promptProduct = function(key: string)
+		shop:promptProduct(key)
+	end,
+	isModalOpen = function(): boolean
+		return shop.overlay.Visible or shop.confirm.Visible
+	end,
+}
+
+hud = HUD.new(gui, function()
+	shop:open()
+end)
+shop = Shop.new(gui, ctx)
+local makeover = Makeover.new(gui, ctx)
+local showcase = Showcase.new(gui, ctx)
+local results = Results.new(gui)
+
+local function applyState(newState)
+	local oldPhase = state.phase
+	state = newState
+	hud:setState(state)
+
+	makeover:setVisible(state.phase == "Makeover")
+	if state.phase ~= "Showcase" then
+		showcase:hide()
+	end
+	if state.phase ~= "Results" then
+		results:hide()
+	end
+	if state.phase == "Results" then
+		showcase:setCamera("Results")
+	elseif state.phase ~= "Showcase" then
+		showcase:setCamera(nil)
+	end
+	if state.phase == "Intermission" and oldPhase ~= "Intermission" then
+		showcase:setScreen("✨ 5 Minute Glow Up ✨", "Next show starting soon!", nil, nil)
+	end
+	if state.phase == "Makeover" and oldPhase ~= "Makeover" then
+		hud:toast("You have 5 minutes! Go go go! ⏰", Theme.Colors.purple)
+	end
+end
+
+Remotes.State.OnClientEvent:Connect(applyState)
+
+Remotes.AssignClient.OnClientEvent:Connect(function(payload)
+	makeover:assign(payload)
+	makeover:setVisible(state.phase == "Makeover")
+end)
+
+Remotes.Showcase.OnClientEvent:Connect(function(payload)
+	showcase:show(payload)
+end)
+
+Remotes.Results.OnClientEvent:Connect(function(payload)
+	results:show(payload)
+	local winner = payload.rows[1]
+	if winner then
+		showcase:setScreen("🏆 " .. winner.stylist .. " wins!", winner.client.name .. " - " .. Theme.stars(winner.stars), winner.client, winner.look, winner.clean)
+	end
+end)
+
+Remotes.Profile.OnClientEvent:Connect(function(profile)
+	ctx.profile = profile
+	hud:setCoins(profile.coins)
+	makeover:refreshProfile()
+	shop:refreshProfile()
+end)
+
+Remotes.PowerUp.OnClientEvent:Connect(function(kind)
+	if kind == "SuperSoap" then
+		makeover:superSoap()
+		hud:toast("Super Soap! Squeaky clean in one swipe! 🧼✨", Theme.Colors.green)
+	end
+end)
+
+Remotes.Notify.OnClientEvent:Connect(function(message)
+	hud:toast(message)
+end)
+
+-- Catch up on whatever is happening right now
+task.spawn(function()
+	local snapshot = Remotes.Hello:InvokeServer()
+	if snapshot.entry then
+		makeover:assign(snapshot.entry)
+	end
+	applyState(snapshot.state)
+	if snapshot.showcase then
+		showcase:show(snapshot.showcase)
+	end
+	if snapshot.results then
+		results:show(snapshot.results)
+	end
+end)
+
+RunService.RenderStepped:Connect(function()
+	hud:update()
+end)
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="Folder" referent="20">
+          <Properties>
+            <string name="Name">UI</string>
+          </Properties>
+          <Item class="ModuleScript" referent="21">
+            <Properties>
+              <string name="Name">HUD</string>
+              <string name="Source"><![CDATA[-- The always-on parts of the screen: round timer, coins, shop button, pop-up messages,
+-- and the "next show" card between rounds.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
+
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local Theme = require(script.Parent.Theme)
+
+local C = Theme.Colors
+local new = Theme.new
+
+local HUD = {}
+HUD.__index = HUD
+
+local PHASE_LABELS = {
+	Waiting = "⏳ Waiting for stylists",
+	Intermission = "🌟 Next show in",
+	Makeover = "💄 Makeover time!",
+	Showcase = "📸 Fashion Show",
+	Results = "🏆 Results",
+}
+
+function HUD.new(gui: ScreenGui, onShop: () -> ())
+	local self = setmetatable({}, HUD)
+	self.state = { phase = "Waiting", endsAt = 0, themeId = Catalog.Themes[1].id }
+
+	self.pill = new("Frame", {
+		Name = "Timer",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 8),
+		Size = UDim2.new(0.3, 0, 0, 46),
+		BackgroundColor3 = C.white,
+		ZIndex = 50,
+		Parent = gui,
+	}, { Theme.round(), Theme.stroke(C.pink, 3), new("UISizeConstraint", { MinSize = Vector2.new(220, 0) }) })
+	self.pillText = new("TextLabel", {
+		Size = UDim2.fromScale(1, 1),
+		Text = "",
+		ZIndex = 51,
+		Parent = self.pill,
+	}, { Theme.maxText(26), Theme.padding(6) })
+
+	-- Coins and shop sit in the top bar, just right of the timer
+	local right = new("Frame", {
+		Position = UDim2.new(0.65, 10, 0, 10),
+		Size = UDim2.new(0, 230, 0, 42),
+		BackgroundTransparency = 1,
+		ZIndex = 50,
+		Parent = gui,
+	}, { new("UIListLayout", { Padding = UDim.new(0, 8), FillDirection = Enum.FillDirection.Horizontal }) })
+	local coinPill = new("Frame", {
+		Size = UDim2.new(0, 110, 1, 0),
+		BackgroundColor3 = C.white,
+		ZIndex = 50,
+		Parent = right,
+	}, { Theme.round(), Theme.stroke(C.gold, 3) })
+	self.coinText = new("TextLabel", {
+		Size = UDim2.fromScale(1, 1),
+		Text = "🪙 0",
+		ZIndex = 51,
+		Parent = coinPill,
+	}, { Theme.maxText(24), Theme.padding(6) })
+	local shop = Theme.button({
+		Text = "🛍️ Shop",
+		Size = UDim2.new(0, 110, 1, 0),
+		Color = C.purple,
+		ZIndex = 50,
+		Parent = right,
+	})
+	shop.Activated:Connect(onShop)
+
+	self.toasts = new("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 62),
+		Size = UDim2.new(0.5, 0, 0, 200),
+		BackgroundTransparency = 1,
+		ZIndex = 90,
+		Parent = gui,
+	}, { new("UIListLayout", { Padding = UDim.new(0, 6), HorizontalAlignment = Enum.HorizontalAlignment.Center }) })
+
+	-- Between rounds
+	self.lobby = new("Frame", {
+		Name = "Lobby",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -24),
+		Size = UDim2.new(0.5, 0, 0, 190),
+		BackgroundColor3 = C.white,
+		BackgroundTransparency = 0.05,
+		Visible = false,
+		ZIndex = 40,
+		Parent = gui,
+	}, {
+		Theme.corner(22),
+		Theme.stroke(C.pink, 4),
+		Theme.padding(14),
+		new("UISizeConstraint", { MinSize = Vector2.new(320, 0) }),
+		new("UIListLayout", { Padding = UDim.new(0, 6), HorizontalAlignment = Enum.HorizontalAlignment.Center }),
+	})
+	self.lobbyTheme = new("TextLabel", {
+		Size = UDim2.new(1, 0, 0, 44),
+		Text = "",
+		TextColor3 = C.hotPink,
+		ZIndex = 41,
+		Parent = self.lobby,
+	}, { Theme.maxText(40) })
+	new("TextLabel", {
+		Size = UDim2.new(1, 0, 0, 104),
+		Text = "1. 🧼 Wash your client's dirty face\n2. 💇 Do their hair   3. 💄 Put on makeup\n4. 👗 Pick an outfit that fits the theme\n5. 📸 Walk the runway - you only get 5 minutes!",
+		TextColor3 = C.text,
+		ZIndex = 41,
+		Parent = self.lobby,
+	}, { Theme.maxText(20) })
+
+	return self
+end
+
+function HUD:setState(state)
+	self.state = state
+	local theme = Catalog.themeById[state.themeId]
+	local showLobby = state.phase == "Intermission" or state.phase == "Waiting"
+	if showLobby and not self.lobby.Visible then
+		Theme.pop(self.lobby)
+	end
+	self.lobby.Visible = showLobby
+	self.lobbyTheme.Text = "Next theme: " .. (theme and theme.name or "")
+end
+
+function HUD:setCoins(coins: number)
+	self.coinText.Text = "🪙 " .. tostring(coins)
+end
+
+function HUD:toast(message: string, color: Color3?)
+	local toast = new("TextLabel", {
+		Size = UDim2.new(1, 0, 0, 40),
+		BackgroundColor3 = color or C.hotPink,
+		BackgroundTransparency = 0,
+		TextColor3 = C.white,
+		Text = message,
+		ZIndex = 91,
+		Parent = self.toasts,
+	}, { Theme.round(), Theme.maxText(22), Theme.padding(6) })
+	Theme.pop(toast)
+	task.delay(3, function()
+		local fade = TweenInfo.new(0.4)
+		TweenService:Create(toast, fade, { BackgroundTransparency = 1, TextTransparency = 1 }):Play()
+		task.wait(0.45)
+		toast:Destroy()
+	end)
+end
+
+function HUD:secondsLeft(): number
+	return self.state.endsAt - Workspace:GetServerTimeNow()
+end
+
+-- Called every frame to tick the timer.
+function HUD:update()
+	local phase = self.state.phase
+	local left = self:secondsLeft()
+	local label = PHASE_LABELS[phase] or phase
+	if phase == "Waiting" or phase == "Showcase" or phase == "Results" then
+		self.pillText.Text = label
+	else
+		self.pillText.Text = label .. "  " .. Theme.formatTime(left)
+	end
+	local hurry = phase == "Makeover" and left <= 30
+	self.pillText.TextColor3 = if hurry then C.red else C.text
+	if hurry then
+		local pulse = 1 + 0.04 * math.sin(os.clock() * 10)
+		self.pill.Size = UDim2.new(0.3 * pulse, 0, 0, 46)
+	else
+		self.pill.Size = UDim2.new(0.3, 0, 0, 46)
+	end
+end
+
+return HUD
+]]></string>
+            </Properties>
+          </Item>
+          <Item class="ModuleScript" referent="22">
+            <Properties>
+              <string name="Name">Makeover</string>
+              <string name="Source"><![CDATA[-- The makeover screen: wash the client's face, then do their hair, makeup, outfit and extras.
+
+local GuiService = game:GetService("GuiService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Theme = require(script.Parent.Theme)
+
+local C = Theme.Colors
+local new = Theme.new
+
+local Makeover = {}
+Makeover.__index = Makeover
+
+local MAKEUP_KEYS = { "eyeshadow", "lashes", "blush", "lipstick" }
+local MAX_BUBBLES = 40
+local SEND_INTERVAL = 0.25
+
+local function screenPosition(input: InputObject): Vector2
+	local inset = GuiService:GetGuiInset()
+	return Vector2.new(input.Position.X, input.Position.Y) + inset
+end
+
+function Makeover.new(gui: ScreenGui, ctx)
+	local self = setmetatable({}, Makeover)
+	self.ctx = ctx
+	self.client = nil
+	self.look = Catalog.defaultLook()
+	self.dirtHealth = {}
+	self.bubbles = {}
+	self.tool = "soap"
+	self.tab = "Wash"
+	self.subcategory = {} -- tab id -> selected category key
+	self.done = false
+	self.scrubbing = false
+	self.lastSent = 0
+	self.wasClean = false
+
+	self.frame = new("Frame", {
+		Name = "Makeover",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = C.white,
+		Visible = false,
+		ZIndex = 10,
+		Parent = gui,
+	}, { Theme.gradient(C.softPink, C.lavender, 45) })
+
+	self:buildLeft()
+	self:buildRight()
+	self:connectInput()
+	return self
+end
+
+------------------------------------------------------------------------------
+-- Layout
+
+function Makeover:buildLeft()
+	local left = new("Frame", {
+		Position = UDim2.new(0.02, 0, 0, 62),
+		Size = UDim2.new(0.42, 0, 1, -74),
+		BackgroundColor3 = C.white,
+		ZIndex = 11,
+		Parent = self.frame,
+	}, { Theme.corner(24), Theme.stroke(C.pink, 4), Theme.padding(12) })
+
+	self.nameLabel = new("TextLabel", {
+		Size = UDim2.new(1, 0, 0, 34),
+		Text = "",
+		TextColor3 = C.hotPink,
+		ZIndex = 12,
+		Parent = left,
+	}, { Theme.maxText(32) })
+	self.storyLabel = new("TextLabel", {
+		Position = UDim2.new(0, 0, 0, 36),
+		Size = UDim2.new(1, 0, 0, 40),
+		Text = "",
+		TextColor3 = C.textLight,
+		ZIndex = 12,
+		Parent = left,
+	}, { Theme.maxText(18) })
+
+	self.portraitHolder = new("Frame", {
+		Name = "PortraitHolder",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 80),
+		Size = UDim2.new(1, 0, 1, -130),
+		BackgroundColor3 = Color3.fromRGB(255, 245, 250),
+		ZIndex = 12,
+		Parent = left,
+	}, {
+		new("UIAspectRatioConstraint", { AspectRatio = 1 }),
+		Theme.corner(24),
+		Theme.gradient(Color3.fromRGB(255, 250, 253), Color3.fromRGB(255, 225, 240)),
+	})
+	self.bubbleLayer = new("Frame", {
+		Name = "Bubbles",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		ZIndex = 100,
+		Parent = self.portraitHolder,
+	})
+
+	self.cursor = new("TextLabel", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Size = UDim2.new(0, 56, 0, 56),
+		Text = "🧽",
+		Visible = false,
+		ZIndex = 200,
+		Parent = self.frame,
+	})
+
+	local checklist = new("Frame", {
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromScale(0, 1),
+		Size = UDim2.new(1, 0, 0, 40),
+		BackgroundTransparency = 1,
+		ZIndex = 12,
+		Parent = left,
+	}, {
+		new("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			Padding = UDim.new(0, 6),
+		}),
+	})
+	self.checks = {}
+	for _, step in { { "Wash", "🧼" }, { "Hair", "💇" }, { "Makeup", "💄" }, { "Outfit", "👗" } } do
+		self.checks[step[1]] = new("TextLabel", {
+			Size = UDim2.new(0.24, 0, 1, 0),
+			BackgroundTransparency = 0,
+			BackgroundColor3 = C.lavender,
+			Text = step[2] .. " " .. step[1],
+			ZIndex = 13,
+			Parent = checklist,
+		}, { Theme.round(), Theme.maxText(18), Theme.padding(5) })
+	end
+end
+
+function Makeover:buildRight()
+	local right = new("Frame", {
+		Position = UDim2.new(0.46, 0, 0, 62),
+		Size = UDim2.new(0.52, 0, 1, -74),
+		BackgroundColor3 = C.white,
+		ZIndex = 11,
+		Parent = self.frame,
+	}, { Theme.corner(24), Theme.stroke(C.purple, 4), Theme.padding(12) })
+	self.right = right
+
+	local tabs = new("Frame", {
+		Size = UDim2.new(1, 0, 0, 48),
+		BackgroundTransparency = 1,
+		ZIndex = 12,
+		Parent = right,
+	}, {
+		new("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			Padding = UDim.new(0, 6),
+		}),
+	})
+	self.tabButtons = {}
+	for _, tab in Catalog.Tabs do
+		local b = Theme.button({
+			Text = tab.icon .. " " .. tab.label,
+			Size = UDim2.new(0.19, -5, 1, 0),
+			Color = C.lavender,
+			TextColor3 = C.text,
+			ZIndex = 13,
+			MaxText = 22,
+			Parent = tabs,
+		})
+		b.Activated:Connect(function()
+			self:setTab(tab.id)
+		end)
+		self.tabButtons[tab.id] = b
+	end
+
+	self.chips = new("Frame", {
+		Position = UDim2.new(0, 0, 0, 56),
+		Size = UDim2.new(1, 0, 0, 34),
+		BackgroundTransparency = 1,
+		ZIndex = 12,
+		Parent = right,
+	}, {
+		new("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			Padding = UDim.new(0, 6),
+		}),
+	})
+
+	self.grid = new("ScrollingFrame", {
+		Position = UDim2.new(0, 0, 0, 98),
+		Size = UDim2.new(1, 0, 1, -164),
+		BackgroundTransparency = 1,
+		ScrollBarThickness = 8,
+		ScrollBarImageColor3 = C.pink,
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		CanvasSize = UDim2.new(),
+		ZIndex = 12,
+		Parent = right,
+	}, { Theme.padding(6) })
+	new("UIGridLayout", {
+		CellSize = UDim2.new(0.235, 0, 0, 0),
+		CellPadding = UDim2.new(0.02, 0, 0, 10),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = self.grid,
+	}, { new("UIAspectRatioConstraint", { AspectRatio = 0.8 }) })
+
+	self:buildWashPanel(right)
+
+	self.doneButton = Theme.button({
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.fromScale(0.5, 1),
+		Size = UDim2.new(0.6, 0, 0, 54),
+		Text = "I'm Done! ✨",
+		Color = C.hotPink,
+		ZIndex = 13,
+		MaxText = 30,
+		Parent = right,
+	})
+	self.doneButton.Activated:Connect(function()
+		self:setDone(not self.done)
+	end)
+
+	self.waiting = new("TextLabel", {
+		Position = UDim2.new(0, 0, 0, 56),
+		Size = UDim2.new(1, 0, 1, -122),
+		BackgroundColor3 = C.white,
+		BackgroundTransparency = 0.1,
+		Text = "Looking fabulous! 💅\nWaiting for the other stylists to finish...",
+		TextColor3 = C.purple,
+		Visible = false,
+		ZIndex = 30,
+		Parent = right,
+	}, { Theme.corner(18), Theme.maxText(30), Theme.padding(20) })
+end
+
+function Makeover:buildWashPanel(parent: GuiObject)
+	local panel = new("Frame", {
+		Position = UDim2.new(0, 0, 0, 56),
+		Size = UDim2.new(1, 0, 1, -122),
+		BackgroundTransparency = 1,
+		Visible = false,
+		ZIndex = 12,
+		Parent = parent,
+	}, {
+		new("UIListLayout", {
+			Padding = UDim.new(0, 10),
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}),
+	})
+	self.washPanel = panel
+
+	self.washHint = new("TextLabel", {
+		LayoutOrder = 1,
+		Size = UDim2.new(1, 0, 0, 60),
+		Text = "",
+		ZIndex = 13,
+		Parent = panel,
+	}, { Theme.maxText(24) })
+
+	local tools = new("Frame", {
+		LayoutOrder = 2,
+		Size = UDim2.new(1, 0, 0, 90),
+		BackgroundTransparency = 1,
+		ZIndex = 13,
+		Parent = panel,
+	}, {
+		new("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			Padding = UDim.new(0, 14),
+		}),
+	})
+	self.toolButtons = {}
+	for _, tool in { { id = "soap", text = "🧽 Soap" }, { id = "rinse", text = "🚿 Rinse" } } do
+		local b = Theme.button({
+			Text = tool.text,
+			Size = UDim2.new(0.4, 0, 1, 0),
+			Color = C.lavender,
+			TextColor3 = C.text,
+			ZIndex = 14,
+			MaxText = 34,
+			Parent = tools,
+		})
+		b.Activated:Connect(function()
+			self.tool = tool.id
+			self:refreshWash()
+		end)
+		self.toolButtons[tool.id] = b
+	end
+
+	local bar = new("Frame", {
+		LayoutOrder = 3,
+		Size = UDim2.new(0.85, 0, 0, 34),
+		BackgroundColor3 = C.lavender,
+		ZIndex = 13,
+		Parent = panel,
+	}, { Theme.round() })
+	self.cleanFill = new("Frame", {
+		Size = UDim2.fromScale(0, 1),
+		BackgroundColor3 = C.green,
+		ZIndex = 14,
+		Parent = bar,
+	}, { Theme.round() })
+	self.cleanText = new("TextLabel", {
+		Size = UDim2.fromScale(1, 1),
+		Text = "",
+		ZIndex = 15,
+		Parent = bar,
+	}, { Theme.maxText(20), Theme.padding(4) })
+
+	self.soapButton = Theme.button({
+		LayoutOrder = 4,
+		Size = UDim2.new(0.7, 0, 0, 50),
+		Text = "",
+		Color = C.purple,
+		ZIndex = 14,
+		MaxText = 24,
+		Parent = panel,
+	})
+	self.soapButton.Activated:Connect(function()
+		if (self.ctx.profile.superSoaps or 0) > 0 then
+			Remotes.UseSuperSoap:FireServer()
+		else
+			self.ctx.promptProduct("SuperSoap")
+		end
+	end)
+end
+
+------------------------------------------------------------------------------
+-- State
+
+function Makeover:assign(payload)
+	self.client = payload.client
+	self.look = payload.look
+	self.done = payload.done == true
+	self.dirtHealth = {}
+	local n = #self.client.dirt
+	local cleaned = math.floor((payload.clean or 0) * n + 0.5)
+	for i = 1, n do
+		self.dirtHealth[i] = if i <= cleaned then 0 else 1
+	end
+	self:clearBubbles()
+	self.wasClean = false
+	self.tool = "soap"
+	self.tab = "Wash"
+	self.nameLabel.Text = "Meet " .. self.client.name .. "!"
+	self.storyLabel.Text = self.client.name .. " " .. self.client.story
+	self:setDone(self.done, true)
+	self:renderPortrait()
+	self:setTab("Wash")
+end
+
+function Makeover:setVisible(visible: boolean)
+	self.frame.Visible = visible and self.client ~= nil
+	if not self.frame.Visible then
+		self.cursor.Visible = false
+		self.scrubbing = false
+	end
+end
+
+function Makeover:setDone(done: boolean, silent: boolean?)
+	self.done = done
+	self.waiting.Visible = done
+	self.doneButton.Text = if done then "Keep Styling ✏️" else "I'm Done! ✨"
+	self.doneButton.BackgroundColor3 = if done then C.purple else C.hotPink
+	if not silent then
+		Remotes.Done:FireServer(done)
+	end
+end
+
+function Makeover:cleanAmount(): number
+	local n = #self.dirtHealth
+	if n == 0 then
+		return 1
+	end
+	local left = 0
+	for _, h in self.dirtHealth do
+		left += h
+	end
+	return 1 - left / n
+end
+
+function Makeover:isWashed(): boolean
+	return self:cleanAmount() >= 0.98 and #self.bubbles == 0
+end
+
+function Makeover:renderPortrait()
+	if not self.client then
+		return
+	end
+	self.portraitRoot = LookRenderer.render(self.portraitHolder, self.client, self.look, { dirtHealth = self.dirtHealth })
+	self.dirtFrames = {}
+	for i = 1, #self.client.dirt do
+		self.dirtFrames[i] = self.portraitRoot:FindFirstChild("Dirt" .. i)
+	end
+	self:refreshChecklist()
+end
+
+function Makeover:refreshChecklist()
+	local makeupCount = 0
+	for _, key in MAKEUP_KEYS do
+		if not Catalog.isNone(self.look[key]) then
+			makeupCount += 1
+		end
+	end
+	local done = {
+		Wash = self:isWashed(),
+		Hair = not Catalog.isNone(self.look.hairStyle),
+		Makeup = makeupCount >= 2,
+		Outfit = not Catalog.isNone(self.look.outfit),
+	}
+	for step, label in self.checks do
+		label.BackgroundColor3 = if done[step] then C.green else C.lavender
+		label.TextColor3 = if done[step] then C.white else C.text
+	end
+end
+
+function Makeover:setTab(tabId: string)
+	self.tab = tabId
+	for id, b in self.tabButtons do
+		local active = id == tabId
+		b.BackgroundColor3 = if active then C.pink else C.lavender
+		b.TextColor3 = if active then C.white else C.text
+	end
+	local isWash = tabId == "Wash"
+	self.washPanel.Visible = isWash
+	self.grid.Visible = not isWash
+	self.chips.Visible = not isWash
+
+	if isWash then
+		self:refreshWash()
+		return
+	end
+
+	local categories = {}
+	for _, category in Catalog.Categories do
+		if category.tab == tabId then
+			table.insert(categories, category)
+		end
+	end
+	if not self.subcategory[tabId] then
+		self.subcategory[tabId] = categories[1].key
+	end
+
+	for _, child in self.chips:GetChildren() do
+		if child:IsA("GuiObject") then
+			child:Destroy()
+		end
+	end
+	for _, category in categories do
+		local active = self.subcategory[tabId] == category.key
+		local chip = Theme.button({
+			Text = category.label,
+			Size = UDim2.new(math.min(0.32, 1 / #categories), -6, 1, 0),
+			Color = if active then C.purple else C.lavender,
+			TextColor3 = if active then C.white else C.text,
+			ZIndex = 13,
+			MaxText = 20,
+			Parent = self.chips,
+		})
+		chip.Activated:Connect(function()
+			self.subcategory[tabId] = category.key
+			self:setTab(tabId)
+		end)
+	end
+	self:renderGrid()
+end
+
+------------------------------------------------------------------------------
+-- Item grid
+
+function Makeover:renderGrid()
+	if self.tab == "Wash" or not self.client then
+		return
+	end
+	local key = self.subcategory[self.tab]
+	local category = Catalog.categoryByKey[key]
+	for _, child in self.grid:GetChildren() do
+		if child:IsA("GuiObject") then
+			child:Destroy()
+		end
+	end
+
+	local order = 0
+	for _, it in category.items do
+		if it.hidden then
+			continue
+		end
+		order += 1
+		local selected = self.look[key] == it.id
+		local unlocked = Catalog.isUnlocked(it, self.ctx.profile)
+
+		local card = new("TextButton", {
+			LayoutOrder = order,
+			Text = "",
+			BackgroundTransparency = 0,
+			BackgroundColor3 = if selected then C.softPink else C.white,
+			AutoButtonColor = true,
+			ZIndex = 13,
+			Parent = self.grid,
+		}, {
+			Theme.corner(16),
+			Theme.stroke(if selected then C.hotPink else C.lavender, if selected then 4 else 2),
+		})
+
+		local preview = new("Frame", {
+			Position = UDim2.fromScale(0.05, 0.04),
+			Size = UDim2.fromScale(0.9, 0.7),
+			BackgroundTransparency = 1,
+			ZIndex = 14,
+			Parent = card,
+		})
+		if category.preview == "portrait" then
+			local previewLook = table.clone(self.look)
+			previewLook[key] = it.id
+			LookRenderer.render(preview, self.client, previewLook, { headOnly = key ~= "outfit", clean = 1 })
+		elseif it.color then
+			local dot = new("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.5),
+				Size = UDim2.fromScale(0.75, 0.75),
+				ZIndex = 15,
+				Parent = preview,
+			}, { new("UIAspectRatioConstraint", { AspectRatio = 1 }), Theme.round(), Theme.stroke(C.white, 3) })
+			LookRenderer.paint(dot, it)
+		else
+			new("TextLabel", { Size = UDim2.fromScale(1, 1), Text = "🚫", ZIndex = 15, Parent = preview })
+		end
+
+		new("TextLabel", {
+			Position = UDim2.fromScale(0.05, 0.76),
+			Size = UDim2.fromScale(0.9, 0.2),
+			Text = it.name,
+			ZIndex = 15,
+			Parent = card,
+		}, { Theme.maxText(18) })
+
+		if not unlocked then
+			new("Frame", {
+				Size = UDim2.fromScale(1, 1),
+				BackgroundColor3 = C.white,
+				BackgroundTransparency = 0.45,
+				ZIndex = 16,
+				Parent = card,
+			}, { Theme.corner(16) })
+			new("TextLabel", {
+				AnchorPoint = Vector2.new(1, 0),
+				Position = UDim2.new(1, -4, 0, 4),
+				Size = UDim2.fromScale(0.6, 0.17),
+				BackgroundTransparency = 0,
+				BackgroundColor3 = if it.pass then C.gold else C.purple,
+				TextColor3 = C.white,
+				Text = if it.pass then "👑 VIP" else "🔒 " .. it.price,
+				ZIndex = 17,
+				Parent = card,
+			}, { Theme.round(), Theme.padding(3) })
+		elseif selected then
+			new("TextLabel", {
+				AnchorPoint = Vector2.new(1, 0),
+				Position = UDim2.new(1, -4, 0, 4),
+				Size = UDim2.fromScale(0.22, 0.17),
+				BackgroundTransparency = 0,
+				BackgroundColor3 = C.hotPink,
+				TextColor3 = C.white,
+				Text = "✓",
+				ZIndex = 17,
+				Parent = card,
+			}, { Theme.round() })
+		end
+
+		card.Activated:Connect(function()
+			if unlocked then
+				self:choose(key, it.id)
+			else
+				self.ctx.askUnlock(it)
+			end
+		end)
+	end
+end
+
+function Makeover:choose(key: string, itemId: string)
+	if self.done then
+		self:setDone(false)
+	end
+	self.look[key] = itemId
+	Remotes.UpdateLook:FireServer(key, itemId)
+	self:renderPortrait()
+	self:renderGrid()
+end
+
+-- Re-draw locks after coins/unlocks change.
+function Makeover:refreshProfile()
+	if self.frame.Visible then
+		if self.tab == "Wash" then
+			self:refreshWash()
+		else
+			self:renderGrid()
+		end
+	end
+end
+
+------------------------------------------------------------------------------
+-- Washing
+
+function Makeover:refreshWash()
+	local clean = self:cleanAmount()
+	local bubbles = #self.bubbles
+	if clean < 0.98 then
+		self.washHint.Text = "Pick the 🧽 Soap, then hold and rub the dirty spots on " .. (self.client and self.client.name or "their") .. "'s face!"
+	elseif bubbles > 0 then
+		self.washHint.Text = "Now pick 🚿 Rinse and rub away all the soap bubbles!"
+	else
+		self.washHint.Text = "Sparkling clean! ✨ Head to the Hair tab next."
+	end
+	for id, b in self.toolButtons do
+		local active = id == self.tool
+		b.BackgroundColor3 = if active then C.pink else C.lavender
+		b.TextColor3 = if active then C.white else C.text
+	end
+	self.cleanFill.Size = UDim2.fromScale(math.clamp(clean, 0, 1), 1)
+	self.cleanText.Text = "Clean: " .. math.floor(clean * 100 + 0.5) .. "%" .. (if bubbles > 0 then "  🫧 " .. bubbles else "")
+	local soaps = self.ctx.profile.superSoaps or 0
+	self.soapButton.Text = if soaps > 0 then "✨ Use Super Soap (" .. soaps .. ")" else "✨ Get Super Soap (instant clean)"
+	self.soapButton.Visible = not self:isWashed()
+	self:refreshChecklist()
+end
+
+function Makeover:clearBubbles()
+	for _, b in self.bubbles do
+		b.frame:Destroy()
+	end
+	table.clear(self.bubbles)
+end
+
+function Makeover:sendWash(force: boolean?)
+	if force or os.clock() - self.lastSent > SEND_INTERVAL then
+		self.lastSent = os.clock()
+		Remotes.WashProgress:FireServer(self:cleanAmount(), #self.bubbles == 0)
+	end
+	local washed = self:isWashed()
+	if washed and not self.wasClean then
+		self.ctx.toast("Sparkling clean! ✨", C.green)
+	end
+	self.wasClean = washed
+end
+
+function Makeover:addBubble(rel: Vector2)
+	if #self.bubbles >= MAX_BUBBLES then
+		return
+	end
+	local size = 0.05 + math.random() * 0.05
+	local frame = new("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(rel.X, rel.Y),
+		Size = UDim2.fromScale(size, size),
+		BackgroundColor3 = C.white,
+		BackgroundTransparency = 0.25,
+		ZIndex = 101,
+		Parent = self.bubbleLayer,
+	}, { Theme.round(), Theme.stroke(Color3.fromRGB(180, 220, 255), 2) })
+	table.insert(self.bubbles, { frame = frame, pos = rel, size = size })
+end
+
+function Makeover:scrub(pos: Vector2, moved: number)
+	local root = self.portraitRoot
+	if not root or not self.client then
+		return
+	end
+	local size = root.AbsoluteSize.X
+	local origin = root.AbsolutePosition
+	if size <= 0 then
+		return
+	end
+	local rel = (pos - origin) / size
+	if rel.X < 0 or rel.X > 1 or rel.Y < 0 or rel.Y > 1 then
+		return
+	end
+	local brush = 0.06
+	local changed = false
+
+	if self.tool == "soap" then
+		for i, spot in self.client.dirt do
+			local h = self.dirtHealth[i]
+			if h > 0 and (rel - Vector2.new(spot.x, spot.y)).Magnitude < spot.size / 2 + brush then
+				self.dirtHealth[i] = math.max(0, h - moved / (size * 0.45))
+				local f = self.dirtFrames[i]
+				if f then
+					LookRenderer.setDirtHealth(f, self.dirtHealth[i])
+				end
+				changed = true
+			end
+		end
+		self.bubbleTravel = (self.bubbleTravel or 0) + moved
+		if self.bubbleTravel > size * 0.05 then
+			self.bubbleTravel = 0
+			self:addBubble(rel)
+			changed = true
+		end
+	else
+		for i = #self.bubbles, 1, -1 do
+			local b = self.bubbles[i]
+			if (rel - b.pos).Magnitude < b.size / 2 + brush then
+				b.frame:Destroy()
+				table.remove(self.bubbles, i)
+				changed = true
+			end
+		end
+	end
+
+	if changed then
+		self:refreshWash()
+		self:sendWash()
+	end
+end
+
+function Makeover:superSoap()
+	for i = 1, #self.dirtHealth do
+		self.dirtHealth[i] = 0
+	end
+	self:clearBubbles()
+	self:renderPortrait()
+	self:refreshWash()
+	self:sendWash(true)
+end
+
+function Makeover:connectInput()
+	local lastPos: Vector2? = nil
+
+	UserInputService.InputBegan:Connect(function(input)
+		if self.tab ~= "Wash" or not self.frame.Visible or self.ctx.isModalOpen() then
+			return
+		end
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			local pos = screenPosition(input)
+			if self:isOverPortrait(pos) then
+				self.scrubbing = true
+				lastPos = pos
+				self:moveCursor(pos)
+			end
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		local isMove = input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch
+		if not isMove or not self.frame.Visible then
+			return
+		end
+		local pos = screenPosition(input)
+		self:moveCursor(pos)
+		if self.scrubbing and self.tab == "Wash" then
+			local moved = if lastPos then (pos - lastPos).Magnitude else 0
+			lastPos = pos
+			if moved > 0 then
+				self:scrub(pos, moved)
+			end
+		end
+	end)
+
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			if self.scrubbing then
+				self.scrubbing = false
+				lastPos = nil
+				self:sendWash(true)
+			end
+			if input.UserInputType == Enum.UserInputType.Touch then
+				self.cursor.Visible = false
+			end
+		end
+	end)
+end
+
+function Makeover:isOverPortrait(pos: Vector2): boolean
+	local holder = self.portraitHolder
+	local a, s = holder.AbsolutePosition, holder.AbsoluteSize
+	return pos.X >= a.X and pos.X <= a.X + s.X and pos.Y >= a.Y and pos.Y <= a.Y + s.Y
+end
+
+function Makeover:moveCursor(pos: Vector2)
+	self.cursor.Visible = self:isOverPortrait(pos) and self.tab == "Wash" and self.frame.Visible
+	self.cursor.Text = if self.tool == "soap" then "🧽" else "🚿"
+	local f = self.frame.AbsolutePosition
+	self.cursor.Position = UDim2.fromOffset(pos.X - f.X, pos.Y - f.Y)
+end
+
+return Makeover
+]]></string>
+            </Properties>
+          </Item>
+          <Item class="ModuleScript" referent="23">
+            <Properties>
+              <string name="Name">Results</string>
+              <string name="Source"><![CDATA[-- Shows who won the fashion show, what the judges said, and the coins you earned.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
+local Theme = require(script.Parent.Theme)
+
+local C = Theme.Colors
+local new = Theme.new
+
+local Results = {}
+Results.__index = Results
+
+local MEDALS = { "🥇", "🥈", "🥉" }
+
+function Results.new(gui: ScreenGui)
+	local self = setmetatable({}, Results)
+	self.panel = new("Frame", {
+		Name = "Results",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -16, 0.55, 0),
+		Size = UDim2.new(0.4, 0, 0.78, 0),
+		BackgroundColor3 = C.white,
+		Visible = false,
+		ZIndex = 40,
+		Parent = gui,
+	}, { Theme.corner(24), Theme.stroke(C.gold, 4), Theme.padding(14), new("UISizeConstraint", { MinSize = Vector2.new(320, 0) }) })
+
+	self.title = new("TextLabel", {
+		Size = UDim2.new(1, 0, 0, 40),
+		Text = "🏆 Fashion Show Results",
+		TextColor3 = C.hotPink,
+		ZIndex = 41,
+		Parent = self.panel,
+	}, { Theme.maxText(32) })
+	self.mine = new("TextLabel", {
+		Position = UDim2.new(0, 0, 0, 44),
+		Size = UDim2.new(1, 0, 0, 96),
+		BackgroundTransparency = 0,
+		BackgroundColor3 = C.softPink,
+		Text = "",
+		TextWrapped = true,
+		ZIndex = 41,
+		Parent = self.panel,
+	}, { Theme.corner(14), Theme.maxText(19), Theme.padding(8) })
+	self.list = new("ScrollingFrame", {
+		Position = UDim2.new(0, 0, 0, 148),
+		Size = UDim2.new(1, 0, 1, -148),
+		BackgroundTransparency = 1,
+		ScrollBarThickness = 6,
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		CanvasSize = UDim2.new(),
+		ZIndex = 41,
+		Parent = self.panel,
+	}, { new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }) })
+	return self
+end
+
+function Results:show(results)
+	local theme = Catalog.themeById[results.themeId]
+	self.title.Text = "🏆 Results: " .. (theme and theme.name or "")
+	for _, child in self.list:GetChildren() do
+		if child:IsA("GuiObject") then
+			child:Destroy()
+		end
+	end
+
+	self.mine.Text = "Watch the show next round! 👀"
+	for _, row in results.rows do
+		local isMe = row.userId == Players.LocalPlayer.UserId
+		if isMe then
+			local comments = table.concat(row.comments, "  ", 1, math.min(#row.comments, 3))
+			self.mine.Text = string.format("You placed #%d with %s  (+%d 🪙)\n%s", row.rank, Theme.stars(row.stars), row.coins, comments)
+		end
+
+		local card = new("Frame", {
+			LayoutOrder = row.rank,
+			Size = UDim2.new(1, -8, 0, 76),
+			BackgroundColor3 = if isMe then C.softPink else C.lavender,
+			ZIndex = 42,
+			Parent = self.list,
+		}, { Theme.corner(14) })
+		new("TextLabel", {
+			Position = UDim2.new(0, 6, 0, 0),
+			Size = UDim2.new(0, 44, 1, 0),
+			Text = MEDALS[row.rank] or ("#" .. row.rank),
+			ZIndex = 43,
+			Parent = card,
+		}, { Theme.maxText(34) })
+		local face = new("Frame", {
+			Position = UDim2.new(0, 54, 0, 4),
+			Size = UDim2.new(0, 68, 0, 68),
+			BackgroundColor3 = C.white,
+			ZIndex = 43,
+			Parent = card,
+		}, { Theme.corner(12) })
+		LookRenderer.render(face, row.client, row.look, { clean = row.clean })
+		new("TextLabel", {
+			Position = UDim2.new(0, 130, 0, 6),
+			Size = UDim2.new(1, -136, 0, 32),
+			Text = row.stylist .. "'s " .. row.client.name,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 43,
+			Parent = card,
+		}, { Theme.maxText(22) })
+		new("TextLabel", {
+			Position = UDim2.new(0, 130, 0, 40),
+			Size = UDim2.new(1, -136, 0, 30),
+			Text = Theme.stars(row.stars) .. (if row.voteCount > 0 then "  (" .. row.voteCount .. " votes)" else ""),
+			TextColor3 = C.gold,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 43,
+			Parent = card,
+		}, { Theme.maxText(24) })
+	end
+
+	self.panel.Visible = true
+	Theme.pop(self.panel)
+end
+
+function Results:hide()
+	self.panel.Visible = false
+end
+
+return Results
+]]></string>
+            </Properties>
+          </Item>
+          <Item class="ModuleScript" referent="24">
+            <Properties>
+              <string name="Name">Shop</string>
+              <string name="Source"><![CDATA[-- The shop: unlock looks with coins you earn, or get Robux extras.
+
+local MarketplaceService = game:GetService("MarketplaceService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local Config = require(ReplicatedStorage.Shared.Config)
+local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Theme = require(script.Parent.Theme)
+
+local C = Theme.Colors
+local new = Theme.new
+
+local Shop = {}
+Shop.__index = Shop
+
+local ROBUX_ITEMS = {
+	{ kind = "pass", key = "VIP", icon = "👑", title = "VIP Glam Kit", text = "Rainbow & galaxy hair, Royal Updo, Mermaid Waves, Golden Gala Gown, crown and more - plus a VIP badge on the runway!" },
+	{ kind = "pass", key = "DoubleCoins", icon = "🪙", title = "2x Coins", text = "Earn double coins after every fashion show, forever." },
+	{ kind = "pass", key = "RunwayStar", icon = "🌟", title = "Runway Star", text = "Confetti cannons and sparkles every time your client walks the runway!" },
+	{ kind = "product", key = "SuperSoap", icon = "🧼", title = "Super Soap", text = "Instantly washes your client's face. Saves you time!" },
+	{ kind = "product", key = "CoinsSmall", icon = "💰", title = "500 Coins", text = "Unlock new looks faster." },
+	{ kind = "product", key = "CoinsLarge", icon = "💎", title = "2000 Coins", text = "A big bag of coins!" },
+}
+
+local priceCache: { [string]: string } = {}
+
+function Shop.new(gui: ScreenGui, ctx)
+	local self = setmetatable({}, Shop)
+	self.ctx = ctx
+	self.tab = "Coins"
+
+	self.overlay = new("TextButton", {
+		Name = "Shop",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = C.shadow,
+		BackgroundTransparency = 0.45,
+		Text = "",
+		AutoButtonColor = false,
+		Visible = false,
+		ZIndex = 60,
+		Parent = gui,
+	})
+	local panel = new("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.53),
+		Size = UDim2.fromScale(0.7, 0.8),
+		BackgroundColor3 = C.white,
+		ZIndex = 61,
+		Parent = self.overlay,
+	}, { Theme.corner(26), Theme.stroke(C.purple, 5), Theme.padding(14) })
+	self.panel = panel
+
+	new("TextLabel", {
+		Size = UDim2.new(1, -60, 0, 40),
+		Text = "🛍️ Glow Up Shop",
+		TextColor3 = C.purple,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 62,
+		Parent = panel,
+	}, { Theme.maxText(34) })
+	local close = Theme.button({
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.fromScale(1, 0),
+		Size = UDim2.new(0, 44, 0, 44),
+		Text = "✕",
+		Color = C.red,
+		ZIndex = 62,
+		Parent = panel,
+	})
+	close.Activated:Connect(function()
+		self:close()
+	end)
+
+	local tabs = new("Frame", {
+		Position = UDim2.new(0, 0, 0, 50),
+		Size = UDim2.new(1, 0, 0, 44),
+		BackgroundTransparency = 1,
+		ZIndex = 62,
+		Parent = panel,
+	}, { new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8) }) })
+	self.tabButtons = {}
+	for _, t in { { "Coins", "🪙 Unlock with Coins" }, { "Robux", "💎 Robux Extras" } } do
+		local b = Theme.button({ Text = t[2], Size = UDim2.new(0.5, -4, 1, 0), ZIndex = 63, Parent = tabs })
+		b.Activated:Connect(function()
+			self.tab = t[1]
+			self:render()
+		end)
+		self.tabButtons[t[1]] = b
+	end
+
+	self.list = new("ScrollingFrame", {
+		Position = UDim2.new(0, 0, 0, 104),
+		Size = UDim2.new(1, 0, 1, -104),
+		BackgroundTransparency = 1,
+		ScrollBarThickness = 8,
+		ScrollBarImageColor3 = C.purple,
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		CanvasSize = UDim2.new(),
+		ZIndex = 62,
+		Parent = panel,
+	}, { Theme.padding(6) })
+
+	self:buildConfirm(gui)
+	return self
+end
+
+------------------------------------------------------------------------------
+-- Buying
+
+function Shop:promptPass(key: string)
+	local id = Config.GamePasses[key]
+	if not id or id == 0 then
+		self.ctx.toast("Coming soon! 💖")
+		return
+	end
+	MarketplaceService:PromptGamePassPurchase(Players.LocalPlayer, id)
+end
+
+function Shop:promptProduct(key: string)
+	local id = Config.DevProducts[key]
+	if not id or id == 0 then
+		self.ctx.toast("Coming soon! 💖")
+		return
+	end
+	MarketplaceService:PromptProductPurchase(Players.LocalPlayer, id)
+end
+
+function Shop:buy(it: Catalog.Item)
+	local ok, message = Remotes.BuyItem:InvokeServer(it.id)
+	self.ctx.toast(message, if ok then C.green else C.red)
+end
+
+function Shop:buildConfirm(gui: ScreenGui)
+	self.confirm = new("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.new(0, 380, 0, 190),
+		BackgroundColor3 = C.white,
+		Visible = false,
+		ZIndex = 80,
+		Parent = gui,
+	}, { Theme.corner(22), Theme.stroke(C.hotPink, 5), Theme.padding(16) })
+	self.confirmText = new("TextLabel", {
+		Size = UDim2.new(1, 0, 0, 90),
+		Text = "",
+		ZIndex = 81,
+		Parent = self.confirm,
+	}, { Theme.maxText(26) })
+	self.confirmYes = Theme.button({
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromScale(0, 1),
+		Size = UDim2.new(0.48, 0, 0, 52),
+		Text = "Yes!",
+		Color = C.green,
+		ZIndex = 82,
+		Parent = self.confirm,
+	})
+	local no = Theme.button({
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.fromScale(1, 1),
+		Size = UDim2.new(0.48, 0, 0, 52),
+		Text = "Not now",
+		Color = C.textLight,
+		ZIndex = 82,
+		Parent = self.confirm,
+	})
+	no.Activated:Connect(function()
+		self.confirm.Visible = false
+	end)
+	self.confirmYes.Activated:Connect(function()
+		self.confirm.Visible = false
+		if self.onConfirm then
+			self.onConfirm()
+		end
+	end)
+end
+
+-- Called when a player taps a locked item.
+function Shop:askUnlock(it: Catalog.Item)
+	if it.pass then
+		self.confirmText.Text = it.name .. " comes with the 👑 " .. it.pass .. " Glam Kit. Take a look?"
+		self.confirmYes.Text = "See VIP"
+		self.onConfirm = function()
+			self:promptPass(it.pass :: string)
+		end
+	else
+		local coins = self.ctx.profile.coins or 0
+		if coins < it.price then
+			self.ctx.toast("You need " .. (it.price - coins) .. " more coins for " .. it.name .. ". Win shows to earn more!", C.purple)
+			return
+		end
+		self.confirmText.Text = "Unlock " .. it.name .. " for 🪙 " .. it.price .. "?"
+		self.confirmYes.Text = "Unlock!"
+		self.onConfirm = function()
+			self:buy(it)
+		end
+	end
+	self.confirm.Visible = true
+	Theme.pop(self.confirm)
+end
+
+------------------------------------------------------------------------------
+-- Shop window
+
+function Shop:open()
+	self.overlay.Visible = true
+	Theme.pop(self.panel)
+	self:render()
+end
+
+function Shop:close()
+	self.overlay.Visible = false
+end
+
+function Shop:refreshProfile()
+	if self.overlay.Visible then
+		self:render()
+	end
+end
+
+local function clear(frame: Instance)
+	for _, child in frame:GetChildren() do
+		if child:IsA("GuiObject") or child:IsA("UIGridLayout") or child:IsA("UIListLayout") then
+			child:Destroy()
+		end
+	end
+end
+
+function Shop:render()
+	for id, b in self.tabButtons do
+		b.BackgroundColor3 = if id == self.tab then C.purple else C.lavender
+		b.TextColor3 = if id == self.tab then C.white else C.text
+	end
+	clear(self.list)
+	if self.tab == "Coins" then
+		self:renderCoinItems()
+	else
+		self:renderRobuxItems()
+	end
+end
+
+function Shop:renderCoinItems()
+	new("UIGridLayout", {
+		CellSize = UDim2.new(0.185, 0, 0, 0),
+		CellPadding = UDim2.new(0.015, 0, 0, 10),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = self.list,
+	}, { new("UIAspectRatioConstraint", { AspectRatio = 0.75 }) })
+
+	local order = 0
+	for _, category in Catalog.Categories do
+		for _, it in category.items do
+			if it.hidden or it.pass or it.price <= 0 then
+				continue
+			end
+			order += 1
+			local owned = Catalog.isUnlocked(it, self.ctx.profile)
+			local card = new("Frame", {
+				LayoutOrder = order,
+				BackgroundColor3 = if owned then C.softPink else C.white,
+				ZIndex = 63,
+				Parent = self.list,
+			}, { Theme.corner(14), Theme.stroke(C.lavender, 2) })
+			local icon = new("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0),
+				Position = UDim2.fromScale(0.5, 0.06),
+				Size = UDim2.fromScale(0.5, 0.5),
+				BackgroundColor3 = C.lavender,
+				ZIndex = 64,
+				Parent = card,
+			}, { new("UIAspectRatioConstraint", { AspectRatio = 1 }), Theme.round() })
+			if it.color then
+				LookRenderer.paint(icon, it)
+			else
+				new("TextLabel", { Size = UDim2.fromScale(1, 1), Text = "✨", ZIndex = 65, Parent = icon })
+			end
+			new("TextLabel", {
+				Position = UDim2.fromScale(0.05, 0.4),
+				Size = UDim2.fromScale(0.9, 0.3),
+				Text = category.label .. "\n" .. it.name,
+				ZIndex = 64,
+				Parent = card,
+			}, { Theme.maxText(16) })
+			local b = Theme.button({
+				AnchorPoint = Vector2.new(0.5, 1),
+				Position = UDim2.new(0.5, 0, 1, -6),
+				Size = UDim2.new(0.9, 0, 0.2, 0),
+				Text = if owned then "Owned ✓" else "🪙 " .. it.price,
+				Color = if owned then C.green else C.hotPink,
+				ZIndex = 64,
+				MaxText = 18,
+				Parent = card,
+			})
+			if not owned then
+				b.Activated:Connect(function()
+					self:askUnlock(it)
+				end)
+			end
+		end
+	end
+end
+
+function Shop:renderRobuxItems()
+	new("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder, Parent = self.list })
+	for i, entry in ROBUX_ITEMS do
+		local owned = entry.kind == "pass" and self.ctx.profile.passes and self.ctx.profile.passes[entry.key]
+		local card = new("Frame", {
+			LayoutOrder = i,
+			Size = UDim2.new(1, -8, 0, 90),
+			BackgroundColor3 = if entry.kind == "pass" then C.lavender else C.softPink,
+			ZIndex = 63,
+			Parent = self.list,
+		}, { Theme.corner(16) })
+		new("TextLabel", { Position = UDim2.new(0, 8, 0, 0), Size = UDim2.new(0, 70, 1, 0), Text = entry.icon, ZIndex = 64, Parent = card }, { Theme.maxText(48) })
+		new("TextLabel", {
+			Position = UDim2.new(0, 84, 0, 6),
+			Size = UDim2.new(1, -250, 0, 30),
+			Text = entry.title,
+			TextColor3 = C.purple,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 64,
+			Parent = card,
+		}, { Theme.maxText(26) })
+		new("TextLabel", {
+			Position = UDim2.new(0, 84, 0, 38),
+			Size = UDim2.new(1, -250, 0, 46),
+			Text = entry.text,
+			TextWrapped = true,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextColor3 = C.textLight,
+			ZIndex = 64,
+			Parent = card,
+		}, { Theme.maxText(17) })
+
+		local key = entry.kind .. ":" .. entry.key
+		local b = Theme.button({
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -10, 0.5, 0),
+			Size = UDim2.new(0, 150, 0, 52),
+			Text = if owned then "Owned ✓" else (priceCache[key] or "Buy"),
+			Color = if owned then C.green else C.hotPink,
+			ZIndex = 64,
+			Parent = card,
+		})
+		if not owned then
+			b.Activated:Connect(function()
+				if entry.kind == "pass" then
+					self:promptPass(entry.key)
+				else
+					self:promptProduct(entry.key)
+				end
+			end)
+			if not priceCache[key] then
+				self:fetchPrice(entry, key, b)
+			end
+		end
+	end
+end
+
+function Shop:fetchPrice(entry, key: string, button: TextButton)
+	local id = if entry.kind == "pass" then Config.GamePasses[entry.key] else Config.DevProducts[entry.key]
+	if not id or id == 0 then
+		button.Text = "Soon!"
+		return
+	end
+	task.spawn(function()
+		local infoType = if entry.kind == "pass" then Enum.InfoType.GamePass else Enum.InfoType.Product
+		local ok, info = pcall(MarketplaceService.GetProductInfo, MarketplaceService, id, infoType)
+		if ok and info and info.PriceInRobux then
+			priceCache[key] = "R$ " .. info.PriceInRobux
+			if button.Parent then
+				button.Text = priceCache[key]
+			end
+		end
+	end)
+end
+
+return Shop
+]]></string>
+            </Properties>
+          </Item>
+          <Item class="ModuleScript" referent="25">
+            <Properties>
+              <string name="Name">Showcase</string>
+              <string name="Source"><![CDATA[-- The fashion show: points the camera at the runway, puts the look on the big screen,
+-- and lets everyone else rate it with stars.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Theme = require(script.Parent.Theme)
+
+local C = Theme.Colors
+local new = Theme.new
+
+local Showcase = {}
+Showcase.__index = Showcase
+
+function Showcase.new(gui: ScreenGui, ctx)
+	local self = setmetatable({}, Showcase)
+	self.ctx = ctx
+	self.current = nil
+
+	self.panel = new("Frame", {
+		Name = "Showcase",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -20),
+		Size = UDim2.new(0.55, 0, 0, 150),
+		BackgroundColor3 = C.white,
+		Visible = false,
+		ZIndex = 40,
+		Parent = gui,
+	}, { Theme.corner(22), Theme.stroke(C.pink, 4), Theme.padding(12), new("UISizeConstraint", { MinSize = Vector2.new(340, 0) }) })
+	self.title = new("TextLabel", {
+		Size = UDim2.new(1, 0, 0, 36),
+		Text = "",
+		TextColor3 = C.hotPink,
+		ZIndex = 41,
+		Parent = self.panel,
+	}, { Theme.maxText(30) })
+	self.prompt = new("TextLabel", {
+		Position = UDim2.new(0, 0, 0, 38),
+		Size = UDim2.new(1, 0, 0, 26),
+		Text = "",
+		ZIndex = 41,
+		Parent = self.panel,
+	}, { Theme.maxText(20) })
+
+	local row = new("Frame", {
+		Position = UDim2.new(0, 0, 0, 68),
+		Size = UDim2.new(1, 0, 0, 56),
+		BackgroundTransparency = 1,
+		ZIndex = 41,
+		Parent = self.panel,
+	}, {
+		new("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			Padding = UDim.new(0, 8),
+		}),
+	})
+	self.starRow = row
+	self.starButtons = {}
+	for i = 1, 5 do
+		local b = new("TextButton", {
+			Size = UDim2.new(0, 56, 0, 56),
+			Text = "☆",
+			TextColor3 = C.gold,
+			ZIndex = 42,
+			Parent = row,
+		})
+		b.Activated:Connect(function()
+			self:vote(i)
+		end)
+		b.MouseEnter:Connect(function()
+			if not self.voted then
+				self:showStars(i)
+			end
+		end)
+		b.MouseLeave:Connect(function()
+			if not self.voted then
+				self:showStars(0)
+			end
+		end)
+		self.starButtons[i] = b
+	end
+
+	task.spawn(function()
+		self:buildScreen()
+	end)
+	return self
+end
+
+------------------------------------------------------------------------------
+-- Big screen behind the runway
+
+function Showcase:buildScreen()
+	local world = Workspace:WaitForChild("GlowUpWorld", 30)
+	local part = world and world:FindFirstChild("Runway") and world.Runway:FindFirstChild("Screen")
+	if not part then
+		return
+	end
+	local surface = new("SurfaceGui", {
+		Name = "RunwayScreen",
+		Adornee = part,
+		Face = Enum.NormalId.Back,
+		SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud,
+		PixelsPerStud = 25,
+		LightInfluence = 0,
+		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		ResetOnSpawn = false,
+		Parent = Players.LocalPlayer:WaitForChild("PlayerGui"),
+	})
+	local bg = new("Frame", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = Color3.fromRGB(40, 20, 60),
+		Parent = surface,
+	}, { Theme.gradient(Color3.fromRGB(70, 30, 100), Color3.fromRGB(20, 10, 35)) })
+	self.screenPortrait = new("Frame", {
+		Position = UDim2.fromScale(0.04, 0.06),
+		Size = UDim2.fromScale(0.45, 0.88),
+		BackgroundColor3 = Color3.fromRGB(255, 235, 245),
+		Parent = bg,
+	}, { new("UIAspectRatioConstraint", { AspectRatio = 1 }), Theme.corner(40) })
+	self.screenTitle = new("TextLabel", {
+		Position = UDim2.fromScale(0.5, 0.1),
+		Size = UDim2.fromScale(0.46, 0.22),
+		TextColor3 = C.white,
+		Text = "✨ 5 Minute Glow Up ✨",
+		Parent = bg,
+	})
+	self.screenSub = new("TextLabel", {
+		Position = UDim2.fromScale(0.5, 0.36),
+		Size = UDim2.fromScale(0.46, 0.14),
+		TextColor3 = C.pink,
+		Text = "",
+		Parent = bg,
+	})
+	self.screenTheme = new("TextLabel", {
+		Position = UDim2.fromScale(0.5, 0.6),
+		Size = UDim2.fromScale(0.46, 0.12),
+		TextColor3 = C.gold,
+		Text = "",
+		Parent = bg,
+	})
+end
+
+function Showcase:setScreen(title: string, sub: string, client, look, clean: number?)
+	if not self.screenTitle then
+		return
+	end
+	self.screenTitle.Text = title
+	self.screenSub.Text = sub
+	local theme = Catalog.themeById[self.ctx.state().themeId]
+	self.screenTheme.Text = if theme then "Theme: " .. theme.name else ""
+	if client and look then
+		LookRenderer.render(self.screenPortrait, client, look, { clean = clean or 1 })
+	end
+end
+
+------------------------------------------------------------------------------
+-- Camera
+
+function Showcase:setCamera(view: string?)
+	local camera = Workspace.CurrentCamera
+	local world = Workspace:FindFirstChild("GlowUpWorld")
+	local marker = view and world and world:FindFirstChild("Cameras") and world.Cameras:FindFirstChild(view)
+	if marker then
+		camera.CameraType = Enum.CameraType.Scriptable
+		camera.CFrame = marker.CFrame
+	else
+		camera.CameraType = Enum.CameraType.Custom
+	end
+end
+
+------------------------------------------------------------------------------
+-- Voting
+
+function Showcase:showStars(n: number)
+	for i, b in self.starButtons do
+		b.Text = if i <= n then "★" else "☆"
+	end
+end
+
+function Showcase:vote(stars: number)
+	local current = self.current
+	if not current or current.userId == Players.LocalPlayer.UserId then
+		return
+	end
+	local first = not self.voted
+	self.voted = true
+	self:showStars(stars)
+	Remotes.Vote:FireServer(current.userId, stars)
+	self.prompt.Text = "Thanks for voting! 💖"
+	if first then
+		self.ctx.toast("+2 🪙 for voting!", C.gold)
+	end
+end
+
+function Showcase:show(payload)
+	self.current = payload
+	self.voted = false
+	self:showStars(0)
+	self.panel.Visible = true
+	Theme.pop(self.panel)
+	self:setCamera("Showcase")
+
+	local mine = payload.userId == Players.LocalPlayer.UserId
+	self.title.Text = payload.client.name .. " is on the runway! (" .. payload.index .. "/" .. payload.total .. ")"
+	local stylist = "Styled by " .. payload.stylist .. (if payload.vip then " 👑" else "")
+	if mine then
+		self.prompt.Text = "This is YOUR client! Strike a pose! 💃"
+		self.starRow.Visible = false
+	else
+		self.prompt.Text = stylist .. " - rate this look!"
+		self.starRow.Visible = true
+	end
+	self:setScreen(payload.client.name, stylist, payload.client, payload.look, payload.clean)
+end
+
+function Showcase:hide()
+	self.current = nil
+	self.panel.Visible = false
+end
+
+return Showcase
+]]></string>
+            </Properties>
+          </Item>
+          <Item class="ModuleScript" referent="26">
+            <Properties>
+              <string name="Name">Theme</string>
+              <string name="Source"><![CDATA[-- Colors, fonts and little helpers for building the game's screens in code.
+
+local TweenService = game:GetService("TweenService")
+
+local Theme = {}
+
+local rgb = Color3.fromRGB
+
+Theme.Font = Enum.Font.FredokaOne
+
+Theme.Colors = {
+	pink = rgb(255, 120, 190),
+	hotPink = rgb(240, 60, 150),
+	softPink = rgb(255, 228, 242),
+	purple = rgb(150, 90, 220),
+	lavender = rgb(235, 225, 255),
+	white = rgb(255, 255, 255),
+	text = rgb(80, 40, 100),
+	textLight = rgb(150, 120, 170),
+	gold = rgb(255, 200, 60),
+	green = rgb(80, 200, 130),
+	red = rgb(240, 70, 90),
+	shadow = rgb(0, 0, 0),
+}
+
+function Theme.new(className: string, props: { [string]: any }?, children: { Instance }?): any
+	local inst = Instance.new(className)
+	if inst:IsA("GuiObject") then
+		inst.BorderSizePixel = 0
+	end
+	if inst:IsA("TextLabel") or inst:IsA("TextButton") or inst:IsA("TextBox") then
+		inst.Font = Theme.Font
+		inst.TextColor3 = Theme.Colors.text
+		inst.TextScaled = true
+		inst.BackgroundTransparency = 1
+	end
+	local parent = nil
+	if props then
+		for key, value in props do
+			if key == "Parent" then
+				parent = value
+			else
+				(inst :: any)[key] = value
+			end
+		end
+	end
+	if children then
+		for _, child in children do
+			child.Parent = inst
+		end
+	end
+	if parent then
+		inst.Parent = parent
+	end
+	return inst
+end
+
+function Theme.corner(radius: number?): UICorner
+	return Theme.new("UICorner", { CornerRadius = UDim.new(0, radius or 16) })
+end
+
+function Theme.round(): UICorner
+	return Theme.new("UICorner", { CornerRadius = UDim.new(0.5, 0) })
+end
+
+function Theme.stroke(color: Color3?, thickness: number?): UIStroke
+	return Theme.new("UIStroke", {
+		Color = color or Theme.Colors.pink,
+		Thickness = thickness or 3,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+	})
+end
+
+function Theme.padding(px: number): UIPadding
+	local u = UDim.new(0, px)
+	return Theme.new("UIPadding", { PaddingTop = u, PaddingBottom = u, PaddingLeft = u, PaddingRight = u })
+end
+
+function Theme.maxText(size: number): UITextSizeConstraint
+	return Theme.new("UITextSizeConstraint", { MaxTextSize = size })
+end
+
+function Theme.gradient(a: Color3, b: Color3, rotation: number?): UIGradient
+	return Theme.new("UIGradient", { Color = ColorSequence.new(a, b), Rotation = rotation or 90 })
+end
+
+-- A bouncy, rounded button.
+function Theme.button(props: { [string]: any }): TextButton
+	local color = props.Color or Theme.Colors.pink
+	props.Color = nil
+	local maxText = props.MaxText or 28
+	props.MaxText = nil
+	local merged = {
+		BackgroundColor3 = color,
+		BackgroundTransparency = 0,
+		TextColor3 = Theme.Colors.white,
+		AutoButtonColor = false,
+	}
+	for k, v in props do
+		merged[k] = v
+	end
+	local button = Theme.new("TextButton", merged, {
+		Theme.corner(14),
+		Theme.maxText(maxText),
+		Theme.new("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) }),
+	})
+	local scale = Theme.new("UIScale", { Parent = button })
+	local info = TweenInfo.new(0.12, Enum.EasingStyle.Quad)
+	button.MouseEnter:Connect(function()
+		TweenService:Create(scale, info, { Scale = 1.05 }):Play()
+	end)
+	button.MouseLeave:Connect(function()
+		TweenService:Create(scale, info, { Scale = 1 }):Play()
+	end)
+	button.MouseButton1Down:Connect(function()
+		TweenService:Create(scale, info, { Scale = 0.94 }):Play()
+	end)
+	button.MouseButton1Up:Connect(function()
+		TweenService:Create(scale, info, { Scale = 1 }):Play()
+	end)
+	return button
+end
+
+function Theme.pop(gui: GuiObject)
+	local scale = gui:FindFirstChildOfClass("UIScale") or Theme.new("UIScale", { Parent = gui })
+	scale.Scale = 0.6
+	TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+end
+
+function Theme.formatTime(seconds: number): string
+	seconds = math.max(0, math.ceil(seconds))
+	return string.format("%d:%02d", seconds // 60, seconds % 60)
+end
+
+function Theme.stars(stars: number): string
+	local full = math.floor(stars)
+	local half = stars - full >= 0.5
+	return string.rep("★", full) .. (if half then "½" else "") .. string.rep("☆", 5 - full - (if half then 1 else 0))
+end
+
+return Theme
+]]></string>
+            </Properties>
+          </Item>
+        </Item>
+      </Item>
+    </Item>
+  </Item>
+</roblox>

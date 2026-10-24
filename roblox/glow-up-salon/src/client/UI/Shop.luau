@@ -1,0 +1,381 @@
+-- The shop: unlock looks with coins you earn, or get Robux extras.
+
+local MarketplaceService = game:GetService("MarketplaceService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local Config = require(ReplicatedStorage.Shared.Config)
+local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Theme = require(script.Parent.Theme)
+
+local C = Theme.Colors
+local new = Theme.new
+
+local Shop = {}
+Shop.__index = Shop
+
+local ROBUX_ITEMS = {
+	{ kind = "pass", key = "VIP", icon = "👑", title = "VIP Glam Kit", text = "Rainbow & galaxy hair, Royal Updo, Mermaid Waves, Golden Gala Gown, crown and more - plus a VIP badge on the runway!" },
+	{ kind = "pass", key = "DoubleCoins", icon = "🪙", title = "2x Coins", text = "Earn double coins after every fashion show, forever." },
+	{ kind = "pass", key = "RunwayStar", icon = "🌟", title = "Runway Star", text = "Confetti cannons and sparkles every time your client walks the runway!" },
+	{ kind = "product", key = "SuperSoap", icon = "🧼", title = "Super Soap", text = "Instantly washes your client's face. Saves you time!" },
+	{ kind = "product", key = "CoinsSmall", icon = "💰", title = "500 Coins", text = "Unlock new looks faster." },
+	{ kind = "product", key = "CoinsLarge", icon = "💎", title = "2000 Coins", text = "A big bag of coins!" },
+}
+
+local priceCache: { [string]: string } = {}
+
+function Shop.new(gui: ScreenGui, ctx)
+	local self = setmetatable({}, Shop)
+	self.ctx = ctx
+	self.tab = "Coins"
+
+	self.overlay = new("TextButton", {
+		Name = "Shop",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = C.shadow,
+		BackgroundTransparency = 0.45,
+		Text = "",
+		AutoButtonColor = false,
+		Visible = false,
+		ZIndex = 60,
+		Parent = gui,
+	})
+	local panel = new("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.53),
+		Size = UDim2.fromScale(0.7, 0.8),
+		BackgroundColor3 = C.white,
+		ZIndex = 61,
+		Parent = self.overlay,
+	}, { Theme.corner(26), Theme.stroke(C.purple, 5), Theme.padding(14) })
+	self.panel = panel
+
+	new("TextLabel", {
+		Size = UDim2.new(1, -60, 0, 40),
+		Text = "🛍️ Glow Up Shop",
+		TextColor3 = C.purple,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 62,
+		Parent = panel,
+	}, { Theme.maxText(34) })
+	local close = Theme.button({
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.fromScale(1, 0),
+		Size = UDim2.new(0, 44, 0, 44),
+		Text = "✕",
+		Color = C.red,
+		ZIndex = 62,
+		Parent = panel,
+	})
+	close.Activated:Connect(function()
+		self:close()
+	end)
+
+	local tabs = new("Frame", {
+		Position = UDim2.new(0, 0, 0, 50),
+		Size = UDim2.new(1, 0, 0, 44),
+		BackgroundTransparency = 1,
+		ZIndex = 62,
+		Parent = panel,
+	}, { new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8) }) })
+	self.tabButtons = {}
+	for _, t in { { "Coins", "🪙 Unlock with Coins" }, { "Robux", "💎 Robux Extras" } } do
+		local b = Theme.button({ Text = t[2], Size = UDim2.new(0.5, -4, 1, 0), ZIndex = 63, Parent = tabs })
+		b.Activated:Connect(function()
+			self.tab = t[1]
+			self:render()
+		end)
+		self.tabButtons[t[1]] = b
+	end
+
+	self.list = new("ScrollingFrame", {
+		Position = UDim2.new(0, 0, 0, 104),
+		Size = UDim2.new(1, 0, 1, -104),
+		BackgroundTransparency = 1,
+		ScrollBarThickness = 8,
+		ScrollBarImageColor3 = C.purple,
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		CanvasSize = UDim2.new(),
+		ZIndex = 62,
+		Parent = panel,
+	}, { Theme.padding(6) })
+
+	self:buildConfirm(gui)
+	return self
+end
+
+------------------------------------------------------------------------------
+-- Buying
+
+function Shop:promptPass(key: string)
+	local id = Config.GamePasses[key]
+	if not id or id == 0 then
+		self.ctx.toast("Coming soon! 💖")
+		return
+	end
+	MarketplaceService:PromptGamePassPurchase(Players.LocalPlayer, id)
+end
+
+function Shop:promptProduct(key: string)
+	local id = Config.DevProducts[key]
+	if not id or id == 0 then
+		self.ctx.toast("Coming soon! 💖")
+		return
+	end
+	MarketplaceService:PromptProductPurchase(Players.LocalPlayer, id)
+end
+
+function Shop:buy(it: Catalog.Item)
+	local ok, message = Remotes.BuyItem:InvokeServer(it.id)
+	self.ctx.toast(message, if ok then C.green else C.red)
+end
+
+function Shop:buildConfirm(gui: ScreenGui)
+	self.confirm = new("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.new(0, 380, 0, 190),
+		BackgroundColor3 = C.white,
+		Visible = false,
+		ZIndex = 80,
+		Parent = gui,
+	}, { Theme.corner(22), Theme.stroke(C.hotPink, 5), Theme.padding(16) })
+	self.confirmText = new("TextLabel", {
+		Size = UDim2.new(1, 0, 0, 90),
+		Text = "",
+		ZIndex = 81,
+		Parent = self.confirm,
+	}, { Theme.maxText(26) })
+	self.confirmYes = Theme.button({
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromScale(0, 1),
+		Size = UDim2.new(0.48, 0, 0, 52),
+		Text = "Yes!",
+		Color = C.green,
+		ZIndex = 82,
+		Parent = self.confirm,
+	})
+	local no = Theme.button({
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.fromScale(1, 1),
+		Size = UDim2.new(0.48, 0, 0, 52),
+		Text = "Not now",
+		Color = C.textLight,
+		ZIndex = 82,
+		Parent = self.confirm,
+	})
+	no.Activated:Connect(function()
+		self.confirm.Visible = false
+	end)
+	self.confirmYes.Activated:Connect(function()
+		self.confirm.Visible = false
+		if self.onConfirm then
+			self.onConfirm()
+		end
+	end)
+end
+
+-- Called when a player taps a locked item.
+function Shop:askUnlock(it: Catalog.Item)
+	if it.pass then
+		self.confirmText.Text = it.name .. " comes with the 👑 " .. it.pass .. " Glam Kit. Take a look?"
+		self.confirmYes.Text = "See VIP"
+		self.onConfirm = function()
+			self:promptPass(it.pass :: string)
+		end
+	else
+		local coins = self.ctx.profile.coins or 0
+		if coins < it.price then
+			self.ctx.toast("You need " .. (it.price - coins) .. " more coins for " .. it.name .. ". Win shows to earn more!", C.purple)
+			return
+		end
+		self.confirmText.Text = "Unlock " .. it.name .. " for 🪙 " .. it.price .. "?"
+		self.confirmYes.Text = "Unlock!"
+		self.onConfirm = function()
+			self:buy(it)
+		end
+	end
+	self.confirm.Visible = true
+	Theme.pop(self.confirm)
+end
+
+------------------------------------------------------------------------------
+-- Shop window
+
+function Shop:open()
+	self.overlay.Visible = true
+	Theme.pop(self.panel)
+	self:render()
+end
+
+function Shop:close()
+	self.overlay.Visible = false
+end
+
+function Shop:refreshProfile()
+	if self.overlay.Visible then
+		self:render()
+	end
+end
+
+local function clear(frame: Instance)
+	for _, child in frame:GetChildren() do
+		if child:IsA("GuiObject") or child:IsA("UIGridLayout") or child:IsA("UIListLayout") then
+			child:Destroy()
+		end
+	end
+end
+
+function Shop:render()
+	for id, b in self.tabButtons do
+		b.BackgroundColor3 = if id == self.tab then C.purple else C.lavender
+		b.TextColor3 = if id == self.tab then C.white else C.text
+	end
+	clear(self.list)
+	if self.tab == "Coins" then
+		self:renderCoinItems()
+	else
+		self:renderRobuxItems()
+	end
+end
+
+function Shop:renderCoinItems()
+	new("UIGridLayout", {
+		CellSize = UDim2.new(0.185, 0, 0, 0),
+		CellPadding = UDim2.new(0.015, 0, 0, 10),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = self.list,
+	}, { new("UIAspectRatioConstraint", { AspectRatio = 0.75 }) })
+
+	local order = 0
+	for _, category in Catalog.Categories do
+		for _, it in category.items do
+			if it.hidden or it.pass or it.price <= 0 then
+				continue
+			end
+			order += 1
+			local owned = Catalog.isUnlocked(it, self.ctx.profile)
+			local card = new("Frame", {
+				LayoutOrder = order,
+				BackgroundColor3 = if owned then C.softPink else C.white,
+				ZIndex = 63,
+				Parent = self.list,
+			}, { Theme.corner(14), Theme.stroke(C.lavender, 2) })
+			local icon = new("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0),
+				Position = UDim2.fromScale(0.5, 0.06),
+				Size = UDim2.fromScale(0.5, 0.5),
+				BackgroundColor3 = C.lavender,
+				ZIndex = 64,
+				Parent = card,
+			}, { new("UIAspectRatioConstraint", { AspectRatio = 1 }), Theme.round() })
+			if it.color then
+				LookRenderer.paint(icon, it)
+			else
+				new("TextLabel", { Size = UDim2.fromScale(1, 1), Text = "✨", ZIndex = 65, Parent = icon })
+			end
+			new("TextLabel", {
+				Position = UDim2.fromScale(0.05, 0.4),
+				Size = UDim2.fromScale(0.9, 0.3),
+				Text = category.label .. "\n" .. it.name,
+				ZIndex = 64,
+				Parent = card,
+			}, { Theme.maxText(16) })
+			local b = Theme.button({
+				AnchorPoint = Vector2.new(0.5, 1),
+				Position = UDim2.new(0.5, 0, 1, -6),
+				Size = UDim2.new(0.9, 0, 0.2, 0),
+				Text = if owned then "Owned ✓" else "🪙 " .. it.price,
+				Color = if owned then C.green else C.hotPink,
+				ZIndex = 64,
+				MaxText = 18,
+				Parent = card,
+			})
+			if not owned then
+				b.Activated:Connect(function()
+					self:askUnlock(it)
+				end)
+			end
+		end
+	end
+end
+
+function Shop:renderRobuxItems()
+	new("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder, Parent = self.list })
+	for i, entry in ROBUX_ITEMS do
+		local owned = entry.kind == "pass" and self.ctx.profile.passes and self.ctx.profile.passes[entry.key]
+		local card = new("Frame", {
+			LayoutOrder = i,
+			Size = UDim2.new(1, -8, 0, 90),
+			BackgroundColor3 = if entry.kind == "pass" then C.lavender else C.softPink,
+			ZIndex = 63,
+			Parent = self.list,
+		}, { Theme.corner(16) })
+		new("TextLabel", { Position = UDim2.new(0, 8, 0, 0), Size = UDim2.new(0, 70, 1, 0), Text = entry.icon, ZIndex = 64, Parent = card }, { Theme.maxText(48) })
+		new("TextLabel", {
+			Position = UDim2.new(0, 84, 0, 6),
+			Size = UDim2.new(1, -250, 0, 30),
+			Text = entry.title,
+			TextColor3 = C.purple,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 64,
+			Parent = card,
+		}, { Theme.maxText(26) })
+		new("TextLabel", {
+			Position = UDim2.new(0, 84, 0, 38),
+			Size = UDim2.new(1, -250, 0, 46),
+			Text = entry.text,
+			TextWrapped = true,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextColor3 = C.textLight,
+			ZIndex = 64,
+			Parent = card,
+		}, { Theme.maxText(17) })
+
+		local key = entry.kind .. ":" .. entry.key
+		local b = Theme.button({
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -10, 0.5, 0),
+			Size = UDim2.new(0, 150, 0, 52),
+			Text = if owned then "Owned ✓" else (priceCache[key] or "Buy"),
+			Color = if owned then C.green else C.hotPink,
+			ZIndex = 64,
+			Parent = card,
+		})
+		if not owned then
+			b.Activated:Connect(function()
+				if entry.kind == "pass" then
+					self:promptPass(entry.key)
+				else
+					self:promptProduct(entry.key)
+				end
+			end)
+			if not priceCache[key] then
+				self:fetchPrice(entry, key, b)
+			end
+		end
+	end
+end
+
+function Shop:fetchPrice(entry, key: string, button: TextButton)
+	local id = if entry.kind == "pass" then Config.GamePasses[entry.key] else Config.DevProducts[entry.key]
+	if not id or id == 0 then
+		button.Text = "Soon!"
+		return
+	end
+	task.spawn(function()
+		local infoType = if entry.kind == "pass" then Enum.InfoType.GamePass else Enum.InfoType.Product
+		local ok, info = pcall(MarketplaceService.GetProductInfo, MarketplaceService, id, infoType)
+		if ok and info and info.PriceInRobux then
+			priceCache[key] = "R$ " .. info.PriceInRobux
+			if button.Parent then
+				button.Text = priceCache[key]
+			end
+		end
+	end)
+end
+
+return Shop

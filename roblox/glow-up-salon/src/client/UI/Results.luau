@@ -1,0 +1,127 @@
+-- Shows who won the fashion show, what the judges said, and the coins you earned.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
+local Theme = require(script.Parent.Theme)
+
+local C = Theme.Colors
+local new = Theme.new
+
+local Results = {}
+Results.__index = Results
+
+local MEDALS = { "🥇", "🥈", "🥉" }
+
+function Results.new(gui: ScreenGui)
+	local self = setmetatable({}, Results)
+	self.panel = new("Frame", {
+		Name = "Results",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -16, 0.55, 0),
+		Size = UDim2.new(0.4, 0, 0.78, 0),
+		BackgroundColor3 = C.white,
+		Visible = false,
+		ZIndex = 40,
+		Parent = gui,
+	}, { Theme.corner(24), Theme.stroke(C.gold, 4), Theme.padding(14), new("UISizeConstraint", { MinSize = Vector2.new(320, 0) }) })
+
+	self.title = new("TextLabel", {
+		Size = UDim2.new(1, 0, 0, 40),
+		Text = "🏆 Fashion Show Results",
+		TextColor3 = C.hotPink,
+		ZIndex = 41,
+		Parent = self.panel,
+	}, { Theme.maxText(32) })
+	self.mine = new("TextLabel", {
+		Position = UDim2.new(0, 0, 0, 44),
+		Size = UDim2.new(1, 0, 0, 96),
+		BackgroundTransparency = 0,
+		BackgroundColor3 = C.softPink,
+		Text = "",
+		TextWrapped = true,
+		ZIndex = 41,
+		Parent = self.panel,
+	}, { Theme.corner(14), Theme.maxText(19), Theme.padding(8) })
+	self.list = new("ScrollingFrame", {
+		Position = UDim2.new(0, 0, 0, 148),
+		Size = UDim2.new(1, 0, 1, -148),
+		BackgroundTransparency = 1,
+		ScrollBarThickness = 6,
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		CanvasSize = UDim2.new(),
+		ZIndex = 41,
+		Parent = self.panel,
+	}, { new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }) })
+	return self
+end
+
+function Results:show(results)
+	local theme = Catalog.themeById[results.themeId]
+	self.title.Text = "🏆 Results: " .. (theme and theme.name or "")
+	for _, child in self.list:GetChildren() do
+		if child:IsA("GuiObject") then
+			child:Destroy()
+		end
+	end
+
+	self.mine.Text = "Watch the show next round! 👀"
+	for _, row in results.rows do
+		local isMe = row.userId == Players.LocalPlayer.UserId
+		if isMe then
+			local comments = table.concat(row.comments, "  ", 1, math.min(#row.comments, 3))
+			self.mine.Text = string.format("You placed #%d with %s  (+%d 🪙)\n%s", row.rank, Theme.stars(row.stars), row.coins, comments)
+		end
+
+		local card = new("Frame", {
+			LayoutOrder = row.rank,
+			Size = UDim2.new(1, -8, 0, 76),
+			BackgroundColor3 = if isMe then C.softPink else C.lavender,
+			ZIndex = 42,
+			Parent = self.list,
+		}, { Theme.corner(14) })
+		new("TextLabel", {
+			Position = UDim2.new(0, 6, 0, 0),
+			Size = UDim2.new(0, 44, 1, 0),
+			Text = MEDALS[row.rank] or ("#" .. row.rank),
+			ZIndex = 43,
+			Parent = card,
+		}, { Theme.maxText(34) })
+		local face = new("Frame", {
+			Position = UDim2.new(0, 54, 0, 4),
+			Size = UDim2.new(0, 68, 0, 68),
+			BackgroundColor3 = C.white,
+			ZIndex = 43,
+			Parent = card,
+		}, { Theme.corner(12) })
+		LookRenderer.render(face, row.client, row.look, { clean = row.clean })
+		new("TextLabel", {
+			Position = UDim2.new(0, 130, 0, 6),
+			Size = UDim2.new(1, -136, 0, 32),
+			Text = row.stylist .. "'s " .. row.client.name,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 43,
+			Parent = card,
+		}, { Theme.maxText(22) })
+		new("TextLabel", {
+			Position = UDim2.new(0, 130, 0, 40),
+			Size = UDim2.new(1, -136, 0, 30),
+			Text = Theme.stars(row.stars) .. (if row.voteCount > 0 then "  (" .. row.voteCount .. " votes)" else ""),
+			TextColor3 = C.gold,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 43,
+			Parent = card,
+		}, { Theme.maxText(24) })
+	end
+
+	self.panel.Visible = true
+	Theme.pop(self.panel)
+end
+
+function Results:hide()
+	self.panel.Visible = false
+end
+
+return Results

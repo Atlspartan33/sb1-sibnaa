@@ -1,0 +1,226 @@
+-- The fashion show: points the camera at the runway, puts the look on the big screen,
+-- and lets everyone else rate it with stars.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Theme = require(script.Parent.Theme)
+
+local C = Theme.Colors
+local new = Theme.new
+
+local Showcase = {}
+Showcase.__index = Showcase
+
+function Showcase.new(gui: ScreenGui, ctx)
+	local self = setmetatable({}, Showcase)
+	self.ctx = ctx
+	self.current = nil
+
+	self.panel = new("Frame", {
+		Name = "Showcase",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -20),
+		Size = UDim2.new(0.55, 0, 0, 150),
+		BackgroundColor3 = C.white,
+		Visible = false,
+		ZIndex = 40,
+		Parent = gui,
+	}, { Theme.corner(22), Theme.stroke(C.pink, 4), Theme.padding(12), new("UISizeConstraint", { MinSize = Vector2.new(340, 0) }) })
+	self.title = new("TextLabel", {
+		Size = UDim2.new(1, 0, 0, 36),
+		Text = "",
+		TextColor3 = C.hotPink,
+		ZIndex = 41,
+		Parent = self.panel,
+	}, { Theme.maxText(30) })
+	self.prompt = new("TextLabel", {
+		Position = UDim2.new(0, 0, 0, 38),
+		Size = UDim2.new(1, 0, 0, 26),
+		Text = "",
+		ZIndex = 41,
+		Parent = self.panel,
+	}, { Theme.maxText(20) })
+
+	local row = new("Frame", {
+		Position = UDim2.new(0, 0, 0, 68),
+		Size = UDim2.new(1, 0, 0, 56),
+		BackgroundTransparency = 1,
+		ZIndex = 41,
+		Parent = self.panel,
+	}, {
+		new("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			Padding = UDim.new(0, 8),
+		}),
+	})
+	self.starRow = row
+	self.starButtons = {}
+	for i = 1, 5 do
+		local b = new("TextButton", {
+			Size = UDim2.new(0, 56, 0, 56),
+			Text = "☆",
+			TextColor3 = C.gold,
+			ZIndex = 42,
+			Parent = row,
+		})
+		b.Activated:Connect(function()
+			self:vote(i)
+		end)
+		b.MouseEnter:Connect(function()
+			if not self.voted then
+				self:showStars(i)
+			end
+		end)
+		b.MouseLeave:Connect(function()
+			if not self.voted then
+				self:showStars(0)
+			end
+		end)
+		self.starButtons[i] = b
+	end
+
+	task.spawn(function()
+		self:buildScreen()
+	end)
+	return self
+end
+
+------------------------------------------------------------------------------
+-- Big screen behind the runway
+
+function Showcase:buildScreen()
+	local world = Workspace:WaitForChild("GlowUpWorld", 30)
+	local part = world and world:FindFirstChild("Runway") and world.Runway:FindFirstChild("Screen")
+	if not part then
+		return
+	end
+	local surface = new("SurfaceGui", {
+		Name = "RunwayScreen",
+		Adornee = part,
+		Face = Enum.NormalId.Back,
+		SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud,
+		PixelsPerStud = 25,
+		LightInfluence = 0,
+		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		ResetOnSpawn = false,
+		Parent = Players.LocalPlayer:WaitForChild("PlayerGui"),
+	})
+	local bg = new("Frame", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = Color3.fromRGB(40, 20, 60),
+		Parent = surface,
+	}, { Theme.gradient(Color3.fromRGB(70, 30, 100), Color3.fromRGB(20, 10, 35)) })
+	self.screenPortrait = new("Frame", {
+		Position = UDim2.fromScale(0.04, 0.06),
+		Size = UDim2.fromScale(0.45, 0.88),
+		BackgroundColor3 = Color3.fromRGB(255, 235, 245),
+		Parent = bg,
+	}, { new("UIAspectRatioConstraint", { AspectRatio = 1 }), Theme.corner(40) })
+	self.screenTitle = new("TextLabel", {
+		Position = UDim2.fromScale(0.5, 0.1),
+		Size = UDim2.fromScale(0.46, 0.22),
+		TextColor3 = C.white,
+		Text = "✨ 5 Minute Glow Up ✨",
+		Parent = bg,
+	})
+	self.screenSub = new("TextLabel", {
+		Position = UDim2.fromScale(0.5, 0.36),
+		Size = UDim2.fromScale(0.46, 0.14),
+		TextColor3 = C.pink,
+		Text = "",
+		Parent = bg,
+	})
+	self.screenTheme = new("TextLabel", {
+		Position = UDim2.fromScale(0.5, 0.6),
+		Size = UDim2.fromScale(0.46, 0.12),
+		TextColor3 = C.gold,
+		Text = "",
+		Parent = bg,
+	})
+end
+
+function Showcase:setScreen(title: string, sub: string, client, look, clean: number?)
+	if not self.screenTitle then
+		return
+	end
+	self.screenTitle.Text = title
+	self.screenSub.Text = sub
+	local theme = Catalog.themeById[self.ctx.state().themeId]
+	self.screenTheme.Text = if theme then "Theme: " .. theme.name else ""
+	if client and look then
+		LookRenderer.render(self.screenPortrait, client, look, { clean = clean or 1 })
+	end
+end
+
+------------------------------------------------------------------------------
+-- Camera
+
+function Showcase:setCamera(view: string?)
+	local camera = Workspace.CurrentCamera
+	local world = Workspace:FindFirstChild("GlowUpWorld")
+	local marker = view and world and world:FindFirstChild("Cameras") and world.Cameras:FindFirstChild(view)
+	if marker then
+		camera.CameraType = Enum.CameraType.Scriptable
+		camera.CFrame = marker.CFrame
+	else
+		camera.CameraType = Enum.CameraType.Custom
+	end
+end
+
+------------------------------------------------------------------------------
+-- Voting
+
+function Showcase:showStars(n: number)
+	for i, b in self.starButtons do
+		b.Text = if i <= n then "★" else "☆"
+	end
+end
+
+function Showcase:vote(stars: number)
+	local current = self.current
+	if not current or current.userId == Players.LocalPlayer.UserId then
+		return
+	end
+	local first = not self.voted
+	self.voted = true
+	self:showStars(stars)
+	Remotes.Vote:FireServer(current.userId, stars)
+	self.prompt.Text = "Thanks for voting! 💖"
+	if first then
+		self.ctx.toast("+2 🪙 for voting!", C.gold)
+	end
+end
+
+function Showcase:show(payload)
+	self.current = payload
+	self.voted = false
+	self:showStars(0)
+	self.panel.Visible = true
+	Theme.pop(self.panel)
+	self:setCamera("Showcase")
+
+	local mine = payload.userId == Players.LocalPlayer.UserId
+	self.title.Text = payload.client.name .. " is on the runway! (" .. payload.index .. "/" .. payload.total .. ")"
+	local stylist = "Styled by " .. payload.stylist .. (if payload.vip then " 👑" else "")
+	if mine then
+		self.prompt.Text = "This is YOUR client! Strike a pose! 💃"
+		self.starRow.Visible = false
+	else
+		self.prompt.Text = stylist .. " - rate this look!"
+		self.starRow.Visible = true
+	end
+	self:setScreen(payload.client.name, stylist, payload.client, payload.look, payload.clean)
+end
+
+function Showcase:hide()
+	self.current = nil
+	self.panel.Visible = false
+end
+
+return Showcase
