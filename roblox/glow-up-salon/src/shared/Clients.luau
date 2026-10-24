@@ -48,13 +48,15 @@ local EYE_COLORS = {
 
 -- Where the client is coming from, and what's all over their face.
 local STORIES = {
-	{ text = "just finished a long shift at the auto shop. Their face is covered in grease!", colors = { rgb(55, 55, 58), rgb(35, 32, 30) } },
-	{ text = "spent all day fixing bikes at the bike shop. Oil everywhere!", colors = { rgb(45, 40, 35), rgb(80, 70, 55) } },
-	{ text = "worked at the bakery shop and got into a frosting fight!", colors = { rgb(255, 180, 210), rgb(90, 50, 30), rgb(255, 250, 240) } },
-	{ text = "cleaned the chimney at the hardware shop. So much soot!", colors = { rgb(35, 35, 38), rgb(70, 70, 75) } },
-	{ text = "helped at the paint shop and got paint all over their face!", colors = { rgb(235, 80, 80), rgb(80, 140, 235), rgb(250, 205, 60) } },
-	{ text = "worked at the garden shop and fell in the mud!", colors = { rgb(110, 75, 40), rgb(90, 140, 60) } },
-	{ text = "ran the smoothie shop and the blender exploded!", colors = { rgb(200, 60, 120), rgb(120, 200, 80), rgb(255, 170, 60) } },
+	{ text = "I fixed cars at the auto shop all day. I'm SO greasy! 😫", colors = { rgb(55, 55, 58), rgb(35, 32, 30) } },
+	{ text = "I fixed bikes at the bike shop. Oil got everywhere! 🚲", colors = { rgb(45, 40, 35), rgb(80, 70, 55) } },
+	{ text = "We had a frosting fight at the bakery shop! 🧁", colors = { rgb(255, 180, 210), rgb(90, 50, 30), rgb(255, 250, 240) } },
+	{ text = "I cleaned the chimney at the hardware shop. Soot! 🧹", colors = { rgb(35, 35, 38), rgb(70, 70, 75) } },
+	{ text = "Oops! I spilled paint at the paint shop! 🎨", colors = { rgb(235, 80, 80), rgb(80, 140, 235), rgb(250, 205, 60) } },
+	{ text = "I fell in the mud at the garden shop! 🌻", colors = { rgb(110, 75, 40), rgb(90, 140, 60) } },
+	{ text = "The blender exploded at the smoothie shop! 🍓", colors = { rgb(200, 60, 120), rgb(120, 200, 80), rgb(255, 170, 60) } },
+	{ text = "I made pizza at the pizza shop. Sauce everywhere! 🍕", colors = { rgb(200, 50, 40), rgb(250, 210, 90) } },
+	{ text = "Slime exploded at the toy shop! So sticky! 🟢", colors = { rgb(120, 220, 90), rgb(90, 200, 160), rgb(200, 120, 255) } },
 }
 
 -- Face area (matches LookRenderer's face oval) so dirt lands on the face.

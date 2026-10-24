@@ -15,7 +15,9 @@ export type Profile = {
 	coins: number,
 	owned: { [string]: boolean },
 	superSoaps: number,
-	stats: { shows: number, wins: number, bestStars: number },
+	stats: { shows: number, wins: number, bestStars: number, totalStars: number },
+	lastDay: number, -- last day a daily gift was given (days since 1970)
+	streak: number, -- days in a row
 	receipts: { string },
 	passes: { [string]: boolean }, -- not saved; checked with Roblox every visit
 	canSave: boolean, -- false if loading failed, so we never overwrite good data with an empty profile
@@ -50,7 +52,10 @@ local function newProfile(saved): Profile
 			shows = stats.shows or 0,
 			wins = stats.wins or 0,
 			bestStars = stats.bestStars or 0,
+			totalStars = stats.totalStars or 0,
 		},
+		lastDay = tonumber(saved.lastDay) or 0,
+		streak = tonumber(saved.streak) or 0,
 		receipts = saved.receipts or {},
 		passes = {},
 		canSave = true,
@@ -90,6 +95,7 @@ function DataService.push(player: Player)
 			owned = p.owned,
 			passes = p.passes,
 			superSoaps = p.superSoaps,
+			totalStars = p.stats.totalStars,
 		})
 	end
 end
@@ -113,6 +119,8 @@ function DataService.save(player: Player): boolean
 		superSoaps = p.superSoaps,
 		stats = p.stats,
 		receipts = p.receipts,
+		lastDay = p.lastDay,
+		streak = p.streak,
 	}
 	for attempt = 1, 3 do
 		local ok, err = pcall(function()
@@ -127,6 +135,24 @@ function DataService.save(player: Player): boolean
 		task.wait(attempt)
 	end
 	return false
+end
+
+-- A gift for coming back each day. Coming back days in a row makes it bigger.
+local function giveDailyGift(player: Player, profile: Profile)
+	local today = os.time() // 86400
+	if profile.lastDay >= today then
+		return
+	end
+	profile.streak = if profile.lastDay == today - 1 then profile.streak + 1 else 1
+	profile.lastDay = today
+	local coins = Config.DAILY_GIFT_COINS + Config.DAILY_STREAK_BONUS * math.min(profile.streak - 1, 5)
+	profile.coins += coins
+	task.delay(3, function()
+		if player.Parent then
+			Remotes.Celebrate:FireClient(player, { kind = "daily", coins = coins, streak = profile.streak })
+			DataService.push(player)
+		end
+	end)
 end
 
 local function load(player: Player)
@@ -163,6 +189,7 @@ local function load(player: Player)
 		Remotes.Notify:FireClient(player, "Couldn't load your saved coins. Progress this visit won't be saved.")
 	end
 	checkPasses(player, profile)
+	giveDailyGift(player, profile)
 	profiles[player] = profile
 	DataService.push(player)
 end

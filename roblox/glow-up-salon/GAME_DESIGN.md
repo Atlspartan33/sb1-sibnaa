@@ -1,8 +1,20 @@
 # 5 Minute Glow Up Salon: Game Design
 
-**Pitch:** Customers walk into your salon straight from their jobs at the shop, covered in grease, mud, paint and frosting. You get **5 minutes** to wash their face, do their hair and makeup, and dress them for the fashion show. Then they walk the runway, everyone votes, and the best stylist wins.
+**Pitch:** Customers walk into your salon straight from their jobs at the shop, covered in grease, mud, paint and frosting. You get **5 minutes** to wash their face, do their hair and makeup, and dress them for the fashion show. Then they walk the runway, everyone cheers and votes, and the best stylist wins.
 
-![Face preview](docs/face-preview.png)
+**Made for:** girls around 6–10. That means few words, big buttons, lots of feedback, and nothing scary or competitive in a mean way.
+
+![Looks](docs/face-preview.jpg)
+
+| Washing | Picking makeup | On a phone |
+|---|---|---|
+| ![](docs/screens/1-wash.jpg) | ![](docs/screens/2-makeup.jpg) | ![](docs/screens/3-phone.jpg) |
+
+| Runway (camera follows the client) | Winners' podium | Results |
+|---|---|---|
+| ![](docs/screens/4-runway.jpg) | ![](docs/screens/5-podium.jpg) | ![](docs/screens/6-results.jpg) |
+
+*These pictures come from the play-test tool (`tools/playtest`), not Roblox Studio. In Roblox, lighting, fonts and 3D look a little different.*
 
 ## Tori's ideas → game features
 
@@ -10,30 +22,34 @@
 |---|---|
 | Makeup game | Makeup tab: 9 eyeshadows, 3 lash styles, 4 blushes and 9 lipsticks |
 | Do their hair / you get to do their hair too | Hair tab: 10 hairstyles + 11 hair colors. Clients show up with **messy** hair you have to fix |
-| They come in from the shop dirty, so they have to wash their face | Every client has a story ("just finished a shift at the auto shop…"). Their face has grease or mud spots. Pick **Soap**, rub the dirt off, then pick **Rinse** to wash away the bubbles |
+| They come in from the shop dirty, so they have to wash their face | Every client tells you where they've been ("I fixed cars at the auto shop all day. I'm SO greasy! 😫"). Pick 🧽 **Soap** and rub off the splats. ✨ pops when a splat comes off. Then 🚿 **Rinse** the bubbles (the game switches tools for you) |
 | Pay to get extra stuff | Coins you earn unlock new looks. Robux buys VIP items, 2x coins, runway effects and Super Soap |
-| Then you do a fashion show | Each client walks a 3D runway with your face design on the big screen. Other players vote 1–5 stars |
-| You only get 5 minutes to do everything | One 5-minute timer for the whole makeover. It turns red and pulses in the last 30 seconds |
+| Then you do a fashion show | Each client walks a 3D runway under a balloon arch, with your design on the big screen. The camera follows them, photographers flash, and everyone taps emoji cheers and votes 1–5 stars |
+| You only get 5 minutes to do everything | A "5 minutes! GO! 💨" splash, then one timer for the whole makeover. It turns red and pulses in the last 30 seconds |
 
-**Things we added so it plays well:**
-- **Themes** (Pink Party, Rock Star, Under the Sea, Royal Ball…) give each round a goal, so you have to think about what to pick, not just pick at random.
-- **AI judges** score every look, so the game works with just 1 player. With more players, judges and player votes count half each.
-- **Outfits and extras** (bows, crowns, face stickers) so the fashion show has something to show off.
-- **Judge comments** explain what to fix ("Rinse off the soap bubbles!") so kids get better each round.
-- **"I'm Done!" button.** If every stylist finishes early, the show starts early.
+## What makes it fun (and easy for little kids)
+
+- **The client reacts.** Their mouth changes from a frown 😫 (dirty) to a smile, then a big grin 😁. They talk in a speech bubble: "That tickles!", "Perfect for Pink Party! 😍", "This is my BEST look EVER! 💖" (with confetti).
+- **Happy hearts 💖💖💖🤍🤍** under the face fill up as the look gets better. It's the same score the judges use, so kids learn what works.
+- **⭐ theme stars** on items that match the show's theme. No reading needed.
+- **Glowing "do this next" tab**, plus a checklist (🧼 💇 💄 👗) that turns green and can be tapped to jump to that step.
+- **Every look is a preview.** Item cards show the client's own face wearing that item.
+- **Friendly results.** Everyone gets a pop-up ("✨ Great job!", "🏆 You WON!"), coins and tips from the judges, never a "you lost".
+- **Safe social play.** Players cheer with fixed emoji (😍👏🔥✨💖) and star votes. There's no typing.
+- **Coming back pays off.** A 🎁 daily gift (bigger for days in a row) and stylist levels (Newbie Stylist → Rising Star → Pro Stylist → Glam Queen → Superstar → Legendary), with a confetti pop-up when you level up.
 
 ## Round loop (everyone in the server plays together)
 
-1. **Intermission (20s):** the next theme is shown, with a how-to-play card. Players can browse the shop.
+1. **Intermission (20s):** the next theme and a 5-step how-to card. Players can browse the shop.
 2. **Makeover (5:00):** each player gets their own dirty client.
    - 🧼 **Wash:** rub dirt with Soap, then Rinse the bubbles
    - 💇 **Hair:** style + color
    - 💄 **Makeup:** eyeshadow, lashes, blush, lipstick
-   - 👗 **Outfit:** pick something that fits the theme
+   - 👗 **Outfit:** pick something that fits the theme (dresses get a skirt on the runway)
    - ✨ **Extras:** face art + accessory
-   - Checklist turns green as each step is done.
-3. **Fashion Show (~9s per look):** the client walks the runway and twirls. Their face is on the big screen. Everyone else taps 1–5 stars (+2 coins for voting).
-4. **Results (15s):** top 3 clients stand on the podium. Each player sees their stars, judge comments and coins earned.
+   - If every stylist taps **I'm Done!**, the show starts early.
+3. **Fashion Show (~9s per look):** the client walks the runway and twirls. Everyone else gives 1–5 stars (+2 coins for voting), and anyone can tap emoji cheers that float up on every screen.
+4. **Results (15s):** the top 3 stand on the podium. Each player gets a pop-up with their stars, judge tips and coins.
 
 ## Scoring (out of 5 stars)
 
@@ -49,18 +65,19 @@
 
 Forgot to rinse the bubbles? −0.2. Final = average of judges and player votes (judges only if no one voted).
 
-## Coins (free to earn)
+## Coins & levels (free to earn)
 
-- Start with 100 coins
+- Start with 100 coins, plus a daily gift of 50 coins (+10 for each day in a row, up to +50)
 - Every show: 20 + 10 per star, +10 for a spotless wash
 - Placing (2+ players): 1st +50, 2nd +30, 3rd +15
 - Voting: +2 per look you rate
+- Every 5 stars earned = 1 stylist level
 
 About half the items are free from the start. The rest cost 30–150 coins, so a kid who plays a few rounds can unlock them without paying.
 
 ## Monetization (kid-friendly, follows Roblox rules)
 
-No loot boxes or random paid items. Every purchase shows exactly what you get.
+No loot boxes or random paid items. Every purchase shows exactly what you get, and nothing paid is needed to win.
 
 | Type | Item | What it does | Suggested price |
 |---|---|---|---|
@@ -75,11 +92,10 @@ Super Soaps are saved if you aren't in a makeover when you buy one, so a purchas
 
 ## Ideas for version 2
 
-- Daily login reward and a streak calendar
-- More client stories and dirt types (glitter slime, ketchup, sunburn → aloe)
 - Nail painting station
-- Private servers for friends / sleepovers
+- More client stories and dirt types (glitter slime, ketchup, sunburn → aloe)
 - Seasonal themes (Halloween, Valentine's) with limited-time items
+- Private servers for friends / sleepovers
 - Leaderboard of most wins
 - Real 3D hair accessories on the runway models
-- Sounds and music (needs uploaded audio)
+- Photo mode: save a picture of your best look

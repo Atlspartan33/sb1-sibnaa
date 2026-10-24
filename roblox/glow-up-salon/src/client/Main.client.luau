@@ -7,11 +7,14 @@ local RunService = game:GetService("RunService")
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local UI = script.Parent:WaitForChild("UI")
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local Effects = require(UI.Effects)
 local HUD = require(UI.HUD)
 local Makeover = require(UI.Makeover)
 local Results = require(UI.Results)
 local Shop = require(UI.Shop)
 local Showcase = require(UI.Showcase)
+local Sounds = require(UI.Sounds)
 local Theme = require(UI.Theme)
 
 local gui = Instance.new("ScreenGui")
@@ -52,10 +55,15 @@ local makeover = Makeover.new(gui, ctx)
 local showcase = Showcase.new(gui, ctx)
 local results = Results.new(gui)
 
+Theme.onClick = function()
+	Sounds.play("Click")
+end
+
 local function applyState(newState)
 	local oldPhase = state.phase
 	state = newState
 	hud:setState(state)
+	Sounds.music(if state.phase == "Makeover" then "MakeoverMusic" elseif state.phase == "Showcase" then "RunwayMusic" else nil)
 
 	makeover:setVisible(state.phase == "Makeover")
 	if state.phase ~= "Showcase" then
@@ -73,7 +81,8 @@ local function applyState(newState)
 		showcase:setScreen("✨ 5 Minute Glow Up ✨", "Next show starting soon!", nil, nil)
 	end
 	if state.phase == "Makeover" and oldPhase ~= "Makeover" then
-		hud:toast("You have 5 minutes! Go go go! ⏰", Theme.Colors.purple)
+		local theme = Catalog.themeById[state.themeId]
+		Effects.splash(gui, "5 minutes! GO! 💨", theme and ("Theme: " .. theme.name) or nil, Theme.Colors.purple, 2.2)
 	end
 end
 
@@ -99,6 +108,7 @@ end)
 Remotes.Profile.OnClientEvent:Connect(function(profile)
 	ctx.profile = profile
 	hud:setCoins(profile.coins)
+	hud:setLevel(profile.totalStars or 0)
 	makeover:refreshProfile()
 	shop:refreshProfile()
 end)
@@ -107,6 +117,21 @@ Remotes.PowerUp.OnClientEvent:Connect(function(kind)
 	if kind == "SuperSoap" then
 		makeover:superSoap()
 		hud:toast("Super Soap! Squeaky clean in one swipe! 🧼✨", Theme.Colors.green)
+	end
+end)
+
+Remotes.Reaction.OnClientEvent:Connect(function(emoji)
+	showcase:reaction(emoji)
+end)
+
+Remotes.Celebrate.OnClientEvent:Connect(function(info)
+	if info.kind == "daily" then
+		local streak = if info.streak > 1 then "Day " .. info.streak .. " in a row! 🔥" else "Come back tomorrow for more!"
+		Effects.splash(gui, "🎁 Daily Gift! +" .. info.coins .. " 🪙", streak, Theme.Colors.gold, 3.5)
+		Effects.confetti(gui, 40)
+	elseif info.kind == "level" then
+		Effects.splash(gui, "⭐ Level " .. info.level .. "! ⭐", "You're a " .. info.title .. "!", Theme.Colors.purple, 3.5)
+		Effects.confetti(gui, 60)
 	end
 end)
 
@@ -131,4 +156,5 @@ end)
 
 RunService.RenderStepped:Connect(function()
 	hud:update()
+	showcase:followWalker()
 end)

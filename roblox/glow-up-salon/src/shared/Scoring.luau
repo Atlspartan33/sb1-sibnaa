@@ -104,6 +104,18 @@ function Scoring.judge(entry: Entry, theme: Catalog.Theme): (number, { string })
 	return stars, comments
 end
 
+-- How the client feels about their look (used to draw their mouth).
+function Scoring.mood(stars: number, clean: number): string
+	if clean < 0.5 then
+		return "sad"
+	elseif stars < 2.5 then
+		return "neutral"
+	elseif stars < 4 then
+		return "smile"
+	end
+	return "grin"
+end
+
 -- Mixes the judges' stars with the other players' votes (half and half).
 function Scoring.final(judgeStars: number, votes: { number }): number
 	if #votes == 0 then

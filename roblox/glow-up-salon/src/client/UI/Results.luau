@@ -5,6 +5,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
+local Scoring = require(ReplicatedStorage.Shared.Scoring)
+local Effects = require(script.Parent.Effects)
 local Theme = require(script.Parent.Theme)
 
 local C = Theme.Colors
@@ -17,6 +19,7 @@ local MEDALS = { "🥇", "🥈", "🥉" }
 
 function Results.new(gui: ScreenGui)
 	local self = setmetatable({}, Results)
+	self.gui = gui
 	self.panel = new("Frame", {
 		Name = "Results",
 		AnchorPoint = Vector2.new(1, 0.5),
@@ -73,6 +76,7 @@ function Results:show(results)
 		if isMe then
 			local comments = table.concat(row.comments, "  ", 1, math.min(#row.comments, 3))
 			self.mine.Text = string.format("You placed #%d with %s  (+%d 🪙)\n%s", row.rank, Theme.stars(row.stars), row.coins, comments)
+			self:celebrate(row, #results.rows)
 		end
 
 		local card = new("Frame", {
@@ -96,7 +100,7 @@ function Results:show(results)
 			ZIndex = 43,
 			Parent = card,
 		}, { Theme.corner(12) })
-		LookRenderer.render(face, row.client, row.look, { clean = row.clean })
+		LookRenderer.render(face, row.client, row.look, { clean = row.clean, mood = Scoring.mood(row.stars, row.clean) })
 		new("TextLabel", {
 			Position = UDim2.new(0, 130, 0, 6),
 			Size = UDim2.new(1, -136, 0, 32),
@@ -118,6 +122,26 @@ function Results:show(results)
 
 	self.panel.Visible = true
 	Theme.pop(self.panel)
+end
+
+-- A big pop-up for your own result, with confetti for good scores.
+function Results:celebrate(row, players: number)
+	local title
+	if players >= 2 and row.rank == 1 then
+		title = "🏆 You WON! 🏆"
+	elseif players >= 2 and row.rank <= 3 then
+		title = MEDALS[row.rank] .. " #" .. row.rank .. " Place!"
+	elseif row.stars >= 4.5 then
+		title = "😍 STUNNING!"
+	elseif row.stars >= 3 then
+		title = "✨ Great job!"
+	else
+		title = "💪 Nice try!"
+	end
+	Effects.splash(self.gui, title, Theme.stars(row.stars) .. "   +" .. row.coins .. " 🪙", C.hotPink, 3)
+	if row.stars >= 3.5 or (players >= 2 and row.rank == 1) then
+		Effects.confetti(self.gui, 60)
+	end
 end
 
 function Results:hide()

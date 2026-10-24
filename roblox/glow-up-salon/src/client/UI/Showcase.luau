@@ -7,7 +7,9 @@ local Workspace = game:GetService("Workspace")
 
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
+local Progress = require(ReplicatedStorage.Shared.Progress)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Effects = require(script.Parent.Effects)
 local Theme = require(script.Parent.Theme)
 
 local C = Theme.Colors
@@ -15,6 +17,8 @@ local new = Theme.new
 
 local Showcase = {}
 Showcase.__index = Showcase
+
+local CHEERS = { "😍", "👏", "🔥", "✨", "💖" }
 
 function Showcase.new(gui: ScreenGui, ctx)
 	local self = setmetatable({}, Showcase)
@@ -25,7 +29,7 @@ function Showcase.new(gui: ScreenGui, ctx)
 		Name = "Showcase",
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 1, -20),
-		Size = UDim2.new(0.55, 0, 0, 150),
+		Size = UDim2.new(0.55, 0, 0, 196),
 		BackgroundColor3 = C.white,
 		Visible = false,
 		ZIndex = 40,
@@ -86,7 +90,36 @@ function Showcase.new(gui: ScreenGui, ctx)
 	end
 
 	task.spawn(function()
-		self:buildScreen()
+		-- Cheer buttons: everyone can tap these, and the emoji float up on every screen
+	local cheers = new("Frame", {
+		Position = UDim2.new(0, 0, 0, 128),
+		Size = UDim2.new(1, 0, 0, 44),
+		BackgroundTransparency = 1,
+		ZIndex = 41,
+		Parent = self.panel,
+	}, {
+		new("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			Padding = UDim.new(0, 10),
+		}),
+	})
+	for _, emoji in CHEERS do
+		local b = Theme.button({
+			Text = emoji,
+			Size = UDim2.new(0, 56, 1, 0),
+			Color = C.softPink,
+			ZIndex = 42,
+			MaxText = 34,
+			Parent = cheers,
+		})
+		b.Activated:Connect(function()
+			Remotes.React:FireServer(emoji)
+		end)
+	end
+	self.gui = gui
+
+	self:buildScreen()
 	end)
 	return self
 end
@@ -165,11 +198,36 @@ function Showcase:setCamera(view: string?)
 	local camera = Workspace.CurrentCamera
 	local world = Workspace:FindFirstChild("GlowUpWorld")
 	local marker = view and world and world:FindFirstChild("Cameras") and world.Cameras:FindFirstChild(view)
+	self.view = view
 	if marker then
 		camera.CameraType = Enum.CameraType.Scriptable
 		camera.CFrame = marker.CFrame
 	else
 		camera.CameraType = Enum.CameraType.Custom
+	end
+end
+
+-- During the show the camera glides along next to the client walking the runway.
+function Showcase:followWalker()
+	if self.view ~= "Showcase" then
+		return
+	end
+	local world = Workspace:FindFirstChild("GlowUpWorld")
+	if not world then
+		return
+	end
+	local walker = nil
+	for _, m in world:GetChildren() do
+		if m:IsA("Model") and m:GetAttribute("Walking") then
+			walker = m
+		end
+	end
+	local root = walker and walker:FindFirstChild("HumanoidRootPart")
+	if root and root:IsA("BasePart") then
+		local pos = root.Position
+		local goal = CFrame.lookAt(pos + Vector3.new(6, 3, 13), pos + Vector3.new(0, 1.5, 0))
+		local camera = Workspace.CurrentCamera
+		camera.CFrame = camera.CFrame:Lerp(goal, 0.08)
 	end
 end
 
@@ -191,7 +249,7 @@ function Showcase:vote(stars: number)
 	self.voted = true
 	self:showStars(stars)
 	Remotes.Vote:FireServer(current.userId, stars)
-	self.prompt.Text = "Thanks for voting! 💖"
+	self.prompt.Text = "Thanks for voting! 💖 Tap to cheer!"
 	if first then
 		self.ctx.toast("+2 🪙 for voting!", C.gold)
 	end
@@ -206,16 +264,32 @@ function Showcase:show(payload)
 	self:setCamera("Showcase")
 
 	local mine = payload.userId == Players.LocalPlayer.UserId
-	self.title.Text = payload.client.name .. " is on the runway! (" .. payload.index .. "/" .. payload.total .. ")"
-	local stylist = "Styled by " .. payload.stylist .. (if payload.vip then " 👑" else "")
+	self.title.Text = "💃 " .. payload.client.name .. " is on the runway! (" .. payload.index .. "/" .. payload.total .. ")"
+	local level = payload.level or 1
+	local stylist = "Styled by " .. payload.stylist .. (if payload.vip then " 👑" else "") .. "  •  Lv " .. level .. " " .. Progress.title(level)
 	if mine then
-		self.prompt.Text = "This is YOUR client! Strike a pose! 💃"
+		self.prompt.Text = "This is YOUR client! Cheer for them! 📣"
 		self.starRow.Visible = false
 	else
-		self.prompt.Text = stylist .. " - rate this look!"
+		self.prompt.Text = "How many stars? ⭐"
 		self.starRow.Visible = true
 	end
+	-- Camera flashes from the photographers
+	task.spawn(function()
+		local current = payload
+		for _ = 1, 4 do
+			task.wait(0.8 + math.random() * 1.2)
+			if self.current ~= current then
+				break
+			end
+			Effects.flash(self.gui)
+		end
+	end)
 	self:setScreen(payload.client.name, stylist, payload.client, payload.look, payload.clean)
+end
+
+function Showcase:reaction(emoji: string)
+	Effects.floatEmoji(self.gui, emoji)
 end
 
 function Showcase:hide()

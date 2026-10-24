@@ -6,6 +6,7 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local Progress = require(ReplicatedStorage.Shared.Progress)
 local Theme = require(script.Parent.Theme)
 
 local C = Theme.Colors
@@ -71,14 +72,43 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 	})
 	shop.Activated:Connect(onShop)
 
+	-- Stylist level, just left of the timer
+	local levelPill = new("Frame", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(0.35, -10, 0, 10),
+		Size = UDim2.new(0, 120, 0, 42),
+		BackgroundColor3 = C.white,
+		ZIndex = 50,
+		Parent = gui,
+	}, { Theme.round(), Theme.stroke(C.purple, 3) })
+	self.levelFill = new("Frame", {
+		Size = UDim2.fromScale(0, 1),
+		BackgroundColor3 = C.lavender,
+		ZIndex = 50,
+		Parent = levelPill,
+	}, { Theme.round() })
+	self.levelText = new("TextLabel", {
+		Size = UDim2.fromScale(1, 1),
+		Text = "⭐ Lv 1",
+		ZIndex = 51,
+		Parent = levelPill,
+	}, { Theme.maxText(22), Theme.padding(6) })
+
+	-- Little messages pop up near the bottom of the screen
 	self.toasts = new("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 62),
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -96),
 		Size = UDim2.new(0.5, 0, 0, 200),
 		BackgroundTransparency = 1,
 		ZIndex = 90,
 		Parent = gui,
-	}, { new("UIListLayout", { Padding = UDim.new(0, 6), HorizontalAlignment = Enum.HorizontalAlignment.Center }) })
+	}, {
+		new("UIListLayout", {
+			Padding = UDim.new(0, 6),
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			VerticalAlignment = Enum.VerticalAlignment.Bottom,
+		}),
+	})
 
 	-- Between rounds
 	self.lobby = new("Frame", {
@@ -131,9 +161,14 @@ function HUD:setCoins(coins: number)
 	self.coinText.Text = "🪙 " .. tostring(coins)
 end
 
+function HUD:setLevel(totalStars: number)
+	self.levelText.Text = "⭐ Lv " .. Progress.level(totalStars)
+	self.levelFill.Size = UDim2.fromScale(Progress.fraction(totalStars), 1)
+end
+
 function HUD:toast(message: string, color: Color3?)
 	local toast = new("TextLabel", {
-		Size = UDim2.new(1, 0, 0, 40),
+		Size = UDim2.new(1, 0, 0, 44),
 		BackgroundColor3 = color or C.hotPink,
 		BackgroundTransparency = 0,
 		TextColor3 = C.white,

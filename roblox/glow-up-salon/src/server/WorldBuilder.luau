@@ -1,6 +1,7 @@
 -- Builds the salon, runway, big screen, audience seats and winners' podium when the game starts.
 -- Building with code means the place works straight away; you can still decorate around it in Studio.
 
+local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 
 local WorldBuilder = {}
@@ -50,6 +51,50 @@ local function sign(p: BasePart, face: Enum.NormalId, text: string, textColor: C
 	gui.Parent = p
 end
 
+local function ball(parent: Instance, name: string, diameter: number, position: Vector3, color: Color3, material: Enum.Material?): Part
+	local p = part(parent, name, Vector3.new(diameter, diameter, diameter), CFrame.new(position), color, material)
+	p.Shape = Enum.PartType.Ball
+	return p
+end
+
+local function plant(parent: Instance, position: Vector3)
+	local pot = part(parent, "Pot", Vector3.new(2.4, 2.6, 2.6), CFrame.new(position + Vector3.new(0, 1.2, 0)) * CFrame.Angles(0, 0, math.rad(90)), rgb(255, 255, 255))
+	pot.Shape = Enum.PartType.Cylinder
+	ball(parent, "Leaves", 4, position + Vector3.new(0, 4, 0), rgb(110, 200, 120), Enum.Material.Grass)
+	ball(parent, "Flower", 1, position + Vector3.new(0.8, 5.6, 0.6), rgb(255, 120, 180))
+	ball(parent, "Flower", 0.9, position + Vector3.new(-1, 5.2, -0.4), rgb(255, 220, 90))
+end
+
+-- Soft, glowy, pastel look for the whole game
+local function setupLighting()
+	for _, effect in Lighting:GetChildren() do
+		if effect.Name == "GlowUp" then
+			effect:Destroy()
+		end
+	end
+	local bloom = Instance.new("BloomEffect")
+	bloom.Name = "GlowUp"
+	bloom.Intensity = 0.7
+	bloom.Size = 28
+	bloom.Threshold = 1.6
+	bloom.Parent = Lighting
+	local color = Instance.new("ColorCorrectionEffect")
+	color.Name = "GlowUp"
+	color.Saturation = 0.15
+	color.Brightness = 0.03
+	color.Contrast = 0.05
+	color.TintColor = rgb(255, 245, 252)
+	color.Parent = Lighting
+	local atmosphere = Instance.new("Atmosphere")
+	atmosphere.Name = "GlowUp"
+	atmosphere.Density = 0.28
+	atmosphere.Color = rgb(255, 214, 236)
+	atmosphere.Decay = rgb(200, 170, 255)
+	atmosphere.Haze = 1.2
+	atmosphere.Glare = 0.4
+	atmosphere.Parent = Lighting
+end
+
 local function cameraMarker(parent: Instance, name: string, from: Vector3, to: Vector3)
 	local p = part(parent, name, Vector3.new(1, 1, 1), CFrame.lookAt(from, to), Color3.new(1, 1, 1))
 	p.Transparency = 1
@@ -73,7 +118,19 @@ function WorldBuilder.build(): World
 	local salon = Instance.new("Folder")
 	salon.Name = "Salon"
 	salon.Parent = folder
-	part(salon, "SalonFloor", Vector3.new(70, 0.2, 40), CFrame.new(0, 0.1, 50), rgb(250, 250, 255), Enum.Material.Marble)
+	-- Checkerboard salon floor
+	local tile = 5
+	for ix = 0, 13 do
+		for iz = 0, 7 do
+			local color = if (ix + iz) % 2 == 0 then rgb(255, 255, 255) else rgb(255, 205, 228)
+			part(salon, "Tile", Vector3.new(tile, 0.2, tile), CFrame.new(-32.5 + ix * tile, 0.1, 32.5 + iz * tile), color, Enum.Material.SmoothPlastic)
+		end
+	end
+	part(salon, "BackWall", Vector3.new(72, 22, 1), CFrame.new(0, 11, 70), rgb(235, 220, 255))
+	for _, x in { -34, 34 } do
+		plant(salon, Vector3.new(x, 0, 66))
+		plant(salon, Vector3.new(x, 0, 34))
+	end
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "Spawn"
 	spawn.Anchored = true
@@ -112,6 +169,7 @@ function WorldBuilder.build(): World
 	local length = math.abs(runwayEndZ - runwayStartZ) + 6
 	local midZ = (runwayStartZ + runwayEndZ) / 2
 	part(runway, "Catwalk", Vector3.new(8, runwayTopY, length), CFrame.new(0, runwayTopY / 2, midZ), rgb(255, 255, 255), Enum.Material.Marble)
+	part(runway, "Carpet", Vector3.new(4, 0.1, length), CFrame.new(0, runwayTopY + 0.05, midZ), rgb(255, 90, 170), Enum.Material.Fabric)
 	for side = -1, 1, 2 do
 		local strip = part(runway, "LightStrip", Vector3.new(0.4, 0.3, length), CFrame.new(side * 4.2, runwayTopY + 0.15, midZ), PINK, Enum.Material.Neon)
 		local light = Instance.new("PointLight")
@@ -134,6 +192,19 @@ function WorldBuilder.build(): World
 		spot.Brightness = 3
 		spot.Color = rgb(255, 230, 245)
 		spot.Parent = cap
+	end
+
+	-- Balloon arch where clients come out
+	local balloonColors = { PINK, rgb(255, 255, 255), PURPLE, GOLD, rgb(140, 210, 255) }
+	for i = 0, 22 do
+		local a = math.rad(i * (180 / 22))
+		local pos = Vector3.new(math.cos(a) * 9, runwayTopY + math.sin(a) * 11, runwayStartZ - 1)
+		ball(runway, "Balloon", 2.8, pos, balloonColors[i % #balloonColors + 1]).Reflectance = 0.15
+		ball(runway, "Balloon", 2, pos + Vector3.new(0, 0, 1.6), balloonColors[(i + 2) % #balloonColors + 1]).Reflectance = 0.15
+	end
+	for side = -1, 1, 2 do
+		plant(runway, Vector3.new(side * 18, 0, -50))
+		plant(runway, Vector3.new(side * 18, 0, -12))
 	end
 
 	-- Confetti cannons for Runway Star pass holders
@@ -174,15 +245,15 @@ function WorldBuilder.build(): World
 		end
 	end
 
-	-- Winners' podium at the front of the runway
+	-- Winners' podium, off to the side so it never blocks the runway
 	local podiumFolder = Instance.new("Folder")
 	podiumFolder.Name = "Podium"
 	podiumFolder.Parent = folder
-	local podiumZ = -2
+	local podiumX, podiumZ = -32, -8
 	local blocks = {
-		{ x = 0, h = 5, color = GOLD, label = "1" },
-		{ x = -7, h = 3.5, color = rgb(200, 205, 215), label = "2" },
-		{ x = 7, h = 2.5, color = rgb(215, 140, 80), label = "3" },
+		{ x = podiumX, h = 5, color = GOLD, label = "1" },
+		{ x = podiumX - 7, h = 3.5, color = rgb(200, 205, 215), label = "2" },
+		{ x = podiumX + 7, h = 2.5, color = rgb(215, 140, 80), label = "3" },
 	}
 	local podium = {}
 	for _, b in blocks do
@@ -196,9 +267,17 @@ function WorldBuilder.build(): World
 	cameras.Name = "Cameras"
 	cameras.Parent = folder
 	cameraMarker(cameras, "Showcase", Vector3.new(0, 9, 14), Vector3.new(0, 6, -36))
-	cameraMarker(cameras, "Results", Vector3.new(0, 8, 16), Vector3.new(0, 5, -2))
+	cameraMarker(cameras, "Results", Vector3.new(podiumX + 7, 9, podiumZ + 19), Vector3.new(podiumX + 7, 5.5, podiumZ))
+	part(podiumFolder, "PodiumStage", Vector3.new(26, 0.4, 12), CFrame.new(podiumX, 0.2, podiumZ), rgb(255, 235, 245), Enum.Material.Marble)
+	for i = 0, 24 do
+		local a = math.rad(i * (180 / 24))
+		local pos = Vector3.new(podiumX + math.cos(a) * 12, 0.5 + math.sin(a) * 11, podiumZ - 4)
+		ball(podiumFolder, "Balloon", 2.6, pos, balloonColors[i % #balloonColors + 1]).Reflectance = 0.15
+		ball(podiumFolder, "Balloon", 1.9, pos + Vector3.new(0, 0, 1.4), balloonColors[(i + 2) % #balloonColors + 1]).Reflectance = 0.15
+	end
 
 	folder.Parent = Workspace
+	setupLighting()
 
 	return {
 		folder = folder,

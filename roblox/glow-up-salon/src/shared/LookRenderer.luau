@@ -14,6 +14,8 @@ export type Options = {
 	headOnly: boolean?, -- skip neck and outfit (used for the runway head)
 	dirtHealth: { number }?, -- per-spot dirt left (1 = dirty, 0 = clean); used while washing
 	clean: number?, -- 0..1 overall cleanliness, used when dirtHealth isn't given
+	mood: string?, -- "sad", "neutral", "smile" (default) or "grin"
+	zoom: number?, -- >1 zooms in on the face (the container should clip)
 }
 
 -- Layers, back to front
@@ -238,6 +240,7 @@ local function drawEyes(root: Frame, client, look, hairItem: Catalog.Item?)
 		end
 
 		local eye = shape(root, x, 0.42, 0.085, 0.055, WHITE, Z.eyes, 0.5)
+		eye.Name = "Eye"
 		local iris = shape(eye, 0.5, 0.5, 0.5, 0.85, client.eyes, Z.eyes, 0.5)
 		shape(iris, 0.5, 0.5, 0.5, 0.5, Color3.fromRGB(20, 15, 20), Z.eyes, 0.5)
 		shape(iris, 0.68, 0.3, 0.3, 0.3, WHITE, Z.eyes, 0.5)
@@ -256,7 +259,47 @@ local function drawEyes(root: Frame, client, look, hairItem: Catalog.Item?)
 	end
 end
 
-local function drawCheeksAndLips(root: Frame, client, look)
+-- Half of an ellipse, cut off by a clipping frame: the lower half makes a smile, the upper half a frown.
+local function halfMouth(root: Frame, y: number, w: number, h: number, lower: boolean): Frame
+	local clip = Instance.new("Frame")
+	clip.Name = "Mouth"
+	clip.AnchorPoint = Vector2.new(0.5, 0.5)
+	clip.Position = UDim2.fromScale(0.5, y)
+	clip.Size = UDim2.fromScale(w, h)
+	clip.BackgroundTransparency = 1
+	clip.ClipsDescendants = true
+	clip.ZIndex = Z.details
+	clip.Parent = root
+	return clip
+end
+
+local function drawMouth(root: Frame, client, mood: string, lipColor: Color3, glossy: boolean)
+	if mood == "smile" or mood == "grin" then
+		local big = mood == "grin"
+		local clip = halfMouth(root, if big then 0.605 else 0.6, if big then 0.15 else 0.12, if big then 0.07 else 0.05, true)
+		shape(clip, 0.5, 0, 1, 2, lipColor, 1, 0.5)
+		shape(clip, 0.5, 0, 0.8, 1.5, Color3.fromRGB(110, 30, 50), 2, 0.5)
+		shape(clip, 0.5, 0.13, 0.62, 0.24, WHITE, 3, 0.3)
+		if big then
+			shape(clip, 0.5, 0.78, 0.38, 0.4, Color3.fromRGB(255, 120, 140), 3, 0.5)
+		end
+		if glossy then
+			shape(clip, 0.62, 0.8, 0.18, 0.12, WHITE, 4, 0.5, 0.3)
+		end
+	elseif mood == "sad" then
+		local clip = halfMouth(root, 0.615, 0.1, 0.035, false)
+		shape(clip, 0.5, 1, 1, 2, lipColor, 1, 0.5)
+		shape(clip, 0.5, 1.3, 0.72, 2, client.skin, 2, 0.5)
+	else
+		local lips = shape(root, 0.5, 0.6, 0.11, 0.042, lipColor, Z.details, 0.5)
+		shape(root, 0.5, 0.598, 0.08, 0.005, darken(lips.BackgroundColor3, 0.6), Z.gems, 0.5)
+		if glossy then
+			shape(root, 0.52, 0.612, 0.03, 0.009, WHITE, Z.gems, 0.5, 0.3)
+		end
+	end
+end
+
+local function drawCheeksAndLips(root: Frame, client, look, mood: string?)
 	local blush = Catalog.byId[look.blush]
 	if blush and blush.color then
 		for side = -1, 1, 2 do
@@ -269,14 +312,8 @@ local function drawCheeksAndLips(root: Frame, client, look)
 
 	local lipstick = Catalog.byId[look.lipstick]
 	local natural = client.skin:Lerp(Color3.fromRGB(190, 80, 85), 0.4)
-	local lips = shape(root, 0.5, 0.6, 0.11, 0.042, natural, Z.details, 0.5)
-	if lipstick and lipstick.color then
-		lips.BackgroundColor3 = lipstick.color
-	end
-	shape(root, 0.5, 0.598, 0.08, 0.005, darken(lips.BackgroundColor3, 0.6), Z.gems, 0.5)
-	if lipstick and lipstick.sparkle then
-		shape(root, 0.52, 0.612, 0.03, 0.009, WHITE, Z.gems, 0.5, 0.3)
-	end
+	local lipColor = if lipstick and lipstick.color then lipstick.color else natural
+	drawMouth(root, client, mood or "smile", lipColor, lipstick ~= nil and lipstick.sparkle == true)
 end
 
 local function drawGems(root: Frame, client, look)
@@ -351,8 +388,12 @@ local function drawDirt(root: Frame, client, options: Options?)
 	local cleanedCount = math.floor(((options and options.clean) or 0) * n + 0.5)
 	for i, spot in client.dirt do
 		local h = if health then health[i] or 0 else (if i <= cleanedCount then 0 else 1)
-		local f = shape(root, spot.x, spot.y, spot.size, spot.size * 0.8, spot.color, Z.dirt, 0.5, 0, (i * 47) % 180)
+		-- A splat: one big blob and two little ones
+		local f = shape(root, spot.x, spot.y, spot.size * 1.3, spot.size * 1.1, spot.color, Z.dirt, 0, 1, (i * 47) % 180)
 		f.Name = "Dirt" .. i
+		shape(f, 0.45, 0.5, 0.75, 0.75, spot.color, Z.dirt, 0.5)
+		shape(f, 0.82, 0.22, 0.3, 0.3, spot.color, Z.dirt, 0.5)
+		shape(f, 0.18, 0.85, 0.24, 0.24, darken(spot.color, 0.85), Z.dirt, 0.5)
 		LookRenderer.setDirtHealth(f, h)
 	end
 end
@@ -363,7 +404,12 @@ end
 LookRenderer.paint = paint
 
 function LookRenderer.setDirtHealth(f: GuiObject, health: number)
-	f.BackgroundTransparency = 1 - 0.92 * math.clamp(health, 0, 1)
+	local t = 1 - 0.92 * math.clamp(health, 0, 1)
+	for _, blob in f:GetChildren() do
+		if blob:IsA("GuiObject") then
+			blob.BackgroundTransparency = t
+		end
+	end
 	f.Visible = health > 0.02
 end
 
@@ -377,8 +423,10 @@ function LookRenderer.render(container: GuiObject, client, look, options: Option
 	local root = Instance.new("Frame")
 	root.Name = "Portrait"
 	root.AnchorPoint = Vector2.new(0.5, 0.5)
-	root.Position = UDim2.fromScale(0.5, 0.5)
-	root.Size = UDim2.fromScale(1, 1)
+	local zoom = options and options.zoom or 1
+	-- keep the middle of the face (0.5, 0.42) in the middle of the container
+	root.Position = UDim2.fromScale(0.5, 0.5 + 0.08 * (zoom - 1))
+	root.Size = UDim2.fromScale(zoom, zoom)
 	root.BackgroundTransparency = 1
 	root.ClipsDescendants = true
 	root.ZIndex = container.ZIndex
@@ -398,7 +446,7 @@ function LookRenderer.render(container: GuiObject, client, look, options: Option
 	end
 	shape(root, 0.5, 0.46, 0.44, 0.56, client.skin, Z.face, 0.5)
 	drawEyes(root, client, look, hairItem)
-	drawCheeksAndLips(root, client, look)
+	drawCheeksAndLips(root, client, look, options and options.mood)
 	drawGems(root, client, look)
 	drawAccessory(root, look)
 	drawDirt(root, client, options)

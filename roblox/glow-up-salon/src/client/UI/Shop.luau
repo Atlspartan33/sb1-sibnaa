@@ -129,7 +129,13 @@ function Shop:promptProduct(key: string)
 end
 
 function Shop:buy(it: Catalog.Item)
-	local ok, message = Remotes.BuyItem:InvokeServer(it.id)
+	local called, ok, message = pcall(function()
+		return Remotes.BuyItem:InvokeServer(it.id)
+	end)
+	if not called then
+		self.ctx.toast("Oops! Try again in a moment.", C.red)
+		return
+	end
 	self.ctx.toast(message, if ok then C.green else C.red)
 end
 

@@ -22,6 +22,7 @@ export type Item = {
 	accent: Color3?,
 	gradient: { Color3 }?,
 	sparkle: boolean?,
+	dress: boolean?, -- outfits that get a skirt on the runway
 	tags: { string },
 }
 
@@ -187,16 +188,16 @@ Catalog.Categories = {
 			item({ id = "outfit_work", name = "Work Overalls", hidden = true, color = rgb(110, 120, 135), accent = rgb(80, 85, 95) }),
 			item({ id = "outfit_tee", name = "Comfy Tee", color = rgb(245, 245, 250), accent = rgb(255, 150, 190), tags = { "white" } }),
 			item({ id = "outfit_denim", name = "Denim Jacket", color = rgb(80, 120, 190), accent = rgb(230, 230, 240), tags = { "blue" } }),
-			item({ id = "outfit_party", name = "Pink Party Dress", color = rgb(255, 140, 195), accent = rgb(255, 230, 240), tags = { "pink", "pastel" } }),
-			item({ id = "outfit_sunny", name = "Sunny Sundress", color = rgb(255, 210, 70), accent = rgb(255, 255, 255), price = 60, tags = { "bright", "gold" } }),
-			item({ id = "outfit_black", name = "Little Black Dress", color = rgb(30, 28, 35), accent = rgb(200, 200, 210), price = 60, tags = { "dark" } }),
+			item({ id = "outfit_party", dress = true, name = "Pink Party Dress", color = rgb(255, 140, 195), accent = rgb(255, 230, 240), tags = { "pink", "pastel" } }),
+			item({ id = "outfit_sunny", dress = true, name = "Sunny Sundress", color = rgb(255, 210, 70), accent = rgb(255, 255, 255), price = 60, tags = { "bright", "gold" } }),
+			item({ id = "outfit_black", dress = true, name = "Little Black Dress", color = rgb(30, 28, 35), accent = rgb(200, 200, 210), price = 60, tags = { "dark" } }),
 			item({ id = "outfit_rock", name = "Rockstar Jacket", color = rgb(110, 40, 160), accent = rgb(20, 20, 25), price = 100, tags = { "purple", "dark" } }),
 			item({ id = "outfit_mermaid", name = "Mermaid Top", color = rgb(60, 190, 170), accent = rgb(120, 200, 255), sparkle = true, price = 100, tags = { "green", "blue", "sparkle" } }),
-			item({ id = "outfit_red", name = "Red Carpet Gown", color = rgb(200, 25, 45), accent = rgb(240, 200, 90), price = 120, tags = { "red", "gold" } }),
-			item({ id = "outfit_snow", name = "Snow Princess", color = rgb(200, 230, 255), accent = rgb(255, 255, 255), sparkle = true, price = 150, tags = { "white", "blue", "sparkle" } }),
-			item({ id = "outfit_gold", name = "Golden Gala Gown", color = rgb(230, 180, 60), accent = rgb(255, 240, 180), sparkle = true, pass = "VIP", tags = { "gold", "sparkle" } }),
+			item({ id = "outfit_red", dress = true, name = "Red Carpet Gown", color = rgb(200, 25, 45), accent = rgb(240, 200, 90), price = 120, tags = { "red", "gold" } }),
+			item({ id = "outfit_snow", dress = true, name = "Snow Princess", color = rgb(200, 230, 255), accent = rgb(255, 255, 255), sparkle = true, price = 150, tags = { "white", "blue", "sparkle" } }),
+			item({ id = "outfit_gold", dress = true, name = "Golden Gala Gown", color = rgb(230, 180, 60), accent = rgb(255, 240, 180), sparkle = true, pass = "VIP", tags = { "gold", "sparkle" } }),
 			item({
-				id = "outfit_galaxy",
+				id = "outfit_galaxy", dress = true,
 				name = "Galaxy Gown",
 				pass = "VIP",
 				color = rgb(70, 40, 150),

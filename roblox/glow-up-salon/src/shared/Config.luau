@@ -16,6 +16,8 @@ Config.COINS_PER_STAR = 10
 Config.COINS_SPOTLESS_BONUS = 10
 Config.COINS_PER_VOTE = 2
 Config.COINS_PLACEMENT = { 50, 30, 15 } -- 1st, 2nd, 3rd (only when 2+ stylists played)
+Config.DAILY_GIFT_COINS = 50 -- coming back each day
+Config.DAILY_STREAK_BONUS = 10 -- extra per day in a row (up to 5 days)
 
 -- Robux monetization.
 -- Create these on the Creator Dashboard (create.roblox.com) after publishing,
@@ -35,6 +37,20 @@ Config.DevProducts = {
 Config.CoinPackAmounts = {
 	CoinsSmall = 500,
 	CoinsLarge = 2000,
+}
+
+-- Sounds and music. Find free ones in Studio: Toolbox -> Audio (or the Creator Store),
+-- right-click one -> "Copy Asset ID", and paste it here like "rbxassetid://1234567".
+-- Empty ones are skipped, so the game works without them.
+Config.Sounds = {
+	Click = "", -- tapping a button or item
+	Pop = "", -- pop-ups and speech bubbles
+	Scrub = "", -- rubbing with soap
+	Sparkle = "", -- a dirt spot comes off, face is clean
+	Cheer = "", -- results, level up, daily gift
+	Camera = "", -- camera flash on the runway
+	MakeoverMusic = "", -- loops during the makeover
+	RunwayMusic = "", -- loops during the fashion show
 }
 
 -- Studio testing: pretend you own every Game Pass while testing in Roblox Studio.

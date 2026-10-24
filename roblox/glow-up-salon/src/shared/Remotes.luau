@@ -17,6 +17,9 @@ local EVENTS = {
 	"PowerUp", -- server -> player: e.g. Super Soap was used
 	"Notify", -- server -> player: a little message
 	"UseSuperSoap", -- player -> server
+	"React", -- player -> server: cheer emoji during the fashion show
+	"Reaction", -- server -> all: someone cheered (emoji)
+	"Celebrate", -- server -> player: daily gift, level up
 }
 
 local FUNCTIONS = {

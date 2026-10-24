@@ -115,11 +115,17 @@ function Theme.button(props: { [string]: any }): TextButton
 	button.MouseButton1Down:Connect(function()
 		TweenService:Create(scale, info, { Scale = 0.94 }):Play()
 	end)
+	button.Activated:Connect(function()
+		Theme.onClick()
+	end)
 	button.MouseButton1Up:Connect(function()
 		TweenService:Create(scale, info, { Scale = 1 }):Play()
 	end)
 	return button
 end
+
+-- Set by the sound module so every button can make a click sound.
+function Theme.onClick() end
 
 function Theme.pop(gui: GuiObject)
 	local scale = gui:FindFirstChildOfClass("UIScale") or Theme.new("UIScale", { Parent = gui })

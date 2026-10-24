@@ -3,7 +3,7 @@
 Tori's makeover game. Clients come in dirty from the shop. You wash their face, do their hair and makeup, dress them up, and send them down the runway. You get 5 minutes to do it all.
 
 - **How the game works and how it makes money:** [GAME_DESIGN.md](GAME_DESIGN.md)
-- **What the faces look like:** [docs/face-preview.png](docs/face-preview.png)
+- **What it looks like:** [docs/face-preview.jpg](docs/face-preview.jpg) and the screenshots in [docs/screens](docs/screens)
 
 Everything is built with code: the salon, runway, screens and faces. You don't need to upload any images or models.
 
@@ -18,6 +18,8 @@ Everything is built with code: the salon, runway, screens and faces. You don't n
 The salon and runway build themselves when the game starts. In Studio you automatically own every Game Pass, so you can try the VIP items (turn this off with `STUDIO_OWNS_ALL_PASSES` in `Config`).
 
 **Test with friends inside Studio:** Test tab → Clients and Servers → pick 2–3 players → Start. Each window is a different player, so you can try the voting.
+
+**Coins look high in Studio?** Studio pretends you own the 2x Coins pass too, so coins double.
 
 **Want the round shorter while testing?** Open `ReplicatedStorage > Shared > Config` and change `MAKEOVER_SECONDS` (it's `5 * 60`).
 
@@ -56,7 +58,24 @@ On Roblox, nobody "downloads" a game. Once it's **public**, anyone can find it a
 
 Until an ID is filled in, that item shows **"Soon!"** in the shop, so it's safe to publish before setting these up.
 
-## 4. Change the game
+## 4. Add sounds and music (optional)
+
+The game is quiet until you pick sounds. In Studio, open **Toolbox → Audio** (or the Creator Store), find sounds you like, then right-click → **Copy Asset ID**. Paste each one into `Config.Sounds`:
+
+```lua
+Config.Sounds = {
+	Click = "rbxassetid://1234567",   -- tapping buttons
+	Sparkle = "rbxassetid://...",     -- dirt comes off
+	Cheer = "rbxassetid://...",       -- winning, level up, daily gift
+	MakeoverMusic = "rbxassetid://...",
+	RunwayMusic = "rbxassetid://...",
+	-- also: Pop, Scrub, Camera
+}
+```
+
+Empty ones are skipped.
+
+## 5. Change the game
 
 All the code is in Studio under:
 
@@ -88,3 +107,7 @@ rojo build -o GlowUpSalon.rbxlx             # rebuild the place file after chang
 ```
 
 If you edit scripts directly in Studio instead, save from Studio. `GlowUpSalon.rbxlx` here won't update by itself.
+
+### Play-test without Studio (optional)
+
+`tools/playtest/run.sh` runs the real game scripts in a small fake Roblox engine: a server and two players, a full round (wash, styling, shop, runway, voting, results), purchases, leaving and rejoining, and 15 minutes of rounds. It fails if any script errors. `./run.sh --screens` also saves screenshots and 3D renders (needs Node + Playwright). It's a safety net, not a replacement for pressing Play in Studio.

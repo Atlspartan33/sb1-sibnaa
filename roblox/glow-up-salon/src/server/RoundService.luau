@@ -10,6 +10,7 @@ local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Clients = require(ReplicatedStorage.Shared.Clients)
 local Config = require(ReplicatedStorage.Shared.Config)
 local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
+local Progress = require(ReplicatedStorage.Shared.Progress)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Scoring = require(ReplicatedStorage.Shared.Scoring)
 
@@ -42,6 +43,8 @@ local results = nil -- payload of the last results
 local spawnedModels: { Model } = {}
 
 local WALK_ANIMATION = "rbxassetid://507777826" -- Roblox's default R15 walk
+local REACTIONS = { ["😍"] = true, ["👏"] = true, ["🔥"] = true, ["✨"] = true, ["💖"] = true }
+local lastReaction: { [Player]: number } = {}
 
 local function now(): number
 	return Workspace:GetServerTimeNow()
@@ -237,9 +240,33 @@ local function buildClientModel(entry: Entry): Model
 		holder.Size = UDim2.fromScale(1, 1)
 		holder.BackgroundTransparency = 1
 		holder.Parent = billboard
-		LookRenderer.render(holder, entry.client, entry.look, { headOnly = true, clean = entry.clean })
+		local stars = Scoring.judge(entry, theme())
+		LookRenderer.render(holder, entry.client, entry.look, {
+			headOnly = true,
+			clean = entry.clean,
+			mood = Scoring.mood(stars, entry.clean),
+		})
 		billboard.Adornee = head
 		billboard.Parent = head
+	end
+
+	-- Dresses get a skirt
+	local hips = model:FindFirstChild("LowerTorso") or model:FindFirstChild("Torso")
+	if outfit and outfit.dress and hips and hips:IsA("BasePart") then
+		local skirt = Instance.new("Part")
+		skirt.Name = "Skirt"
+		skirt.Shape = Enum.PartType.Cylinder
+		skirt.Size = Vector3.new(1.6, 2.9, 2.9) -- a cylinder's height runs along X
+		skirt.Color = top
+		skirt.Material = if outfit.sparkle then Enum.Material.Glass else Enum.Material.SmoothPlastic
+		skirt.CanCollide = false
+		skirt.Massless = true
+		skirt.CFrame = hips.CFrame * CFrame.new(0, -0.75, 0) * CFrame.Angles(0, 0, math.rad(90))
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = hips
+		weld.Part1 = skirt
+		weld.Parent = skirt
+		skirt.Parent = model
 	end
 
 	if hasPass(entry.player, "RunwayStar") then
@@ -308,6 +335,7 @@ end
 
 local function walkRunway(entry: Entry)
 	local model = buildClientModel(entry)
+	model:SetAttribute("Walking", true) -- the runway camera follows this model
 	local root = placeModel(model, world.runwayStart, Vector3.new(0, 0, 1))
 	local walk = playWalk(model)
 
@@ -356,6 +384,21 @@ local function onVote(player: Player, targetUserId: unknown, stars: unknown)
 	if firstVote then
 		DataService.addCoins(player, Config.COINS_PER_VOTE)
 	end
+end
+
+local function onReact(player: Player, emoji: unknown)
+	if state.phase ~= "Showcase" and state.phase ~= "Results" then
+		return
+	end
+	if type(emoji) ~= "string" or not REACTIONS[emoji] then
+		return
+	end
+	local t = os.clock()
+	if lastReaction[player] and t - lastReaction[player] < 0.35 then
+		return
+	end
+	lastReaction[player] = t
+	Remotes.Reaction:FireAllClients(emoji)
 end
 
 ------------------------------------------------------------------------------
@@ -411,11 +454,23 @@ local function scoreAll()
 
 		local profile = DataService.get(player)
 		if profile then
+			local oldLevel = Progress.level(profile.stats.totalStars)
 			profile.stats.shows += 1
+			profile.stats.totalStars += row.stars
 			profile.stats.bestStars = math.max(profile.stats.bestStars, row.stars)
 			if rank == 1 and count >= 2 then
 				profile.stats.wins += 1
 			end
+			local newLevel = Progress.level(profile.stats.totalStars)
+			row.level = newLevel
+			if newLevel > oldLevel then
+				task.delay(4, function()
+					if player.Parent then
+						Remotes.Celebrate:FireClient(player, { kind = "level", level = newLevel, title = Progress.title(newLevel) })
+					end
+				end)
+			end
+			DataService.push(player)
 		end
 	end
 	return rows
@@ -461,6 +516,7 @@ local function runRound()
 				userId = entry.player.UserId,
 				stylist = entry.player.DisplayName,
 				vip = hasPass(entry.player, "VIP"),
+				level = Progress.level((DataService.get(entry.player) or { stats = { totalStars = 0 } }).stats.totalStars),
 				client = entry.client,
 				look = entry.look,
 				clean = entry.clean,
@@ -512,6 +568,7 @@ function RoundService.init(builtWorld: WorldBuilder.World)
 	Remotes.WashProgress.OnServerEvent:Connect(onWashProgress)
 	Remotes.Done.OnServerEvent:Connect(onDone)
 	Remotes.Vote.OnServerEvent:Connect(onVote)
+	Remotes.React.OnServerEvent:Connect(onReact)
 
 	-- Late joiners still get a client if a makeover is running
 	Players.PlayerAdded:Connect(function(player)
@@ -524,6 +581,7 @@ function RoundService.init(builtWorld: WorldBuilder.World)
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		entries[player.UserId] = nil
+		lastReaction[player] = nil
 	end)
 
 	task.spawn(function()
