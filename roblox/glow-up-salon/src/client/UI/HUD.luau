@@ -25,7 +25,7 @@ local PHASE_LABELS = {
 	Results = "🏆 Results",
 }
 
-function HUD.new(gui: ScreenGui, onShop: () -> ())
+function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 	local self = setmetatable({}, HUD)
 	self.state = { phase = "Waiting", endsAt = 0, themeId = Catalog.Themes[1].id }
 
@@ -73,6 +73,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 		Parent = right,
 	})
 	shop.Activated:Connect(onShop)
+	self.shopButton = shop
 
 	-- Stylist level, just left of the timer
 	local levelPill = new("Frame", {
@@ -98,8 +99,8 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 
 	-- Little messages pop up near the bottom of the screen
 	self.toasts = new("Frame", {
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -96),
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 60),
 		Size = UDim2.new(0.5, 0, 0, 200),
 		BackgroundTransparency = 1,
 		ZIndex = 90,
@@ -108,7 +109,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 		new("UIListLayout", {
 			Padding = UDim.new(0, 6),
 			HorizontalAlignment = Enum.HorizontalAlignment.Center,
-			VerticalAlignment = Enum.VerticalAlignment.Bottom,
+			VerticalAlignment = Enum.VerticalAlignment.Top,
 		}),
 	})
 
@@ -130,6 +131,17 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 		new("UISizeConstraint", { MinSize = Vector2.new(320, 0) }),
 		new("UIListLayout", { Padding = UDim.new(0, 6), HorizontalAlignment = Enum.HorizontalAlignment.Center }),
 	})
+	local book = Theme.button({
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, 6, 0, -6),
+		Size = UDim2.new(0, 120, 0, 36),
+		Text = "📖 My Looks",
+		Color = C.purple,
+		ZIndex = 45,
+		MaxText = 20,
+		Parent = self.lobby,
+	})
+	book.Activated:Connect(onLookBook)
 	self.lobbyEvent = new("TextLabel", {
 		Size = UDim2.new(1, 0, 0, 30),
 		BackgroundTransparency = 0,
@@ -161,6 +173,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 	new("TextLabel", {
 		Size = UDim2.new(1, 0, 0, 104),
 		LayoutOrder = 4,
+		Name = "Steps",
 		Text = "1. 🧼 Wash your client's dirty face\n2. 💇 Do their hair   3. 💄 Put on makeup\n4. 👗 Pick an outfit that fits the theme\n5. 📸 Walk the runway - you only get 5 minutes!",
 		TextColor3 = C.text,
 		ZIndex = 41,
@@ -178,8 +191,14 @@ function HUD:setState(state)
 		Theme.pop(self.lobby)
 	end
 	self.lobby.Visible = showLobby
+	-- On short phone screens, skip the how-to steps so the card doesn't cover everything
+	local compact = self.lobby.Parent and (self.lobby.Parent :: GuiObject).AbsoluteSize.Y < 500
+	self.lobby.Steps.Visible = not compact
+	self.lobby.Size = UDim2.new(0.5, 0, 0, if compact then 150 else 262)
+	-- No shopping while the 5-minute timer runs (items can still be unlocked from the menus)
+	self.shopButton.Visible = state.phase ~= "Makeover"
 	self.lobbyTheme.Text = "Next theme: " .. (theme and theme.name or "")
-	local event = Events.current(Workspace:GetServerTimeNow())
+	local event = state.eventId and Events.byId[state.eventId]
 	self.lobbyEvent.Visible = event ~= nil
 	if event then
 		self.lobbyEvent.Text = event.icon .. " " .. event.name .. " event! New looks " .. event.endsText .. " " .. event.icon

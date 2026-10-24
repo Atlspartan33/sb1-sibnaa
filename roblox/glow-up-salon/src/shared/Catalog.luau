@@ -96,7 +96,7 @@ Catalog.Categories = {
 		preview = "swatch",
 		items = {
 			item({ id = "hc_black", name = "Black", color = rgb(35, 30, 32), tags = { "dark" } }),
-			item({ id = "hc_brown", name = "Brown", color = rgb(105, 66, 40), tags = { "brown" } }),
+			item({ id = "hc_brown", name = "Brown", color = rgb(105, 66, 40) }), -- no tags: it's the starting color
 			item({ id = "hc_blonde", name = "Blonde", color = rgb(240, 205, 120), tags = { "gold", "bright" } }),
 			item({ id = "hc_strawberry", name = "Strawberry", color = rgb(250, 160, 170), tags = { "pink", "pastel" } }),
 			item({ id = "hc_teal", name = "Teal", color = rgb(60, 170, 180), tags = { "blue", "green" } }),
@@ -123,6 +123,14 @@ Catalog.Categories = {
 				tags = { "purple", "blue", "sparkle", "dark" },
 			}),
 			item({ id = "hc_cottoncandy", name = "Cotton Candy", level = 3, color = rgb(255, 170, 220), gradient = { rgb(255, 160, 215), rgb(170, 210, 255) }, tags = { "pink", "pastel", "blue" } }),
+			item({
+				id = "hc_unicorn",
+				name = "Unicorn",
+				level = 15,
+				color = rgb(230, 170, 255),
+				gradient = { rgb(255, 170, 220), rgb(200, 160, 255), rgb(150, 210, 255), rgb(160, 240, 200) },
+				tags = { "pastel", "pink", "purple", "sparkle" },
+			}),
 			item({ id = "hc_rosegold", name = "Rose Gold", pass = "Princess", color = rgb(240, 170, 150), gradient = { rgb(250, 200, 170), rgb(230, 140, 150) }, tags = { "pink", "gold", "sparkle" } }),
 			-- Holiday colors
 			item({ id = "hc_pumpkin", name = "Pumpkin", color = rgb(245, 130, 30), price = 40, event = "halloween", tags = { "orange", "bright" } }),
@@ -149,6 +157,7 @@ Catalog.Categories = {
 			item({ id = "es_none", name = "None" }),
 			item({ id = "es_pink", name = "Pink", color = rgb(255, 150, 200), tags = { "pink", "pastel" } }),
 			item({ id = "es_peach", name = "Peach", color = rgb(255, 180, 140), tags = { "pastel", "bright", "orange" } }),
+			item({ id = "es_ruby", name = "Ruby", color = rgb(200, 40, 70), tags = { "red" } }),
 			item({ id = "es_bronze", name = "Bronze", color = rgb(180, 120, 70), tags = { "gold", "brown" } }),
 			item({ id = "es_blue", name = "Sky Blue", color = rgb(110, 170, 255), tags = { "blue" } }),
 			item({ id = "es_purple", name = "Lilac", color = rgb(170, 120, 230), tags = { "purple" } }),
@@ -168,7 +177,7 @@ Catalog.Categories = {
 			item({
 				id = "es_rainbow",
 				name = "Rainbow Shimmer",
-				level = 6,
+				level = 8,
 				color = rgb(255, 150, 200),
 				gradient = { rgb(255, 120, 150), rgb(255, 220, 100), rgb(120, 220, 160), rgb(130, 170, 255) },
 				sparkle = true,
@@ -212,6 +221,7 @@ Catalog.Categories = {
 		items = {
 			item({ id = "lip_none", name = "None" }),
 			item({ id = "lip_nude", name = "Nude", color = rgb(200, 130, 115), tags = { "brown" } }),
+			item({ id = "lip_seaglass", name = "Sea Glass", color = rgb(90, 190, 180), tags = { "blue", "green" } }),
 			item({ id = "lip_clear", name = "Clear Gloss", color = rgb(245, 200, 205), sparkle = true, tags = { "sparkle", "white", "pastel" } }),
 			item({ id = "lip_pink", name = "Pink", color = rgb(250, 110, 170), tags = { "pink", "pastel" } }),
 			item({ id = "lip_red", name = "Classic Red", color = rgb(210, 30, 50), tags = { "red" } }),
@@ -240,7 +250,7 @@ Catalog.Categories = {
 			item({ id = "outfit_band", name = "Band Tee", color = rgb(35, 30, 40), accent = rgb(220, 40, 60), tags = { "dark", "red" } }),
 			item({ id = "outfit_lilac", name = "Lilac Top", color = rgb(170, 120, 230), accent = rgb(245, 205, 90), tags = { "purple", "gold" } }),
 			item({ id = "outfit_lime", name = "Lime Hoodie", color = rgb(130, 210, 90), accent = rgb(255, 255, 255), tags = { "green", "bright" } }),
-			item({ id = "outfit_star", name = "Star Dress", dress = true, level = 5, color = rgb(250, 210, 80), accent = rgb(255, 255, 255), sparkle = true, tags = { "gold", "sparkle", "bright" } }),
+			item({ id = "outfit_star", name = "Star Dress", dress = true, level = 6, color = rgb(250, 210, 80), accent = rgb(255, 255, 255), sparkle = true, tags = { "gold", "sparkle", "bright" } }),
 			item({ id = "outfit_party", dress = true, name = "Pink Party Dress", color = rgb(255, 140, 195), accent = rgb(255, 230, 240), tags = { "pink", "pastel" } }),
 			item({ id = "outfit_sunny", dress = true, name = "Sunny Sundress", color = rgb(255, 210, 70), accent = rgb(255, 255, 255), price = 60, tags = { "bright", "gold" } }),
 			item({ id = "outfit_black", dress = true, name = "Little Black Dress", color = rgb(30, 28, 35), accent = rgb(200, 200, 210), price = 60, tags = { "dark" } }),
@@ -280,6 +290,17 @@ Catalog.Categories = {
 				gradient = { rgb(255, 200, 225), rgb(240, 90, 150) },
 				sparkle = true,
 				tags = { "pink", "gold", "sparkle" },
+			}),
+			item({
+				id = "outfit_legend",
+				name = "Legendary Gown",
+				dress = true,
+				level = 20,
+				color = rgb(255, 200, 120),
+				accent = rgb(255, 255, 255),
+				gradient = { rgb(255, 230, 150), rgb(255, 160, 200), rgb(200, 150, 255) },
+				sparkle = true,
+				tags = { "gold", "pink", "sparkle" },
 			}),
 			-- Holiday outfits
 			item({ id = "outfit_pumpkin", name = "Pumpkin Dress", dress = true, color = rgb(245, 130, 30), accent = rgb(60, 140, 60), price = 60, event = "halloween", tags = { "orange", "green" } }),
@@ -399,7 +420,9 @@ Catalog.Categories = {
 				{ "Midnight", rgb(20, 18, 30), { "dark" } },
 			}
 			for i, p in palette do
-				table.insert(list, item({ id = "oc_" .. i, name = p[1], color = p[2], tags = p[3] }))
+				-- ids come from the name, so adding colors later never changes saved looks
+				local id = "oc_" .. string.lower((string.gsub(p[1], "%s", "")))
+				table.insert(list, item({ id = id, name = p[1], color = p[2], tags = p[3] }))
 			end
 			return list
 		end)(),
@@ -452,7 +475,8 @@ Catalog.Categories = {
 			item({ id = "acc_catears", name = "Cat Ears", color = rgb(40, 35, 45), price = 80, tags = { "dark" } }),
 			item({ id = "acc_crown", name = "Royal Crown", color = rgb(245, 200, 60), pass = "VIP", tags = { "gold", "sparkle" } }),
 			item({ id = "acc_butterfly", name = "Butterfly Clip", level = 2, color = rgb(120, 180, 255), tags = { "blue", "bright" } }),
-			item({ id = "acc_halo", name = "Star Halo", level = 8, color = rgb(255, 220, 80), tags = { "gold", "sparkle" } }),
+			item({ id = "acc_halo", name = "Star Halo", level = 10, color = rgb(255, 220, 80), tags = { "gold", "sparkle" } }),
+			item({ id = "acc_diamondtiara", name = "Diamond Tiara", level = 12, draw = "acc_tiara", color = rgb(210, 235, 255), tags = { "white", "sparkle" } }),
 			item({ id = "acc_tiara", name = "Princess Tiara", pass = "Princess", color = rgb(245, 205, 90), tags = { "gold", "sparkle", "pink" } }),
 			item({ id = "acc_goldbow", name = "Golden Bow", gift = true, draw = "acc_bow", color = rgb(245, 195, 60), tags = { "gold", "sparkle" } }),
 			item({ id = "acc_rainbowband", name = "Rainbow Headband", gift = true, draw = "acc_headband", color = rgb(255, 120, 160), gradient = { rgb(255, 90, 120), rgb(255, 210, 80), rgb(90, 210, 140), rgb(110, 150, 255) }, tags = { "bright", "pink", "blue" } }),
@@ -473,18 +497,18 @@ Catalog.Categories = {
 
 -- Fashion show themes. The judges reward looks whose tags match.
 Catalog.Themes = {
-	{ id = "pink_party", name = "Pink Party 🎀", tags = { "pink", "pastel", "sparkle" }, color = rgb(255, 130, 190) },
-	{ id = "rock_star", name = "Rock Star 🎸", tags = { "dark", "red", "purple" }, color = rgb(120, 40, 160) },
-	{ id = "under_sea", name = "Under the Sea 🐚", tags = { "blue", "green", "sparkle" }, color = rgb(50, 170, 200) },
-	{ id = "royal_ball", name = "Royal Ball 👑", tags = { "gold", "purple", "sparkle" }, color = rgb(220, 170, 60) },
-	{ id = "candy_land", name = "Candy Land 🍭", tags = { "pink", "pastel", "bright" }, color = rgb(255, 160, 210) },
-	{ id = "spooky", name = "Spooky Glam 🦇", tags = { "dark", "purple", "green" }, color = rgb(90, 50, 130) },
-	{ id = "beach", name = "Sunny Beach 🌴", tags = { "bright", "gold", "blue" }, color = rgb(255, 200, 70) },
-	{ id = "winter", name = "Winter Wonderland ❄️", tags = { "white", "blue", "sparkle" }, color = rgb(150, 200, 255) },
-	{ id = "red_carpet", name = "Red Carpet 🌟", tags = { "red", "gold", "dark" }, color = rgb(200, 30, 50) },
-	{ id = "halloween", name = "Halloween Party 🎃", tags = { "orange", "dark", "purple", "green" }, color = rgb(245, 130, 30), event = "halloween" },
-	{ id = "thanksgiving", name = "Harvest Festival 🍂", tags = { "orange", "brown", "gold", "red" }, color = rgb(200, 110, 40), event = "thanksgiving" },
-	{ id = "christmas", name = "Christmas Party 🎄", tags = { "red", "green", "white", "sparkle" }, color = rgb(200, 30, 40), event = "christmas" },
+	{ id = "pink_party", name = "Pink Party 🎀", tags = { "pink", "sparkle" }, color = rgb(255, 130, 190) },
+	{ id = "rock_star", name = "Rock Star 🎸", tags = { "dark", "red" }, color = rgb(120, 40, 160) },
+	{ id = "under_sea", name = "Under the Sea 🐚", tags = { "blue", "green" }, color = rgb(50, 170, 200) },
+	{ id = "royal_ball", name = "Royal Ball 👑", tags = { "gold", "purple" }, color = rgb(220, 170, 60) },
+	{ id = "candy_land", name = "Candy Land 🍭", tags = { "pastel", "bright" }, color = rgb(255, 160, 210) },
+	{ id = "spooky", name = "Spooky Glam 🦇", tags = { "purple", "green" }, color = rgb(90, 50, 130) },
+	{ id = "beach", name = "Sunny Beach 🌴", tags = { "gold", "blue" }, color = rgb(255, 200, 70) },
+	{ id = "winter", name = "Winter Wonderland ❄️", tags = { "white", "blue" }, color = rgb(150, 200, 255) },
+	{ id = "red_carpet", name = "Red Carpet 🌟", tags = { "red", "gold" }, color = rgb(200, 30, 50) },
+	{ id = "halloween", name = "Halloween Party 🎃", tags = { "orange", "dark" }, color = rgb(245, 130, 30), event = "halloween" },
+	{ id = "thanksgiving", name = "Harvest Festival 🍂", tags = { "orange", "brown" }, color = rgb(200, 110, 40), event = "thanksgiving" },
+	{ id = "christmas", name = "Christmas Party 🎄", tags = { "red", "green" }, color = rgb(200, 30, 40), event = "christmas" },
 } :: { Theme }
 
 -- Day-7 prizes of the daily gift calendar, given in this order

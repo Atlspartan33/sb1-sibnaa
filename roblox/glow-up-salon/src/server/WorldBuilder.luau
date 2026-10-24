@@ -178,9 +178,9 @@ end
 
 -- Spots around the salon, runway and podium where decorations go
 local DECOR_SPOTS = {
-	Vector3.new(-30, 0, 36), Vector3.new(30, 0, 36), Vector3.new(-30, 0, 62), Vector3.new(30, 0, 62),
+	Vector3.new(-42, 0, 38), Vector3.new(42, 0, 38), Vector3.new(-42, 0, 62), Vector3.new(42, 0, 62),
 	Vector3.new(-18, 0, -30), Vector3.new(18, 0, -30), Vector3.new(-22, 0, -50), Vector3.new(22, 0, -50),
-	Vector3.new(-44, 0, -6), Vector3.new(-20, 0, -14), Vector3.new(8, 0, 20), Vector3.new(-8, 0, 20),
+	Vector3.new(-52, 0, -8), Vector3.new(-16, 0, 6), Vector3.new(10, 0, 20), Vector3.new(-10, 0, 20),
 }
 
 local built = nil

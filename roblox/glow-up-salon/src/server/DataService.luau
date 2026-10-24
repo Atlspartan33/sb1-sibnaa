@@ -25,6 +25,8 @@ export type Profile = {
 	weekShows: number,
 	weekClaimed: boolean,
 	weeklyGiven: number, -- weekly prizes collected
+	lookbookChanged: boolean?, -- not saved: send the Look Book with the next push
+	lookbookSent: boolean?, -- not saved: the player has the Look Book already
 	receipts: { string },
 	passes: { [string]: boolean }, -- not saved; checked with Roblox every visit
 	canSave: boolean, -- false if loading failed, so we never overwrite good data with an empty profile
@@ -113,11 +115,14 @@ function DataService.push(player: Player)
 			passes = p.passes,
 			totalStars = p.stats.totalStars,
 			calendarDay = p.streak,
-			lookbook = p.lookbook,
-			weekShows = if p.week == os.time() // 604800 then p.weekShows else 0,
-			weekClaimed = p.week == os.time() // 604800 and p.weekClaimed,
+			-- the Look Book is only sent when it changed (it's the biggest part)
+			lookbook = if p.lookbookChanged or not p.lookbookSent then p.lookbook else nil,
+			weekShows = if p.week == DataService.weekNumber() then p.weekShows else 0,
+			weekClaimed = p.week == DataService.weekNumber() and p.weekClaimed,
 			weeklyNext = Catalog.WeeklyItems[p.weeklyGiven + 1],
 		})
+		p.lookbookChanged = false
+		p.lookbookSent = true
 	end
 end
 
@@ -187,9 +192,19 @@ function DataService.save(player: Player, release: boolean?): boolean
 	return false
 end
 
+-- Days and weeks change at 05:00 UTC (midnight in New York, 9pm in Los Angeles) so most kids
+-- in the US get a new day in the morning. Weeks start on Monday.
+local DAY_OFFSET = 5 * 3600
+function DataService.dayNumber(): number
+	return (os.time() - DAY_OFFSET) // 86400
+end
+function DataService.weekNumber(): number
+	return (os.time() - DAY_OFFSET + 3 * 86400) // 604800
+end
+
 -- The daily gift calendar: a prize for each new day played. Missing a day just pauses it.
 local function giveDailyGift(player: Player, profile: Profile)
-	local today = os.time() // 86400
+	local today = DataService.dayNumber()
 	if profile.lastDay >= today then
 		return
 	end
@@ -216,6 +231,14 @@ local function giveDailyGift(player: Player, profile: Profile)
 			DataService.push(player)
 		end
 	end)
+end
+
+-- Called at the start of each round for players who stayed past midnight.
+function DataService.checkDaily(player: Player)
+	local profile = profiles[player]
+	if profile then
+		giveDailyGift(player, profile)
+	end
 end
 
 local function load(player: Player)

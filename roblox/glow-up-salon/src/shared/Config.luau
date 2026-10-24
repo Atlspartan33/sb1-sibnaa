@@ -15,6 +15,7 @@ Config.COINS_PARTICIPATION = 20
 Config.COINS_PER_STAR = 10
 Config.COINS_SPOTLESS_BONUS = 10
 Config.COINS_PER_VOTE = 2
+Config.COINS_PER_WISH = 10 -- each of the client's wishes you make come true
 Config.COINS_PLACEMENT = { 50, 30, 15 } -- 1st, 2nd, 3rd (only when 2+ stylists played)
 -- Daily gift calendar: coins on days 1-6, a special accessory on day 7 (missing a day just pauses it)
 Config.CALENDAR_COINS = { 30, 40, 50, 60, 70, 80 }

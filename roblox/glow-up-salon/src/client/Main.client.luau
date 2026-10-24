@@ -4,13 +4,11 @@ local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
 
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local UI = script.Parent:WaitForChild("UI")
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
-local Events = require(ReplicatedStorage.Shared.Events)
 local Effects = require(UI.Effects)
 local HUD = require(UI.HUD)
 local Makeover = require(UI.Makeover)
@@ -27,12 +25,12 @@ gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 
-local state = { phase = "Waiting", endsAt = 0, themeId = "" }
+local state = { phase = "Waiting", endsAt = 0, themeId = "", eventId = nil :: string? }
 local hud, shop
 
 -- Shared helpers every screen can use
 local ctx = {
-	profile = { coins = 0, owned = {}, passes = {}, totalStars = 0 },
+	profile = { coins = 0, owned = {}, passes = {}, totalStars = 0, lookbook = {} } :: any,
 	state = function()
 		return state
 	end,
@@ -45,9 +43,9 @@ local ctx = {
 	promptProduct = function(key: string)
 		shop:askProduct(key)
 	end,
+	-- the server decides the event when a round starts, so use that (not this device's clock)
 	eventId = function(): string?
-		local event = Events.current(Workspace:GetServerTimeNow())
-		return event and event.id
+		return state.eventId
 	end,
 	isModalOpen = function(): boolean
 		return shop.overlay.Visible or shop.confirm.Visible
@@ -56,6 +54,8 @@ local ctx = {
 
 hud = HUD.new(gui, function()
 	shop:open()
+end, function()
+	shop:open("Looks")
 end)
 shop = Shop.new(gui, ctx)
 local makeover = Makeover.new(gui, ctx)
@@ -107,6 +107,7 @@ local function applyState(newState)
 	end
 	if state.phase == "Intermission" and oldPhase ~= "Intermission" then
 		showcase:setScreen("✨ 5 Minute Glow Up ✨", "Next show starting soon!", nil, nil)
+		showcase:clearScreenPortrait()
 	end
 	if state.phase == "Makeover" and oldPhase ~= "Makeover" then
 		local theme = Catalog.themeById[state.themeId]
@@ -129,17 +130,22 @@ Remotes.Results.OnClientEvent:Connect(function(payload)
 	results:show(payload)
 	local winner = payload.rows[1]
 	if winner then
-		showcase:setScreen("🏆 " .. winner.stylist .. " wins!", winner.client.name .. " - " .. Theme.stars(winner.stars), winner.client, winner.look, winner.clean)
+		-- Shown to everyone: always the happy, washed look and an award (never low stars)
+		showcase:setScreen("🏆 " .. winner.stylist .. " wins!", winner.client.name .. "  " .. (winner.award or ""), winner.client, winner.look, 1)
 	end
 end)
 
 Remotes.Profile.OnClientEvent:Connect(function(profile)
+	local lookbookChanged = profile.lookbook ~= nil
+	if not lookbookChanged then
+		profile.lookbook = ctx.profile.lookbook -- unchanged, so it wasn't sent again
+	end
 	ctx.profile = profile
 	hud:setCoins(profile.coins)
 	hud:setLevel(profile.totalStars or 0)
 	hud:setWeekly(profile)
 	makeover:refreshProfile()
-	shop:refreshProfile()
+	shop:refreshProfile(lookbookChanged)
 end)
 
 Remotes.Reaction.OnClientEvent:Connect(function(emoji)
@@ -149,33 +155,34 @@ end)
 Remotes.Celebrate.OnClientEvent:Connect(function(info)
 	if info.kind == "daily" then
 		local title = if info.item then "🎁 Day 7: " .. info.item .. "!" else "🎁 Day " .. info.day .. " Gift! +" .. info.coins .. " 🪙"
-		local card = Effects.splash(gui, title, " ", Theme.Colors.gold, 4)
 		-- The 7-day calendar row
-		local row = Theme.new("Frame", {
-			Position = UDim2.fromScale(0, 0.62),
-			Size = UDim2.fromScale(1, 0.36),
-			BackgroundTransparency = 1,
-			ZIndex = 262,
-			Parent = card,
-		}, {
-			Theme.new("UIListLayout", {
-				FillDirection = Enum.FillDirection.Horizontal,
-				HorizontalAlignment = Enum.HorizontalAlignment.Center,
-				Padding = UDim.new(0.015, 0),
-			}),
-		})
-		for d = 1, 7 do
-			local past, today = d < info.day, d == info.day
-			Theme.new("TextLabel", {
-				Size = UDim2.fromScale(0.125, 1),
-				BackgroundTransparency = 0,
-				BackgroundColor3 = if today then Theme.Colors.gold elseif past then Theme.Colors.green else Theme.Colors.lavender,
-				TextColor3 = if today or past then Theme.Colors.white else Theme.Colors.text,
-				Text = if past then "✓" elseif d == 7 then "🎁" else tostring(d),
-				ZIndex = 263,
-				Parent = row,
-			}, { Theme.corner(10), Theme.maxText(30) })
-		end
+		Effects.splash(gui, title, " ", Theme.Colors.gold, 4, function(card)
+			local row = Theme.new("Frame", {
+				Position = UDim2.fromScale(0, 0.62),
+				Size = UDim2.fromScale(1, 0.36),
+				BackgroundTransparency = 1,
+				ZIndex = 262,
+				Parent = card,
+			}, {
+				Theme.new("UIListLayout", {
+					FillDirection = Enum.FillDirection.Horizontal,
+					HorizontalAlignment = Enum.HorizontalAlignment.Center,
+					Padding = UDim.new(0.015, 0),
+				}),
+			})
+			for d = 1, 7 do
+				local past, today = d < info.day, d == info.day
+				Theme.new("TextLabel", {
+					Size = UDim2.fromScale(0.125, 1),
+					BackgroundTransparency = 0,
+					BackgroundColor3 = if today then Theme.Colors.gold elseif past then Theme.Colors.green else Theme.Colors.lavender,
+					TextColor3 = if today or past then Theme.Colors.white else Theme.Colors.text,
+					Text = if past then "✓" elseif d == 7 then "🎁" else tostring(d),
+					ZIndex = 263,
+					Parent = row,
+				}, { Theme.corner(10), Theme.maxText(30) })
+			end
+		end)
 		Effects.confetti(gui, 40)
 	elseif info.kind == "weekly" then
 		Effects.splash(gui, "🎯 Weekly goal done!", if info.item then "You got the " .. info.item .. "! 🎁" else "+" .. info.coins .. " 🪙", Theme.Colors.purple, 4)

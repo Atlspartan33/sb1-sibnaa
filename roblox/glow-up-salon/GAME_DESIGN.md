@@ -33,24 +33,42 @@
 
 ## What makes it fun (and easy for little kids)
 
+- **Clients make wishes** ("I wish for 💙 hair and 💅 nails! 💌"). Items that would grant a wish get a 💌 badge. Each wish you grant earns +10 coins and a bonus, and the client cheers.
+- **Hands-on hair:** messy hair has to be brushed out first 🖌️ (rub the tangles away) before you pick a style.
 - **The client reacts.** Their mouth goes from a frown 😫 (dirty) to a smile, then a big grin 😁. They talk ("That tickles!", "Perfect for Halloween Party! 😍"). The **Happy 💖💖💖🤍🤍** meter fills up as the look gets better.
 - **⭐ theme stars** mark items that match the show's theme, so kids don't need to read. Every theme can be matched with free items (the play-test checks this).
 - **A glowing "do this next" tab**, plus a checklist that can be tapped.
 - **Every card is a preview:** the client's own face wearing that item.
 - **🎨 Pick your own outfit color** (20 colors) and a pattern (dots, stripes, hearts, stars, flowers).
 - **💅 Nails:** the left panel turns into the client's hand. Each nail sparkles as it's painted.
+- **🏅 An award for every look:** Most Rock Star ⭐, Best Hair 💇, Nail Queen 💅, Sparkliest ✨, Wish Granted 💌, and more. No two players get the same award, so everyone wins something.
+- **You walk out too:** at the end of the runway your own avatar steps out next to your client.
 - **Kind by design:**
   - Votes are 💖 / 💖💖 / 💖💖💖, so nobody can give 1 star.
   - Everyone's client is shown washed and smiling on the big screen and podium. The judges' tips are private.
-  - Results list the top 3 plus your own look, never a public last place.
+  - Results list everyone with their award. Stars show only when they're 4 or more (you always see your own), and nobody gets a last-place number.
+  - Judges' tips are sent only to the player they're for.
 - **Safe social play:** emoji cheers and heart votes only. There's no typing.
 - **Something to do while waiting:** "🌸 Spritz perfume!" makes the client giggle.
 
 ## Reasons to come back
 
 - **🎁 7-day gift calendar:** coins on days 1–6 and a special accessory on day 7 (Golden Bow, Rainbow Headband, Pearl Earrings). Missing a day **pauses** it and never resets it.
-- **🎯 Weekly goal:** play 5 shows in a week to win a hair clip (🍀 🦄 🌈 🍓).
-- **⭐ Stylist levels** (every 5 stars). Some levels unlock items: Butterfly Clip (Lv 2), Cotton Candy hair (Lv 3), Bubblegum Gloss (Lv 4), Star Dress (Lv 5), Rainbow Shimmer (Lv 6), Star Halo (Lv 8). Titles go from Newbie Stylist to Legendary Stylist.
+- **🎯 Weekly goal:** play 5 shows in a week (idle rounds don't count) to win a hair clip (🍀 🦄 🌈 🍓). Days and weeks change at midnight US Eastern time, and weeks start on Monday.
+- **⭐ Stylist levels:** each level needs a few more stars than the last (6, 14, 24, 36…). Many levels unlock items:
+
+  | Level | Item |
+  |---|---|
+  | 2 | Butterfly Clip |
+  | 3 | Cotton Candy hair |
+  | 4 | Bubblegum Gloss |
+  | 6 | Star Dress |
+  | 8 | Rainbow Shimmer |
+  | 10 | Star Halo |
+  | 12 | Diamond Tiara |
+  | 15 | Unicorn hair |
+  | 20 | Legendary Gown |
+ Titles go from Newbie Stylist to Legendary Stylist.
 - **💞 Regular clients:** clients you've styled come back ("Hi again! It's me, Amara!"). Their 3rd, 5th and 10th visits make them best friends and give bonus coins.
 - **📖 Look Book:** your last 24 finished looks are saved, like a photo album.
 - **🎃 🍂 🎄 Holiday events** (turn on by date):
@@ -67,7 +85,7 @@
   - holiday client stories (pumpkin goo, pie flour, gingerbread)
   - decorations and lighting: pumpkins, bats and ghosts; autumn trees and hay bales; Christmas trees, presents and falling snow
 
-  Items a player unlocked during an event are theirs to keep.
+  Items a player unlocked or used during an event are theirs to keep.
 
 ## Round loop (everyone in the server plays together)
 
@@ -81,12 +99,12 @@
 | Part | Points |
 |---|---|
 | Face washed (all dirt gone) | 1 |
-| Hair styled (not messy) | 0.75 |
-| Hair color matches theme | 0.5 |
-| Makeup applied (4 kinds) | 1 |
-| Makeup colors match theme | 0.75 |
-| Outfit chosen / outfit or 🎨 color matches theme | 0.5 / 0.5 |
-| Bonus: nails painted / nails match, face art, accessory, accessory matches | up to 1.25 |
+| Hair styled (not messy) | 0.5 |
+| Makeup applied (4 kinds) | 0.75 |
+| Outfit chosen | 0.5 |
+| **Theme:** how many parts match (hair color, eyeshadow, blush, lipstick, outfit or 🎨 color, accessory, nails, face art). 4 matches = full points | 2.25 |
+| Bonus: each client wish granted | 0.25 each |
+| Bonus: nails, face art, accessory | up to 0.35 |
 
 Forgot to rinse the bubbles? −0.2. The final score is the average of the judges and the players' heart votes, or the judges alone if nobody voted.
 
@@ -101,7 +119,11 @@ About 170 items: 72 everyday items are free, 58 cost 30–150 coins, 21 come in 
 
 ## Monetization (kid-friendly, follows Roblox rules)
 
-No loot boxes or random paid items. Every purchase shows exactly what you get, nothing paid speeds up or skips play, and every theme can be matched with free items.
+- No loot boxes or random paid items.
+- Every purchase shows exactly what you get.
+- Nothing paid skips a part of the makeover. 2x Coins and the coin pack only make unlocking faster.
+- Every theme can be matched with free items.
+- Holiday items never use countdowns or "buy before it's gone" messages.
 
 | Type | Item | What it does | Suggested price |
 |---|---|---|---|

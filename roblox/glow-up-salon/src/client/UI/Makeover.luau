@@ -75,6 +75,9 @@ function Makeover.new(gui: ScreenGui, ctx)
 
 	self:buildLeft()
 	self:buildRight()
+	self.frame:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+		self:layoutForScreen()
+	end)
 	self:connectInput()
 	self:startAnimations()
 	return self
@@ -124,6 +127,17 @@ function Makeover:buildLeft()
 		ZIndex = 110,
 		Parent = self.portraitHolder,
 	}, { Theme.round(), Theme.padding(4) })
+	-- What the client wishes for
+	self.wishLabel = new("TextLabel", {
+		Position = UDim2.fromScale(0.5, 0.805),
+		Size = UDim2.fromScale(0.5, 0.075),
+		BackgroundTransparency = 0,
+		BackgroundColor3 = C.softPink,
+		TextColor3 = C.purple,
+		Text = "",
+		ZIndex = 12,
+		Parent = left,
+	}, { Theme.round(), Theme.maxText(22), Theme.padding(4) })
 
 	-- What the client says
 	self.speech = new("Frame", {
@@ -162,13 +176,14 @@ function Makeover:buildLeft()
 
 	self.heartsLabel = new("TextLabel", {
 		Position = UDim2.fromScale(0, 0.8),
-		Size = UDim2.fromScale(1, 0.085),
+		Size = UDim2.fromScale(0.49, 0.085),
 		Text = "",
 		ZIndex = 12,
 		Parent = left,
 	}, { Theme.maxText(30) })
 
 	local checklist = new("Frame", {
+		Name = "Checklist",
 		Position = UDim2.fromScale(0, 0.895),
 		Size = UDim2.fromScale(1, 0.105),
 		BackgroundTransparency = 1,
@@ -236,7 +251,7 @@ function Makeover:buildRight()
 	for _, tab in Catalog.Tabs do
 		local b = Theme.button({
 			Text = "",
-			Size = UDim2.fromScale(0.158, 1),
+			Size = UDim2.fromScale(0.155, 1),
 			Color = C.lavender,
 			ZIndex = 13,
 			Parent = tabs,
@@ -302,6 +317,17 @@ function Makeover:buildRight()
 	end)
 
 	self:buildWashPanel(right)
+
+	-- Messy hair has to be brushed before picking a style
+	self.brushHint = new("TextLabel", {
+		Position = UDim2.fromScale(0, 0.24),
+		Size = UDim2.fromScale(1, 0.61),
+		Text = "🖌️\nBrush out the tangles!\nRub the messy hair",
+		TextColor3 = C.purple,
+		Visible = false,
+		ZIndex = 20,
+		Parent = right,
+	}, { Theme.maxText(40), Theme.padding(20) })
 
 	self.doneButton = Theme.button({
 		AnchorPoint = Vector2.new(0.5, 1),
@@ -475,6 +501,8 @@ function Makeover:assign(payload)
 	self.hearts = 0
 	self.tool = "soap"
 	self.tab = "Wash"
+	self.brushed = self.look.hairStyle ~= "hair_messy"
+	self.tangle = if self.brushed then 0 else 1
 	local visits = self.client.visits or 1
 	self.nameTag.Text = "💖 " .. self.client.name .. (if visits > 1 then "  ⭐" .. visits else "")
 	self:setDone(self.done, true)
@@ -485,11 +513,38 @@ function Makeover:assign(payload)
 	else
 		self:say(self.client.story, 5)
 	end
+	local wishes = self.client.wishes or {}
+	if #wishes > 0 then
+		local client = self.client
+		task.delay(if visits > 1 then 6.2 else 5.2, function()
+			if self.client == client then
+				local texts = {}
+				for _, w in wishes do
+					table.insert(texts, w.text)
+				end
+				self:say("I wish for " .. table.concat(texts, " and ") .. "! 💌", 4)
+			end
+		end)
+	end
+end
+
+-- On short screens (phones), hide the checklist so the client's face can be bigger.
+function Makeover:layoutForScreen()
+	local compact = self.frame.AbsoluteSize.Y > 0 and self.frame.AbsoluteSize.Y < 500
+	self.left.Checklist.Visible = not compact
+	self.portraitHolder.Size = UDim2.fromScale(1, if compact then 0.72 else 0.66)
+	self.heartsLabel.Position = UDim2.fromScale(0, if compact then 0.87 else 0.8)
+	self.heartsLabel.Size = UDim2.fromScale(0.49, if compact then 0.13 else 0.085)
+	self.wishLabel.Position = UDim2.fromScale(0.5, if compact then 0.88 else 0.805)
+	self.wishLabel.Size = UDim2.fromScale(0.5, if compact then 0.11 else 0.075)
 end
 
 function Makeover:setVisible(visible: boolean)
 	local wasVisible = self.frame.Visible
 	self.frame.Visible = visible and self.client ~= nil
+	if self.frame.Visible then
+		self:layoutForScreen()
+	end
 	if not self.frame.Visible then
 		self.cursor.Visible = false
 		self.scrubbing = false
@@ -557,7 +612,7 @@ function Makeover:previewStars(): number
 	if not theme then
 		return 1
 	end
-	local stars = Scoring.judge({ look = self.look, clean = self:cleanAmount(), rinsed = #self.bubbles == 0 }, theme)
+	local stars = Scoring.judge({ look = self.look, clean = self:cleanAmount(), rinsed = #self.bubbles == 0, client = self.client }, theme)
 	return stars
 end
 
@@ -572,6 +627,8 @@ function Makeover:renderPortrait()
 		self.portraitRoot = LookRenderer.render(self.portraitHolder, self.client, self.look, {
 			dirtHealth = self.dirtHealth,
 			mood = Scoring.mood(stars, self:cleanAmount()),
+			brushed = self.brushed,
+			tangle = self.tangle,
 		})
 	end
 	self.dirtFrames = {}
@@ -579,12 +636,76 @@ function Makeover:renderPortrait()
 		self.dirtFrames[i] = self.portraitRoot:FindFirstChild("Dirt" .. i)
 	end
 	local full = math.floor(stars)
-	self.heartsLabel.Text = "Happy: " .. string.rep("💖", full) .. string.rep("🤍", 5 - full)
+	self.heartsLabel.Text = "😊" .. string.rep("💖", full) .. string.rep("🤍", 5 - full)
 	if full > self.hearts and self.hearts > 0 then
 		Theme.pop(self.heartsLabel)
 	end
 	self.hearts = full
+	self:refreshWishes()
 	self:refreshChecklist()
+end
+
+function Makeover:wishesMet(): number
+	local met = 0
+	for _, w in self.client.wishes or {} do
+		if Scoring.wishMet(w, self.look) then
+			met += 1
+		end
+	end
+	return met
+end
+
+function Makeover:refreshWishes()
+	local parts = {}
+	for _, w in self.client.wishes or {} do
+		table.insert(parts, (if Scoring.wishMet(w, self.look) then "✅" else "") .. w.text)
+	end
+	self.wishLabel.Visible = #parts > 0
+	self.wishLabel.Text = "💌 " .. table.concat(parts, "  ")
+end
+
+function Makeover:needsBrush(): boolean
+	return self.look.hairStyle == "hair_messy" and not self.brushed
+end
+
+-- Which rubbing tool is in use right now ("wash", "brush" or nil)
+function Makeover:rubMode(): string?
+	if self.tab == "Wash" then
+		return "wash"
+	elseif self.tab == "Hair" and self:needsBrush() then
+		return "brush"
+	end
+	return nil
+end
+
+function Makeover:brush(pos: Vector2, moved: number)
+	local root = self.portraitRoot
+	if not root then
+		return
+	end
+	local size = root.AbsoluteSize.X
+	local rel = (pos - root.AbsolutePosition) / math.max(size, 1)
+	if rel.X < 0.15 or rel.X > 0.85 or rel.Y < 0 or rel.Y > 0.45 then
+		return
+	end
+	self.tangle = math.max(0, self.tangle - moved / (size * 1.6))
+	for _, t in root:GetChildren() do
+		if t.Name == "Tuft" and t:IsA("GuiObject") then
+			t.BackgroundTransparency = 1 - self.tangle
+		end
+	end
+	Sounds.play("Scrub", 0.35)
+	if math.random() < 0.08 then
+		Effects.sparkle(self.bubbleLayer, rel.X, rel.Y, "💨")
+	end
+	if self.tangle <= 0 then
+		self.brushed = true
+		self.scrubbing = false
+		Effects.sparkle(self.bubbleLayer, 0.5, 0.2)
+		self:say("Ahh, no more tangles! Now pick a hairstyle! 💇", 3)
+		self:renderPortrait()
+		self:setTab("Hair")
+	end
 end
 
 function Makeover:stepsDone()
@@ -620,6 +741,7 @@ end
 function Makeover:setTab(tabId: string)
 	local wasNails = self.tab == "Nails"
 	self.tab = tabId
+	self.bubbleLayer.Visible = tabId ~= "Nails" -- soap bubbles belong on the face, not the hand
 	if (tabId == "Nails") ~= wasNails and self.client then
 		self:renderPortrait() -- switch between the face and the hand
 	end
@@ -630,9 +752,14 @@ function Makeover:setTab(tabId: string)
 		b.Label.TextColor3 = if active then C.white else C.text
 	end
 	local isWash = tabId == "Wash"
+	local brushing = tabId == "Hair" and self:needsBrush()
 	self.washPanel.Visible = isWash
-	self.grid.Visible = not isWash
-	self.chips.Visible = not isWash
+	self.brushHint.Visible = brushing
+	self.grid.Visible = not isWash and not brushing
+	self.chips.Visible = not isWash and not brushing
+	if brushing then
+		return
+	end
 
 	if isWash then
 		self:refreshWash()
@@ -775,6 +902,19 @@ function Makeover:renderGrid()
 				Parent = card,
 			})
 		end
+		-- 💌 when this item would make one of the client's wishes come true
+		for _, w in self.client.wishes or {} do
+			if w.key == key and not Scoring.wishMet(w, self.look) and Scoring.wishMet(w, { [key] = it.id }) then
+				new("TextLabel", {
+					Position = UDim2.new(0.24, 3, 0, 3),
+					Size = UDim2.fromScale(0.24, 0.22),
+					Text = "💌",
+					ZIndex = 18,
+					Parent = card,
+				})
+				break
+			end
+		end
 		if it.event or it.gift then
 			new("TextLabel", {
 				AnchorPoint = Vector2.new(0, 1),
@@ -836,6 +976,7 @@ function Makeover:choose(key: string, itemId: string)
 		self:setDone(false)
 	end
 	local before = self.hearts
+	local wishesBefore = self:wishesMet()
 	self.look[key] = itemId
 	Remotes.UpdateLook:FireServer(key, itemId)
 	self:renderPortrait()
@@ -857,7 +998,10 @@ function Makeover:choose(key: string, itemId: string)
 			end)
 		end
 	end
-	if self.hearts >= 5 and not self.bestShown then
+	if self:wishesMet() > wishesBefore then
+		self:say("Yay! My wish came true! 💌", 2.5)
+		Effects.confetti(self.frame, 15)
+	elseif self.hearts >= 5 and not self.bestShown then
 		self.bestShown = true
 		self:say("This is my BEST look EVER! 💖", 3)
 		Effects.confetti(self.frame, 30)
@@ -1031,7 +1175,7 @@ function Makeover:connectInput()
 	local activeTouch: InputObject? = nil -- only follow the first finger
 
 	UserInputService.InputBegan:Connect(function(input)
-		if self.tab ~= "Wash" or not self.frame.Visible or self.ctx.isModalOpen() then
+		if not self:rubMode() or not self.frame.Visible or self.ctx.isModalOpen() then
 			return
 		end
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -1055,11 +1199,16 @@ function Makeover:connectInput()
 		end
 		local pos = screenPosition(input)
 		self:moveCursor(pos)
-		if self.scrubbing and self.tab == "Wash" then
+		local mode = self:rubMode()
+		if self.scrubbing and mode then
 			local moved = if lastPos then (pos - lastPos).Magnitude else 0
 			lastPos = pos
 			if moved > 0 then
-				self:scrub(pos, moved)
+				if mode == "wash" then
+					self:scrub(pos, moved)
+				else
+					self:brush(pos, moved)
+				end
 			end
 		end
 	end)
@@ -1089,8 +1238,9 @@ function Makeover:isOverPortrait(pos: Vector2): boolean
 end
 
 function Makeover:moveCursor(pos: Vector2)
-	self.cursor.Visible = self:isOverPortrait(pos) and self.tab == "Wash" and self.frame.Visible
-	self.cursor.Text = if self.tool == "soap" then "🧽" else "🚿"
+	local mode = self:rubMode()
+	self.cursor.Visible = self:isOverPortrait(pos) and mode ~= nil and self.frame.Visible
+	self.cursor.Text = if mode == "brush" then "🖌️" elseif self.tool == "soap" then "🧽" else "🚿"
 	local f = self.frame.AbsolutePosition
 	self.cursor.Position = UDim2.fromOffset(pos.X - f.X, pos.Y - f.Y)
 end

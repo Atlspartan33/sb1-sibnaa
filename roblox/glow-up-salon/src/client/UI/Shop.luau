@@ -246,7 +246,10 @@ end
 ------------------------------------------------------------------------------
 -- Shop window
 
-function Shop:open()
+function Shop:open(tab: string?)
+	if tab then
+		self.tab = tab
+	end
 	self.overlay.Visible = true
 	Theme.pop(self.panel)
 	self:render()
@@ -256,8 +259,9 @@ function Shop:close()
 	self.overlay.Visible = false
 end
 
-function Shop:refreshProfile()
-	if self.overlay.Visible then
+function Shop:refreshProfile(lookbookChanged: boolean?)
+	-- (re-drawing 24 Look Book portraits is slow, so only when the Look Book changed)
+	if self.overlay.Visible and (self.tab ~= "Looks" or lookbookChanged) then
 		self:render()
 	end
 end

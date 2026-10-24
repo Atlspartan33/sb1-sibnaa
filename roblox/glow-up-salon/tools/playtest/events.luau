@@ -56,6 +56,7 @@ while not H.shown(H.ui(tori).Makeover) and waited < 900 do E.runFor(1); waited +
 E.runFor(2)
 H.click(H.tab(tori, "Extras"), "Extras")
 H.click(H.button(tori, "Accessory"), "Accessory chip")
-H.check(H.card(tori, "Reindeer Antlers") == nil, "holiday items hidden after the event")
+H.check(H.card(tori, "Santa Hat") == nil, "unused holiday items hidden after the event")
+H.check(H.card(tori, "Reindeer Antlers") ~= nil, "holiday items you used are yours to keep")
 H.check(W.game:GetService("Workspace").GlowUpWorld:FindFirstChild("Decor") == nil, "decorations removed after the event")
 print("errors", #E.errors, "fails", H.fails)

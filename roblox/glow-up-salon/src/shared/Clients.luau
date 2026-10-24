@@ -18,8 +18,37 @@ export type Client = {
 	skinIndex: number,
 	eyesIndex: number,
 	visits: number, -- how many times this stylist has styled them (1 = first time)
+	wishes: { Wish },
 	dirt: { DirtSpot },
 }
+
+-- Something the client asks for ("💗 hair!"). Each one can be done with free items.
+export type Wish = { key: string, tag: string, text: string }
+
+local WISHES = {
+	{ key = "hairColor", tag = "pink", text = "💗 hair" },
+	{ key = "hairColor", tag = "blue", text = "💙 hair" },
+	{ key = "hairColor", tag = "gold", text = "💛 hair" },
+	{ key = "eyeshadow", tag = "purple", text = "💜 eyes" },
+	{ key = "eyeshadow", tag = "blue", text = "💙 eyes" },
+	{ key = "lipstick", tag = "red", text = "❤️ lips" },
+	{ key = "lipstick", tag = "pink", text = "💗 lips" },
+	{ key = "nailColor", tag = "any", text = "💅 nails" },
+	{ key = "nailColor", tag = "pink", text = "💗 nails" },
+	{ key = "outfit", tag = "dress", text = "👗 a dress" },
+	{ key = "accessory", tag = "any", text = "🎀 a hair clip" },
+	{ key = "gems", tag = "any", text = "⭐ stickers" },
+	{ key = "outfitPattern", tag = "any", text = "🔵 a pattern" },
+}
+
+local function pickWishes(r: Random): { Wish }
+	local first = WISHES[r:NextInteger(1, #WISHES)]
+	local second = first
+	while second.key == first.key do
+		second = WISHES[r:NextInteger(1, #WISHES)]
+	end
+	return { first, second }
+end
 
 -- What a stylist remembers about a regular client (saved, so no Color3s)
 export type Friend = { visits: number, skin: number, eyes: number }
@@ -88,7 +117,7 @@ local EVENT_STORIES = {
 local FACE_MIN_X, FACE_MAX_X = 0.31, 0.69
 local FACE_MIN_Y, FACE_MAX_Y = 0.24, 0.7
 
-function Clients.generate(rng: Random?, eventId: string?): Client
+function Clients.generate(rng: Random?, eventId: string?, avoidNames: { [string]: any }?): Client
 	local r = rng or Random.new()
 	local story = STORIES[r:NextInteger(1, #STORIES)]
 	local special = eventId and EVENT_STORIES[eventId]
@@ -109,13 +138,23 @@ function Clients.generate(rng: Random?, eventId: string?): Client
 	local skinIndex = r:NextInteger(1, #SKIN_TONES)
 	local eyesIndex = r:NextInteger(1, #EYE_COLORS)
 	return {
-		name = NAMES[r:NextInteger(1, #NAMES)],
+		name = (function()
+			local name = NAMES[r:NextInteger(1, #NAMES)]
+			for _ = 1, 20 do
+				if not (avoidNames and avoidNames[name]) then
+					break
+				end
+				name = NAMES[r:NextInteger(1, #NAMES)]
+			end
+			return name
+		end)(),
 		story = story.text,
 		skin = SKIN_TONES[skinIndex],
 		eyes = EYE_COLORS[eyesIndex],
 		skinIndex = skinIndex,
 		eyesIndex = eyesIndex,
 		visits = 1,
+		wishes = pickWishes(r),
 		dirt = dirt,
 	}
 end

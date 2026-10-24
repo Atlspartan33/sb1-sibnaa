@@ -99,8 +99,23 @@ function Effects.sparkle(parent: GuiObject, x: number, y: number, emoji: string?
 	fadeAndDestroy(s, 0.4, 0.4)
 end
 
--- A big card in the middle of the screen. Returns the card so callers can add to it.
-function Effects.splash(gui: GuiObject, title: string, subtitle: string?, color: Color3?, seconds: number?): Frame
+local splashFreeAt = 0
+
+-- A big card in the middle of the screen. Cards wait their turn so they never pile up.
+-- `build` can add extra things to the card.
+function Effects.splash(gui: GuiObject, title: string, subtitle: string?, color: Color3?, seconds: number?, build: ((Frame) -> ())?)
+	local now = os.clock()
+	local waitFor = math.max(0, splashFreeAt - now)
+	splashFreeAt = now + waitFor + (seconds or 2.5) + 0.4
+	task.delay(waitFor, function()
+		local card = Effects.showSplash(gui, title, subtitle, color, seconds)
+		if build then
+			build(card)
+		end
+	end)
+end
+
+function Effects.showSplash(gui: GuiObject, title: string, subtitle: string?, color: Color3?, seconds: number?): Frame
 	Sounds.play("Pop")
 	local card = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),

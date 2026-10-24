@@ -43,6 +43,7 @@ local entries: { [number]: Entry } = {} -- by UserId
 local showcase = nil -- payload of the look currently on the runway
 local results = nil -- payload of the last results
 local spawnedModels: { Model } = {}
+local resultsFor, sendResults -- defined below
 local decorated = false
 
 local WALK_ANIMATION = "rbxassetid://507777826" -- Roblox's default R15 walk
@@ -93,7 +94,8 @@ local function pickClient(player: Player): Clients.Client
 		local name = names[rng:NextInteger(1, #names)]
 		return Clients.returning(name, profile.friends[name], rng, state.eventId)
 	end
-	return Clients.generate(rng, state.eventId)
+	-- A new client never gets the same name as one of this stylist's regulars
+	return Clients.generate(rng, state.eventId, profile and profile.friends)
 end
 
 local function assignClient(player: Player)
@@ -145,6 +147,13 @@ local function onUpdateLook(player: Player, key: unknown, itemId: unknown)
 		return
 	end
 	entry.look[key] = itemId
+	-- Holiday items you used during the event are yours to keep afterwards
+	if it.event then
+		local profile = DataService.get(player)
+		if profile and not profile.owned[it.id] then
+			profile.owned[it.id] = true
+		end
+	end
 end
 
 local function onWashProgress(player: Player, clean: unknown, rinsed: unknown)
@@ -386,6 +395,18 @@ local function walkRunway(entry: Entry)
 	model:SetAttribute("WalkTo", target)
 	model:SetAttribute("WalkStart", now())
 	model:SetAttribute("WalkTime", walkTime)
+	-- The stylist's own avatar steps out to stand next to their client
+	local character = entry.player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local stylistRoot = character and character:FindFirstChild("HumanoidRootPart")
+	local returnTo = stylistRoot and (stylistRoot :: BasePart).CFrame
+	task.delay(math.max(0, walkTime - 1), function()
+		if character and character.Parent and humanoid and stylistRoot then
+			humanoid.Sit = false
+			local spot = world.runwayEnd + Vector3.new(3.5, humanoid.HipHeight + (stylistRoot :: BasePart).Size.Y / 2 + 0.1, 0)
+			character:PivotTo(CFrame.lookAt(spot, spot + Vector3.new(0, 0, 1)))
+		end
+	end)
 	task.wait(walkTime)
 	if walk then
 		walk:Stop()
@@ -394,6 +415,12 @@ local function walkRunway(entry: Entry)
 	if root.Parent then
 		root.CFrame = CFrame.lookAt(target, target + Vector3.new(0, 0, 1))
 	end
+	-- After their moment on the runway, the stylist goes back to the salon
+	task.delay(Config.SHOWCASE_SECONDS_PER_LOOK - walkTime - 1, function()
+		if character and character.Parent and returnTo then
+			character:PivotTo(returnTo)
+		end
+	end)
 end
 
 ------------------------------------------------------------------------------
@@ -468,12 +495,36 @@ local function scoreAll()
 		return a.score > b.score
 	end)
 
+	-- Everyone gets a different award (best scorers pick first)
+	local taken = {}
+	for _, row in rows do
+		local entry = entries[row.userId]
+		local scores = Scoring.awardScores(entry, theme())
+		local best, bestScore = nil, 0.2
+		for _, award in Scoring.AWARDS do
+			local score = scores[award.id] or 0
+			if not taken[award.id] and score > bestScore then
+				best, bestScore = award.id, score
+			end
+		end
+		if best then
+			taken[best] = true
+		end
+		row.award = Scoring.awardName(best or Scoring.FALLBACK_AWARD.id, theme())
+	end
+
 	for rank, row in rows do
 		row.rank = rank
 		local player = entries[row.userId].player
 		local coins = Config.COINS_PARTICIPATION + math.floor(row.score * Config.COINS_PER_STAR)
 		if row.spotless then
 			coins += Config.COINS_SPOTLESS_BONUS
+		end
+		-- coins for each wish the client got
+		for _, w in entries[row.userId].client.wishes do
+			if Scoring.wishMet(w, entries[row.userId].look) then
+				coins += Config.COINS_PER_WISH
+			end
 		end
 		if count >= 2 and Config.COINS_PLACEMENT[rank] then
 			coins += Config.COINS_PLACEMENT[rank]
@@ -528,12 +579,23 @@ local function scoreAll()
 				end)
 			end
 
+			-- Idle players (nothing changed) don't fill the Look Book or the weekly goal
+			local default = Catalog.defaultLook()
+			local touched = entry.clean > 0
+			for k, v in entry.look do
+				if default[k] ~= v then
+					touched = true
+				end
+			end
+
 			-- Weekly goal: play a few shows this week for a prize
-			local week = os.time() // 604800
+			local week = DataService.weekNumber()
 			if profile.week ~= week then
 				profile.week, profile.weekShows, profile.weekClaimed = week, 0, false
 			end
-			profile.weekShows += 1
+			if touched then
+				profile.weekShows += 1
+			end
 			if profile.weekShows >= Config.WEEKLY_GOAL_SHOWS and not profile.weekClaimed then
 				profile.weekClaimed = true
 				local prizeId = Catalog.WeeklyItems[profile.weeklyGiven + 1]
@@ -554,17 +616,22 @@ local function scoreAll()
 			end
 
 			-- Save the look in the Look Book (newest first)
-			table.insert(profile.lookbook, 1, {
+			table.insert(profile.lookbook, if touched then 1 else #profile.lookbook + 1, {
 				name = client.name,
 				skin = client.skinIndex,
 				eyes = client.eyesIndex,
 				look = table.clone(entry.look),
 				theme = state.themeId,
 				stars = row.stars,
+				award = row.award,
 			})
+			if not touched then
+				table.remove(profile.lookbook) -- don't keep untouched looks
+			end
 			while #profile.lookbook > Config.LOOKBOOK_SIZE do
 				table.remove(profile.lookbook)
 			end
+			profile.lookbookChanged = true
 			if newLevel > oldLevel then
 				task.delay(4, function()
 					if player.Parent then
@@ -576,6 +643,25 @@ local function scoreAll()
 		end
 	end
 	return rows
+end
+
+-- Each player gets the results with only their OWN judge tips (the others' stay private).
+function resultsFor(player: Player, all)
+	local rows = {}
+	for _, row in all.rows do
+		local copy = table.clone(row)
+		if row.userId ~= player.UserId then
+			copy.comments = {}
+		end
+		table.insert(rows, copy)
+	end
+	return { themeId = all.themeId, rows = rows }
+end
+
+function sendResults()
+	for _, player in Players:GetPlayers() do
+		Remotes.Results:FireClient(player, resultsFor(player, results))
+	end
 end
 
 ------------------------------------------------------------------------------
@@ -590,6 +676,11 @@ local function runRound()
 		setState("Waiting", 0)
 		task.wait(2)
 	end
+	-- A new day may have started for players who stayed in the game
+	for _, player in Players:GetPlayers() do
+		DataService.checkDaily(player)
+	end
+
 	-- Holiday events: switch decorations, and use the holiday theme about half the time
 	local event = Events.current(now())
 	local eventId = event and event.id or nil
@@ -665,8 +756,8 @@ local function runRound()
 	local rows = scoreAll()
 	if #rows > 0 then
 		results = { themeId = state.themeId, rows = rows }
+		sendResults()
 		setState("Results", Config.RESULTS_SECONDS)
-		Remotes.Results:FireAllClients(results)
 		for place = 1, math.min(3, #rows) do
 			local entry = entries[rows[place].userId]
 			if entry then
@@ -685,7 +776,7 @@ function RoundService.snapshot(player: Player)
 		state = state,
 		entry = if entry and state.phase == "Makeover" then entryPayload(entry) else nil,
 		showcase = if state.phase == "Showcase" then showcase else nil,
-		results = if state.phase == "Results" then results else nil,
+		results = if state.phase == "Results" and results then resultsFor(player, results) else nil,
 	}
 end
 

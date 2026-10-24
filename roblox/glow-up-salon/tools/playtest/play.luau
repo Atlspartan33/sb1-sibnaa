@@ -63,6 +63,15 @@ H.shot(tori, "04_wash_done")
 
 print("== Hair")
 H.click(H.tab(tori, "Hair"), "Hair tab")
+H.check(H.findText(tori, "Brush out the tangles") ~= nil, "messy hair must be brushed first")
+H.shot(tori, "05a_brush")
+local root = H.ui(tori):FindFirstChild("PortraitHolder", true).Portrait
+local top = root.AbsolutePosition + E.Vector2.new(root.AbsoluteSize.X * 0.5, root.AbsoluteSize.X * 0.22)
+for _ = 1, 12 do
+	if not H.findText(tori, "Brush out the tangles") then break end
+	H.rub(ct, top, 60, 16)
+end
+H.check(H.findText(tori, "Brush out the tangles") == nil, "brushing unlocks the hairstyles")
 H.shot(tori, "05_hair")
 H.shot(tori, "05_hair_phone", 844, 390)
 H.click(H.card(tori, "Cute Bob"), "Cute Bob")
@@ -72,6 +81,7 @@ H.shot(tori, "06_unlock_confirm")
 H.click(H.button(tori, "Unlock!"), "Unlock!")
 E.runFor(0.5)
 H.click(H.card(tori, "Bubblegum"), "Bubblegum")
+H.check(H.findText(tori, "🛍️ Shop") == nil, "shop button hidden during the makeover")
 
 print("== Makeup")
 H.click(H.tab(tori, "Makeup"), "Makeup tab")
@@ -114,15 +124,6 @@ H.shot(tori, "09c_outfit_pattern")
 H.shot(tori, "09_extras_phone", 844, 390)
 print("  hearts:", H.ui(tori):FindFirstChild("Makeover"):GetDescendants() and "")
 
-print("== Shop")
-H.click(H.button(tori, "Shop"), "Shop")
-H.shot(tori, "10_shop_coins")
-local shopCard = H.card(tori, "Hairstyle\nPigtails") or H.findText(tori, "Pigtails")
-H.check(shopCard ~= nil and shopCard.AbsoluteSize.Y > 20, "shop coin cards have a real size")
-H.click(H.button(tori, "💎 Extras"), "Robux tab")
-H.shot(tori, "11_shop_robux")
-H.click(H.button(tori, "✕"), "close shop")
-
 print("== Done -> show")
 H.click(H.button(tori, "I'm Done"), "Tori done")
 H.shot(tori, "12_waiting")
@@ -148,11 +149,20 @@ H.shot(tori, "14_results_phone", 844, 390)
 local res = H.findText(tori, "Your ")
 print("  " .. (res and res.Text or "no result text"))
 local miaRes = H.findText(mia, "Your ")
-H.check(miaRes ~= nil and string.find(miaRes.Text, "still dirty", 1, true) ~= nil, "instant-wash cheat ignored")
+H.check(miaRes ~= nil and string.find(miaRes.Text, "Wash the face", 1, true) ~= nil, "instant-wash cheat ignored")
 H.check(res ~= nil and not string.find(res.Text, "nan", 1, true), "NaN vote ignored")
 E.runFor(5)
 H.check(H.findText(tori, "⭐ Lv") ~= nil, "level pill shows progress")
 print("  level:", H.findText(tori, "⭐ Lv") and H.findText(tori, "⭐ Lv").Text)
+
+print("== Shop (between rounds)")
+H.click(H.button(tori, "Shop"), "Shop")
+H.shot(tori, "10_shop_coins")
+local shopCard = H.card(tori, "Hairstyle\nPigtails") or H.findText(tori, "Pigtails")
+H.check(shopCard ~= nil and shopCard.AbsoluteSize.Y > 20, "shop coin cards have a real size")
+H.click(H.button(tori, "💎 Extras"), "Robux tab")
+H.shot(tori, "11_shop_robux")
+H.click(H.button(tori, "✕"), "close shop")
 
 print("== Robux purchases (simulated receipts)")
 local function setConfig(ctx)
@@ -206,7 +216,19 @@ local function weeklyText(p)
 end
 print("  " .. weeklyText(mia))
 H.check(string.find(weeklyText(mia), "/5 shows", 1, true) ~= nil and not string.find(weeklyText(mia), "0/5", 1, true), "weekly goal counts shows")
-E.runFor(60 * 26)
+-- Mia keeps playing (picks some makeup each round); idle rounds don't count for the weekly goal
+local acted = false
+for _ = 1, 26 * 12 do
+	E.runFor(5)
+	local mv = H.ui(mia):FindFirstChild("Makeover")
+	if H.shown(mv) and not acted then
+		H.click(H.tab(mia, "Makeup"), "Mia makeup tab")
+		H.click(H.card(mia, "Pink"), "Mia pink")
+		acted = true
+	elseif not H.shown(mv) then
+		acted = false
+	end
+end
 print("  " .. weeklyText(mia))
 H.check(string.find(weeklyText(mia), "done", 1, true) ~= nil, "weekly goal completes after 5 shows")
 print("  after idle rounds, phase pill:", H.findText(mia, "Makeover") ~= nil or H.findText(mia, "show") ~= nil or H.findText(mia, "Results") ~= nil)

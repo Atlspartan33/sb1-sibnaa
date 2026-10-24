@@ -15,6 +15,8 @@ export type Options = {
 	dirtHealth: { number }?, -- per-spot dirt left (1 = dirty, 0 = clean); used while washing
 	clean: number?, -- 0..1 overall cleanliness, used when dirtHealth isn't given
 	mood: string?, -- "sad", "neutral", "smile" (default) or "grin"
+	brushed: boolean?, -- messy hair with the tangles brushed out
+	tangle: number?, -- 0..1 how tangled messy hair still is (while brushing)
 	zoom: number?, -- >1 zooms in on the face (the container should clip)
 }
 
@@ -123,7 +125,7 @@ end
 ------------------------------------------------------------------------------
 -- Hair
 
-local function drawHair(root: Frame, look, hairItem: Catalog.Item?)
+local function drawHair(root: Frame, look, hairItem: Catalog.Item?, options: Options?)
 	local hc = hairItem and hairItem.color or Color3.fromRGB(105, 66, 40)
 	local function hair(x, y, w, h, z, r, rot): Frame
 		local f = shape(root, x, y, w, h, hc, z, r, 0, rot)
@@ -142,14 +144,23 @@ local function drawHair(root: Frame, look, hairItem: Catalog.Item?)
 	if style == "hair_messy" then
 		hair(0.5, 0.3, 0.56, 0.36, Z.hairBack, 0.5)
 		cap()
-		local tufts = { { 0.27, 0.17, 30 }, { 0.36, 0.11, -20 }, { 0.49, 0.09, 10 }, { 0.62, 0.11, 35 }, { 0.73, 0.18, -30 }, { 0.76, 0.3, 15 }, { 0.24, 0.31, -10 } }
-		for _, t in tufts do
-			hair(t[1], t[2], 0.1, 0.07, Z.hairFront, 0.4, t[3])
+		if not (options and options.brushed) then
+			-- tangles and frizz (they fade away while the stylist brushes)
+			local tangle = if options and options.tangle then options.tangle else 1
+			local tufts = { { 0.27, 0.17, 30 }, { 0.36, 0.11, -20 }, { 0.49, 0.09, 10 }, { 0.62, 0.11, 35 }, { 0.73, 0.18, -30 }, { 0.76, 0.3, 15 }, { 0.24, 0.31, -10 } }
+			local bits = {}
+			for _, t in tufts do
+				table.insert(bits, hair(t[1], t[2], 0.1, 0.07, Z.hairFront, 0.4, t[3]))
+			end
+			table.insert(bits, hair(0.3, 0.06, 0.02, 0.09, Z.hairFront, 0.5, -30))
+			table.insert(bits, hair(0.68, 0.05, 0.02, 0.1, Z.hairFront, 0.5, 25))
+			table.insert(bits, hair(0.45, 0.29, 0.14, 0.05, Z.hairFront, 0.5, 25))
+			table.insert(bits, hair(0.58, 0.28, 0.12, 0.045, Z.hairFront, 0.5, -30))
+			for _, b in bits do
+				b.Name = "Tuft"
+				b.BackgroundTransparency = 1 - tangle
+			end
 		end
-		hair(0.3, 0.06, 0.02, 0.09, Z.hairFront, 0.5, -30)
-		hair(0.68, 0.05, 0.02, 0.1, Z.hairFront, 0.5, 25)
-		hair(0.45, 0.29, 0.14, 0.05, Z.hairFront, 0.5, 25)
-		hair(0.58, 0.28, 0.12, 0.045, Z.hairFront, 0.5, -30)
 	elseif style == "hair_long" then
 		hair(0.5, 0.52, 0.62, 0.72, Z.hairBack, 0.25)
 		cap()
@@ -612,7 +623,7 @@ function LookRenderer.render(container: GuiObject, client, look, options: Option
 
 	local hairItem = Catalog.byId[look.hairColor]
 
-	drawHair(root, look, hairItem)
+	drawHair(root, look, hairItem, options)
 	if not (options and options.headOnly) then
 		drawOutfit(root, client, look)
 	end

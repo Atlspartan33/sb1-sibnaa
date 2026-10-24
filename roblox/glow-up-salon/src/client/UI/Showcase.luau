@@ -178,7 +178,25 @@ function Showcase:setScreen(title: string, sub: string, client, look, clean: num
 	local theme = Catalog.themeById[self.ctx.state().themeId]
 	self.screenTheme.Text = if theme then "Theme: " .. theme.name else ""
 	if client and look then
-		LookRenderer.render(self.screenPortrait, client, look, { clean = clean or 1 })
+		local holder = self.screenPortrait:FindFirstChild("Idle")
+		if holder then
+			holder:Destroy()
+		end
+		LookRenderer.render(self.screenPortrait, client, look, { clean = clean or 1, mood = "grin" })
+	end
+end
+
+-- Between shows the big screen shows sparkles instead of the last client.
+function Showcase:clearScreenPortrait()
+	if not self.screenPortrait then
+		return
+	end
+	local old = self.screenPortrait:FindFirstChild("Portrait")
+	if old then
+		old:Destroy()
+	end
+	if not self.screenPortrait:FindFirstChild("Idle") then
+		new("TextLabel", { Name = "Idle", Size = UDim2.fromScale(1, 1), Text = "💄✨👗", Parent = self.screenPortrait }, { Theme.maxText(200) })
 	end
 end
 

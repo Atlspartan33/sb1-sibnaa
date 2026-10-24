@@ -1,7 +1,8 @@
 -- Holiday events: limited-time themes, items, client stories and decorations.
--- Dates are in UTC. Set Config.FORCE_EVENT to preview an event in Studio.
+-- Dates are in UTC. Set Config.FORCE_EVENT to preview an event in Studio (it's ignored in the live game).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 
@@ -34,8 +35,12 @@ end
 
 -- The event happening at `timestamp` (seconds since 1970, UTC), or nil.
 function Events.current(timestamp: number): Event?
-	if Config.FORCE_EVENT then
-		return Events.byId[Config.FORCE_EVENT]
+	if Config.FORCE_EVENT and RunService:IsStudio() then
+		local forced = Events.byId[Config.FORCE_EVENT]
+		if not forced then
+			warn("[GlowUp] Config.FORCE_EVENT is not a known event:", Config.FORCE_EVENT)
+		end
+		return forced
 	end
 	local date = os.date("!*t", math.floor(timestamp))
 	local today = dayNumber(date.month, date.day)

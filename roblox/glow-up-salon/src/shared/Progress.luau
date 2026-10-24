@@ -1,4 +1,5 @@
--- Stylist levels: every star a stylist earns in a show adds up, and every 5 stars is a new level.
+-- Stylist levels: stars earned in shows add up. Each level needs a few more stars than the last,
+-- so there's always something to work toward.
 
 local Progress = {}
 
@@ -11,10 +12,17 @@ local TITLES = {
 	{ level = 20, title = "Legendary Stylist" },
 }
 
-Progress.STARS_PER_LEVEL = 5
+-- Total stars needed to reach a level: Lv2 = 6, Lv3 = 14, Lv5 = 36, Lv10 = 126, Lv20 = 456
+function Progress.starsFor(level: number): number
+	return (level - 1) * (level + 4)
+end
 
 function Progress.level(totalStars: number): number
-	return 1 + math.floor((totalStars or 0) / Progress.STARS_PER_LEVEL)
+	local level = 1
+	while Progress.starsFor(level + 1) <= (totalStars or 0) do
+		level += 1
+	end
+	return level
 end
 
 function Progress.title(level: number): string
@@ -29,7 +37,9 @@ end
 
 -- 0..1 progress toward the next level
 function Progress.fraction(totalStars: number): number
-	return ((totalStars or 0) % Progress.STARS_PER_LEVEL) / Progress.STARS_PER_LEVEL
+	local level = Progress.level(totalStars)
+	local from, to = Progress.starsFor(level), Progress.starsFor(level + 1)
+	return ((totalStars or 0) - from) / (to - from)
 end
 
 return Progress

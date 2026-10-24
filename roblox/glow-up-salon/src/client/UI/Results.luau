@@ -91,13 +91,9 @@ function Results:show(results)
 		local isMe = row.userId == Players.LocalPlayer.UserId
 		if isMe then
 			local comments = table.concat(row.comments, "  ", 1, math.min(#row.comments, 3))
-			self.mine.Text = string.format("Your %s: %s\n+%d 🪙\n%s", row.client.name, Theme.stars(row.stars), row.coins, comments)
+			self.mine.Text = string.format("Your %s: %s\n%s  +%d 🪙\n%s", row.client.name, Theme.stars(row.stars), row.award or "", row.coins, comments)
 			LookRenderer.render(self.minePortrait, row.client, row.look, { clean = 1, mood = if row.stars >= 4 then "grin" else "smile" })
 			self:celebrate(row, #results.rows)
-		end
-		-- Only the top 3 and your own look are listed, so nobody is shown in last place
-		if row.rank > 3 and not isMe then
-			continue
 		end
 
 		local card = new("Frame", {
@@ -110,7 +106,8 @@ function Results:show(results)
 		new("TextLabel", {
 			Position = UDim2.new(0, 6, 0, 0),
 			Size = UDim2.new(0, 44, 1, 0),
-			Text = MEDALS[row.rank] or ("#" .. row.rank),
+			-- top 3 get a medal; everyone else shows their award's emoji (never a "last place" number)
+			Text = MEDALS[row.rank] or (string.match(row.award or "", "^(%S+)") or "💖"),
 			ZIndex = 43,
 			Parent = card,
 		}, { Theme.maxText(34) })
@@ -133,7 +130,8 @@ function Results:show(results)
 		new("TextLabel", {
 			Position = UDim2.new(0, 130, 0, 40),
 			Size = UDim2.new(1, -136, 0, 30),
-			Text = (if row.stars < 3 and not isMe then "💖 Great effort!" else Theme.stars(row.stars)) .. (if row.voteCount == 1 then "  (1 vote)" elseif row.voteCount > 1 then "  (" .. row.voteCount .. " votes)" else ""),
+			-- Everyone sees the award; stars only show when they're great (or it's your own look)
+			Text = (row.award or "") .. (if row.stars >= 4 or isMe then "  " .. Theme.stars(row.stars) else ""),
 			TextColor3 = C.gold,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			ZIndex = 43,

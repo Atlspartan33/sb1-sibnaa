@@ -125,7 +125,7 @@ Catalog.Categories = {
 		preview = "swatch",
 		items = {
 			item({ id = "hc_black", name = "Black", color = rgb(35, 30, 32), tags = { "dark" } }),
-			item({ id = "hc_brown", name = "Brown", color = rgb(105, 66, 40), tags = { "brown" } }),
+			item({ id = "hc_brown", name = "Brown", color = rgb(105, 66, 40) }), -- no tags: it's the starting color
 			item({ id = "hc_blonde", name = "Blonde", color = rgb(240, 205, 120), tags = { "gold", "bright" } }),
 			item({ id = "hc_strawberry", name = "Strawberry", color = rgb(250, 160, 170), tags = { "pink", "pastel" } }),
 			item({ id = "hc_teal", name = "Teal", color = rgb(60, 170, 180), tags = { "blue", "green" } }),
@@ -152,6 +152,14 @@ Catalog.Categories = {
 				tags = { "purple", "blue", "sparkle", "dark" },
 			}),
 			item({ id = "hc_cottoncandy", name = "Cotton Candy", level = 3, color = rgb(255, 170, 220), gradient = { rgb(255, 160, 215), rgb(170, 210, 255) }, tags = { "pink", "pastel", "blue" } }),
+			item({
+				id = "hc_unicorn",
+				name = "Unicorn",
+				level = 15,
+				color = rgb(230, 170, 255),
+				gradient = { rgb(255, 170, 220), rgb(200, 160, 255), rgb(150, 210, 255), rgb(160, 240, 200) },
+				tags = { "pastel", "pink", "purple", "sparkle" },
+			}),
 			item({ id = "hc_rosegold", name = "Rose Gold", pass = "Princess", color = rgb(240, 170, 150), gradient = { rgb(250, 200, 170), rgb(230, 140, 150) }, tags = { "pink", "gold", "sparkle" } }),
 			-- Holiday colors
 			item({ id = "hc_pumpkin", name = "Pumpkin", color = rgb(245, 130, 30), price = 40, event = "halloween", tags = { "orange", "bright" } }),
@@ -178,6 +186,7 @@ Catalog.Categories = {
 			item({ id = "es_none", name = "None" }),
 			item({ id = "es_pink", name = "Pink", color = rgb(255, 150, 200), tags = { "pink", "pastel" } }),
 			item({ id = "es_peach", name = "Peach", color = rgb(255, 180, 140), tags = { "pastel", "bright", "orange" } }),
+			item({ id = "es_ruby", name = "Ruby", color = rgb(200, 40, 70), tags = { "red" } }),
 			item({ id = "es_bronze", name = "Bronze", color = rgb(180, 120, 70), tags = { "gold", "brown" } }),
 			item({ id = "es_blue", name = "Sky Blue", color = rgb(110, 170, 255), tags = { "blue" } }),
 			item({ id = "es_purple", name = "Lilac", color = rgb(170, 120, 230), tags = { "purple" } }),
@@ -197,7 +206,7 @@ Catalog.Categories = {
 			item({
 				id = "es_rainbow",
 				name = "Rainbow Shimmer",
-				level = 6,
+				level = 8,
 				color = rgb(255, 150, 200),
 				gradient = { rgb(255, 120, 150), rgb(255, 220, 100), rgb(120, 220, 160), rgb(130, 170, 255) },
 				sparkle = true,
@@ -241,6 +250,7 @@ Catalog.Categories = {
 		items = {
 			item({ id = "lip_none", name = "None" }),
 			item({ id = "lip_nude", name = "Nude", color = rgb(200, 130, 115), tags = { "brown" } }),
+			item({ id = "lip_seaglass", name = "Sea Glass", color = rgb(90, 190, 180), tags = { "blue", "green" } }),
 			item({ id = "lip_clear", name = "Clear Gloss", color = rgb(245, 200, 205), sparkle = true, tags = { "sparkle", "white", "pastel" } }),
 			item({ id = "lip_pink", name = "Pink", color = rgb(250, 110, 170), tags = { "pink", "pastel" } }),
 			item({ id = "lip_red", name = "Classic Red", color = rgb(210, 30, 50), tags = { "red" } }),
@@ -269,7 +279,7 @@ Catalog.Categories = {
 			item({ id = "outfit_band", name = "Band Tee", color = rgb(35, 30, 40), accent = rgb(220, 40, 60), tags = { "dark", "red" } }),
 			item({ id = "outfit_lilac", name = "Lilac Top", color = rgb(170, 120, 230), accent = rgb(245, 205, 90), tags = { "purple", "gold" } }),
 			item({ id = "outfit_lime", name = "Lime Hoodie", color = rgb(130, 210, 90), accent = rgb(255, 255, 255), tags = { "green", "bright" } }),
-			item({ id = "outfit_star", name = "Star Dress", dress = true, level = 5, color = rgb(250, 210, 80), accent = rgb(255, 255, 255), sparkle = true, tags = { "gold", "sparkle", "bright" } }),
+			item({ id = "outfit_star", name = "Star Dress", dress = true, level = 6, color = rgb(250, 210, 80), accent = rgb(255, 255, 255), sparkle = true, tags = { "gold", "sparkle", "bright" } }),
 			item({ id = "outfit_party", dress = true, name = "Pink Party Dress", color = rgb(255, 140, 195), accent = rgb(255, 230, 240), tags = { "pink", "pastel" } }),
 			item({ id = "outfit_sunny", dress = true, name = "Sunny Sundress", color = rgb(255, 210, 70), accent = rgb(255, 255, 255), price = 60, tags = { "bright", "gold" } }),
 			item({ id = "outfit_black", dress = true, name = "Little Black Dress", color = rgb(30, 28, 35), accent = rgb(200, 200, 210), price = 60, tags = { "dark" } }),
@@ -309,6 +319,17 @@ Catalog.Categories = {
 				gradient = { rgb(255, 200, 225), rgb(240, 90, 150) },
 				sparkle = true,
 				tags = { "pink", "gold", "sparkle" },
+			}),
+			item({
+				id = "outfit_legend",
+				name = "Legendary Gown",
+				dress = true,
+				level = 20,
+				color = rgb(255, 200, 120),
+				accent = rgb(255, 255, 255),
+				gradient = { rgb(255, 230, 150), rgb(255, 160, 200), rgb(200, 150, 255) },
+				sparkle = true,
+				tags = { "gold", "pink", "sparkle" },
 			}),
 			-- Holiday outfits
 			item({ id = "outfit_pumpkin", name = "Pumpkin Dress", dress = true, color = rgb(245, 130, 30), accent = rgb(60, 140, 60), price = 60, event = "halloween", tags = { "orange", "green" } }),
@@ -428,7 +449,9 @@ Catalog.Categories = {
 				{ "Midnight", rgb(20, 18, 30), { "dark" } },
 			}
 			for i, p in palette do
-				table.insert(list, item({ id = "oc_" .. i, name = p[1], color = p[2], tags = p[3] }))
+				-- ids come from the name, so adding colors later never changes saved looks
+				local id = "oc_" .. string.lower((string.gsub(p[1], "%s", "")))
+				table.insert(list, item({ id = id, name = p[1], color = p[2], tags = p[3] }))
 			end
 			return list
 		end)(),
@@ -481,7 +504,8 @@ Catalog.Categories = {
 			item({ id = "acc_catears", name = "Cat Ears", color = rgb(40, 35, 45), price = 80, tags = { "dark" } }),
 			item({ id = "acc_crown", name = "Royal Crown", color = rgb(245, 200, 60), pass = "VIP", tags = { "gold", "sparkle" } }),
 			item({ id = "acc_butterfly", name = "Butterfly Clip", level = 2, color = rgb(120, 180, 255), tags = { "blue", "bright" } }),
-			item({ id = "acc_halo", name = "Star Halo", level = 8, color = rgb(255, 220, 80), tags = { "gold", "sparkle" } }),
+			item({ id = "acc_halo", name = "Star Halo", level = 10, color = rgb(255, 220, 80), tags = { "gold", "sparkle" } }),
+			item({ id = "acc_diamondtiara", name = "Diamond Tiara", level = 12, draw = "acc_tiara", color = rgb(210, 235, 255), tags = { "white", "sparkle" } }),
 			item({ id = "acc_tiara", name = "Princess Tiara", pass = "Princess", color = rgb(245, 205, 90), tags = { "gold", "sparkle", "pink" } }),
 			item({ id = "acc_goldbow", name = "Golden Bow", gift = true, draw = "acc_bow", color = rgb(245, 195, 60), tags = { "gold", "sparkle" } }),
 			item({ id = "acc_rainbowband", name = "Rainbow Headband", gift = true, draw = "acc_headband", color = rgb(255, 120, 160), gradient = { rgb(255, 90, 120), rgb(255, 210, 80), rgb(90, 210, 140), rgb(110, 150, 255) }, tags = { "bright", "pink", "blue" } }),
@@ -502,18 +526,18 @@ Catalog.Categories = {
 
 -- Fashion show themes. The judges reward looks whose tags match.
 Catalog.Themes = {
-	{ id = "pink_party", name = "Pink Party 🎀", tags = { "pink", "pastel", "sparkle" }, color = rgb(255, 130, 190) },
-	{ id = "rock_star", name = "Rock Star 🎸", tags = { "dark", "red", "purple" }, color = rgb(120, 40, 160) },
-	{ id = "under_sea", name = "Under the Sea 🐚", tags = { "blue", "green", "sparkle" }, color = rgb(50, 170, 200) },
-	{ id = "royal_ball", name = "Royal Ball 👑", tags = { "gold", "purple", "sparkle" }, color = rgb(220, 170, 60) },
-	{ id = "candy_land", name = "Candy Land 🍭", tags = { "pink", "pastel", "bright" }, color = rgb(255, 160, 210) },
-	{ id = "spooky", name = "Spooky Glam 🦇", tags = { "dark", "purple", "green" }, color = rgb(90, 50, 130) },
-	{ id = "beach", name = "Sunny Beach 🌴", tags = { "bright", "gold", "blue" }, color = rgb(255, 200, 70) },
-	{ id = "winter", name = "Winter Wonderland ❄️", tags = { "white", "blue", "sparkle" }, color = rgb(150, 200, 255) },
-	{ id = "red_carpet", name = "Red Carpet 🌟", tags = { "red", "gold", "dark" }, color = rgb(200, 30, 50) },
-	{ id = "halloween", name = "Halloween Party 🎃", tags = { "orange", "dark", "purple", "green" }, color = rgb(245, 130, 30), event = "halloween" },
-	{ id = "thanksgiving", name = "Harvest Festival 🍂", tags = { "orange", "brown", "gold", "red" }, color = rgb(200, 110, 40), event = "thanksgiving" },
-	{ id = "christmas", name = "Christmas Party 🎄", tags = { "red", "green", "white", "sparkle" }, color = rgb(200, 30, 40), event = "christmas" },
+	{ id = "pink_party", name = "Pink Party 🎀", tags = { "pink", "sparkle" }, color = rgb(255, 130, 190) },
+	{ id = "rock_star", name = "Rock Star 🎸", tags = { "dark", "red" }, color = rgb(120, 40, 160) },
+	{ id = "under_sea", name = "Under the Sea 🐚", tags = { "blue", "green" }, color = rgb(50, 170, 200) },
+	{ id = "royal_ball", name = "Royal Ball 👑", tags = { "gold", "purple" }, color = rgb(220, 170, 60) },
+	{ id = "candy_land", name = "Candy Land 🍭", tags = { "pastel", "bright" }, color = rgb(255, 160, 210) },
+	{ id = "spooky", name = "Spooky Glam 🦇", tags = { "purple", "green" }, color = rgb(90, 50, 130) },
+	{ id = "beach", name = "Sunny Beach 🌴", tags = { "gold", "blue" }, color = rgb(255, 200, 70) },
+	{ id = "winter", name = "Winter Wonderland ❄️", tags = { "white", "blue" }, color = rgb(150, 200, 255) },
+	{ id = "red_carpet", name = "Red Carpet 🌟", tags = { "red", "gold" }, color = rgb(200, 30, 50) },
+	{ id = "halloween", name = "Halloween Party 🎃", tags = { "orange", "dark" }, color = rgb(245, 130, 30), event = "halloween" },
+	{ id = "thanksgiving", name = "Harvest Festival 🍂", tags = { "orange", "brown" }, color = rgb(200, 110, 40), event = "thanksgiving" },
+	{ id = "christmas", name = "Christmas Party 🎄", tags = { "red", "green" }, color = rgb(200, 30, 40), event = "christmas" },
 } :: { Theme }
 
 -- Day-7 prizes of the daily gift calendar, given in this order
@@ -660,8 +684,37 @@ export type Client = {
 	skinIndex: number,
 	eyesIndex: number,
 	visits: number, -- how many times this stylist has styled them (1 = first time)
+	wishes: { Wish },
 	dirt: { DirtSpot },
 }
+
+-- Something the client asks for ("💗 hair!"). Each one can be done with free items.
+export type Wish = { key: string, tag: string, text: string }
+
+local WISHES = {
+	{ key = "hairColor", tag = "pink", text = "💗 hair" },
+	{ key = "hairColor", tag = "blue", text = "💙 hair" },
+	{ key = "hairColor", tag = "gold", text = "💛 hair" },
+	{ key = "eyeshadow", tag = "purple", text = "💜 eyes" },
+	{ key = "eyeshadow", tag = "blue", text = "💙 eyes" },
+	{ key = "lipstick", tag = "red", text = "❤️ lips" },
+	{ key = "lipstick", tag = "pink", text = "💗 lips" },
+	{ key = "nailColor", tag = "any", text = "💅 nails" },
+	{ key = "nailColor", tag = "pink", text = "💗 nails" },
+	{ key = "outfit", tag = "dress", text = "👗 a dress" },
+	{ key = "accessory", tag = "any", text = "🎀 a hair clip" },
+	{ key = "gems", tag = "any", text = "⭐ stickers" },
+	{ key = "outfitPattern", tag = "any", text = "🔵 a pattern" },
+}
+
+local function pickWishes(r: Random): { Wish }
+	local first = WISHES[r:NextInteger(1, #WISHES)]
+	local second = first
+	while second.key == first.key do
+		second = WISHES[r:NextInteger(1, #WISHES)]
+	end
+	return { first, second }
+end
 
 -- What a stylist remembers about a regular client (saved, so no Color3s)
 export type Friend = { visits: number, skin: number, eyes: number }
@@ -730,7 +783,7 @@ local EVENT_STORIES = {
 local FACE_MIN_X, FACE_MAX_X = 0.31, 0.69
 local FACE_MIN_Y, FACE_MAX_Y = 0.24, 0.7
 
-function Clients.generate(rng: Random?, eventId: string?): Client
+function Clients.generate(rng: Random?, eventId: string?, avoidNames: { [string]: any }?): Client
 	local r = rng or Random.new()
 	local story = STORIES[r:NextInteger(1, #STORIES)]
 	local special = eventId and EVENT_STORIES[eventId]
@@ -751,13 +804,23 @@ function Clients.generate(rng: Random?, eventId: string?): Client
 	local skinIndex = r:NextInteger(1, #SKIN_TONES)
 	local eyesIndex = r:NextInteger(1, #EYE_COLORS)
 	return {
-		name = NAMES[r:NextInteger(1, #NAMES)],
+		name = (function()
+			local name = NAMES[r:NextInteger(1, #NAMES)]
+			for _ = 1, 20 do
+				if not (avoidNames and avoidNames[name]) then
+					break
+				end
+				name = NAMES[r:NextInteger(1, #NAMES)]
+			end
+			return name
+		end)(),
 		story = story.text,
 		skin = SKIN_TONES[skinIndex],
 		eyes = EYE_COLORS[eyesIndex],
 		skinIndex = skinIndex,
 		eyesIndex = eyesIndex,
 		visits = 1,
+		wishes = pickWishes(r),
 		dirt = dirt,
 	}
 end
@@ -803,6 +866,7 @@ Config.COINS_PARTICIPATION = 20
 Config.COINS_PER_STAR = 10
 Config.COINS_SPOTLESS_BONUS = 10
 Config.COINS_PER_VOTE = 2
+Config.COINS_PER_WISH = 10 -- each of the client's wishes you make come true
 Config.COINS_PLACEMENT = { 50, 30, 15 } -- 1st, 2nd, 3rd (only when 2+ stylists played)
 -- Daily gift calendar: coins on days 1-6, a special accessory on day 7 (missing a day just pauses it)
 Config.CALENDAR_COINS = { 30, 40, 50, 60, 70, 80 }
@@ -868,9 +932,10 @@ return Config
         <Properties>
           <string name="Name">Events</string>
           <string name="Source"><![CDATA[-- Holiday events: limited-time themes, items, client stories and decorations.
--- Dates are in UTC. Set Config.FORCE_EVENT to preview an event in Studio.
+-- Dates are in UTC. Set Config.FORCE_EVENT to preview an event in Studio (it's ignored in the live game).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 
@@ -903,8 +968,12 @@ end
 
 -- The event happening at `timestamp` (seconds since 1970, UTC), or nil.
 function Events.current(timestamp: number): Event?
-	if Config.FORCE_EVENT then
-		return Events.byId[Config.FORCE_EVENT]
+	if Config.FORCE_EVENT and RunService:IsStudio() then
+		local forced = Events.byId[Config.FORCE_EVENT]
+		if not forced then
+			warn("[GlowUp] Config.FORCE_EVENT is not a known event:", Config.FORCE_EVENT)
+		end
+		return forced
 	end
 	local date = os.date("!*t", math.floor(timestamp))
 	local today = dayNumber(date.month, date.day)
@@ -940,6 +1009,8 @@ export type Options = {
 	dirtHealth: { number }?, -- per-spot dirt left (1 = dirty, 0 = clean); used while washing
 	clean: number?, -- 0..1 overall cleanliness, used when dirtHealth isn't given
 	mood: string?, -- "sad", "neutral", "smile" (default) or "grin"
+	brushed: boolean?, -- messy hair with the tangles brushed out
+	tangle: number?, -- 0..1 how tangled messy hair still is (while brushing)
 	zoom: number?, -- >1 zooms in on the face (the container should clip)
 }
 
@@ -1048,7 +1119,7 @@ end
 ------------------------------------------------------------------------------
 -- Hair
 
-local function drawHair(root: Frame, look, hairItem: Catalog.Item?)
+local function drawHair(root: Frame, look, hairItem: Catalog.Item?, options: Options?)
 	local hc = hairItem and hairItem.color or Color3.fromRGB(105, 66, 40)
 	local function hair(x, y, w, h, z, r, rot): Frame
 		local f = shape(root, x, y, w, h, hc, z, r, 0, rot)
@@ -1067,14 +1138,23 @@ local function drawHair(root: Frame, look, hairItem: Catalog.Item?)
 	if style == "hair_messy" then
 		hair(0.5, 0.3, 0.56, 0.36, Z.hairBack, 0.5)
 		cap()
-		local tufts = { { 0.27, 0.17, 30 }, { 0.36, 0.11, -20 }, { 0.49, 0.09, 10 }, { 0.62, 0.11, 35 }, { 0.73, 0.18, -30 }, { 0.76, 0.3, 15 }, { 0.24, 0.31, -10 } }
-		for _, t in tufts do
-			hair(t[1], t[2], 0.1, 0.07, Z.hairFront, 0.4, t[3])
+		if not (options and options.brushed) then
+			-- tangles and frizz (they fade away while the stylist brushes)
+			local tangle = if options and options.tangle then options.tangle else 1
+			local tufts = { { 0.27, 0.17, 30 }, { 0.36, 0.11, -20 }, { 0.49, 0.09, 10 }, { 0.62, 0.11, 35 }, { 0.73, 0.18, -30 }, { 0.76, 0.3, 15 }, { 0.24, 0.31, -10 } }
+			local bits = {}
+			for _, t in tufts do
+				table.insert(bits, hair(t[1], t[2], 0.1, 0.07, Z.hairFront, 0.4, t[3]))
+			end
+			table.insert(bits, hair(0.3, 0.06, 0.02, 0.09, Z.hairFront, 0.5, -30))
+			table.insert(bits, hair(0.68, 0.05, 0.02, 0.1, Z.hairFront, 0.5, 25))
+			table.insert(bits, hair(0.45, 0.29, 0.14, 0.05, Z.hairFront, 0.5, 25))
+			table.insert(bits, hair(0.58, 0.28, 0.12, 0.045, Z.hairFront, 0.5, -30))
+			for _, b in bits do
+				b.Name = "Tuft"
+				b.BackgroundTransparency = 1 - tangle
+			end
 		end
-		hair(0.3, 0.06, 0.02, 0.09, Z.hairFront, 0.5, -30)
-		hair(0.68, 0.05, 0.02, 0.1, Z.hairFront, 0.5, 25)
-		hair(0.45, 0.29, 0.14, 0.05, Z.hairFront, 0.5, 25)
-		hair(0.58, 0.28, 0.12, 0.045, Z.hairFront, 0.5, -30)
 	elseif style == "hair_long" then
 		hair(0.5, 0.52, 0.62, 0.72, Z.hairBack, 0.25)
 		cap()
@@ -1537,7 +1617,7 @@ function LookRenderer.render(container: GuiObject, client, look, options: Option
 
 	local hairItem = Catalog.byId[look.hairColor]
 
-	drawHair(root, look, hairItem)
+	drawHair(root, look, hairItem, options)
 	if not (options and options.headOnly) then
 		drawOutfit(root, client, look)
 	end
@@ -1565,7 +1645,8 @@ return LookRenderer
       <Item class="ModuleScript" referent="8">
         <Properties>
           <string name="Name">Progress</string>
-          <string name="Source"><![CDATA[-- Stylist levels: every star a stylist earns in a show adds up, and every 5 stars is a new level.
+          <string name="Source"><![CDATA[-- Stylist levels: stars earned in shows add up. Each level needs a few more stars than the last,
+-- so there's always something to work toward.
 
 local Progress = {}
 
@@ -1578,10 +1659,17 @@ local TITLES = {
 	{ level = 20, title = "Legendary Stylist" },
 }
 
-Progress.STARS_PER_LEVEL = 5
+-- Total stars needed to reach a level: Lv2 = 6, Lv3 = 14, Lv5 = 36, Lv10 = 126, Lv20 = 456
+function Progress.starsFor(level: number): number
+	return (level - 1) * (level + 4)
+end
 
 function Progress.level(totalStars: number): number
-	return 1 + math.floor((totalStars or 0) / Progress.STARS_PER_LEVEL)
+	local level = 1
+	while Progress.starsFor(level + 1) <= (totalStars or 0) do
+		level += 1
+	end
+	return level
 end
 
 function Progress.title(level: number): string
@@ -1596,7 +1684,9 @@ end
 
 -- 0..1 progress toward the next level
 function Progress.fraction(totalStars: number): number
-	return ((totalStars or 0) % Progress.STARS_PER_LEVEL) / Progress.STARS_PER_LEVEL
+	local level = Progress.level(totalStars)
+	local from, to = Progress.starsFor(level), Progress.starsFor(level + 1)
+	return ((totalStars or 0) - from) / (to - from)
 end
 
 return Progress
@@ -1668,7 +1758,8 @@ return Remotes
       <Item class="ModuleScript" referent="10">
         <Properties>
           <string name="Name">Scoring</string>
-          <string name="Source"><![CDATA[-- The judges! Gives a look 1-5 stars and says what they liked (or what to fix next time).
+          <string name="Source"><![CDATA[-- The judges! Gives a look 1-5 stars, says what they liked (or what to fix next time),
+-- and finds an award for every look.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -1676,17 +1767,73 @@ local Catalog = require(ReplicatedStorage.Shared.Catalog)
 
 local Scoring = {}
 
+export type Wish = { key: string, tag: string, text: string }
+
 export type Entry = {
 	look: { [string]: string },
 	clean: number,
 	rinsed: boolean,
+	client: any, -- the client (for their wishes)
 }
 
 local MAKEUP_KEYS = { "eyeshadow", "lashes", "blush", "lipstick" }
-local COLOR_MAKEUP_KEYS = { "eyeshadow", "blush", "lipstick" }
+-- Things that can match the theme. 4 matches = full theme points.
+local THEME_SLOTS = { "hairColor", "eyeshadow", "blush", "lipstick", "outfit", "accessory", "nailColor", "gems" }
+local THEME_MATCHES_NEEDED = 4
 
 function Scoring.roundToHalf(stars: number): number
 	return math.clamp(math.floor(stars * 2 + 0.5) / 2, 1, 5)
+end
+
+-- "Pink Party 🎀" -> "Pink Party"
+function Scoring.themeWord(theme: Catalog.Theme): string
+	return (string.gsub(theme.name, "%s*[^%w%s']+$", ""))
+end
+
+local function slotMatches(look, key: string, theme: Catalog.Theme): boolean
+	if key == "outfit" then
+		if Catalog.isNone(look.outfit) then
+			return false -- work overalls never match, even recolored
+		end
+		-- a 🎨 custom color counts for the outfit too
+		return Catalog.matchesTheme(Catalog.byId[look.outfit], theme) or Catalog.matchesTheme(Catalog.byId[look.outfitColor or ""], theme)
+	end
+	return Catalog.matchesTheme(Catalog.byId[look[key] or ""], theme)
+end
+
+-- How many parts of the look match the theme.
+function Scoring.themeMatches(look, theme: Catalog.Theme): number
+	local n = 0
+	for _, key in THEME_SLOTS do
+		if slotMatches(look, key, theme) then
+			n += 1
+		end
+	end
+	return n
+end
+
+function Scoring.wishMet(wish: Wish, look): boolean
+	local it = Catalog.byId[look[wish.key] or ""]
+	if not it or Catalog.isNone(it.id) then
+		return false
+	end
+	if wish.tag == "any" then
+		return true
+	elseif wish.tag == "dress" then
+		return it.dress == true
+	end
+	return Catalog.hasTag(it, wish.tag)
+end
+
+local function wishesMet(entry: Entry): (number, number)
+	local wishes = entry.client and entry.client.wishes or {}
+	local met = 0
+	for _, w in wishes do
+		if Scoring.wishMet(w, entry.look) then
+			met += 1
+		end
+	end
+	return met, #wishes
 end
 
 -- Returns stars (1..5, in half steps) and a list of judge comments.
@@ -1699,78 +1846,66 @@ function Scoring.judge(entry: Entry, theme: Catalog.Theme): (number, { string })
 	local clean = math.clamp(entry.clean or 0, 0, 1)
 	points += clean
 	if clean < 0.5 then
-		table.insert(comments, "Their face is still dirty! Wash it first 🧼")
+		table.insert(comments, "Wash the face first next time! 🧼")
 	elseif clean < 0.98 then
 		table.insert(comments, "Almost clean... you missed a spot!")
 	elseif not entry.rinsed then
 		points -= 0.2
-		table.insert(comments, "Squeaky clean, but rinse off the soap bubbles! 🚿")
+		table.insert(comments, "Rinse off the soap bubbles! 🚿")
 	else
 		table.insert(comments, "Squeaky clean! ✨")
 	end
 
-	-- Hair (1.25 points)
+	-- Hair, makeup, outfit (1.75 points for doing each part)
 	if Catalog.isNone(look.hairStyle) then
-		table.insert(comments, "That hair is still a mess! 💇")
+		table.insert(comments, "Fix that messy hair! 💇")
 	else
-		points += 0.75
-	end
-	if Catalog.matchesTheme(Catalog.byId[look.hairColor], theme) then
 		points += 0.5
-		table.insert(comments, "Love the hair color for " .. theme.name .. "!")
 	end
-
-	-- Makeup (1.75 points)
 	local applied = 0
 	for _, key in MAKEUP_KEYS do
 		if not Catalog.isNone(look[key]) then
 			applied += 1
 		end
 	end
-	points += applied / #MAKEUP_KEYS
+	points += 0.75 * applied / #MAKEUP_KEYS
 	if applied == 0 then
 		table.insert(comments, "Don't forget the makeup! 💄")
 	end
-	local matched = 0
-	for _, key in COLOR_MAKEUP_KEYS do
-		if Catalog.matchesTheme(Catalog.byId[look[key]], theme) then
-			matched += 1
-		end
-	end
-	points += 0.75 * matched / #COLOR_MAKEUP_KEYS
-	if matched >= 2 then
-		table.insert(comments, "The makeup totally fits the theme!")
-	end
-
-	-- Outfit (1 point)
 	if Catalog.isNone(look.outfit) then
-		table.insert(comments, "They walked the runway in work overalls! 👗")
+		table.insert(comments, "Pick an outfit! 👗")
 	else
 		points += 0.5
-		if Catalog.matchesTheme(Catalog.byId[look.outfit], theme) or Catalog.matchesTheme(Catalog.byId[look.outfitColor or ""], theme) then
-			points += 0.5
-		else
-			table.insert(comments, "Try an outfit that matches " .. theme.name)
-		end
 	end
 
-	-- Nails (bonus)
+	-- Matching the theme (2.25 points): the more ⭐ items, the better
+	local matches = Scoring.themeMatches(look, theme)
+	points += 2.25 * math.min(matches, THEME_MATCHES_NEEDED) / THEME_MATCHES_NEEDED
+	local word = Scoring.themeWord(theme)
+	if matches >= THEME_MATCHES_NEEDED then
+		table.insert(comments, "That's SO " .. word .. "! ⭐")
+	elseif matches >= 2 then
+		table.insert(comments, "Pretty! Pick more ⭐ " .. word .. " things!")
+	else
+		table.insert(comments, "Look for the ⭐ items to match " .. word .. "!")
+	end
+
+	-- The client's wishes (bonus)
+	local met, total = wishesMet(entry)
+	points += 0.25 * met
+	if total > 0 and met == total then
+		table.insert(comments, "You made their wishes come true! 💌")
+	end
+
+	-- Little extras (bonus)
 	if not Catalog.isNone(look.nailColor) then
-		points += 0.25
-		if Catalog.matchesTheme(Catalog.byId[look.nailColor], theme) then
-			points += 0.25
-		end
+		points += 0.15
 	end
-
-	-- Extras (bonus, up to 0.75)
 	if not Catalog.isNone(look.gems) then
-		points += 0.25
+		points += 0.1
 	end
 	if not Catalog.isNone(look.accessory) then
-		points += 0.25
-		if Catalog.matchesTheme(Catalog.byId[look.accessory], theme) then
-			points += 0.25
-		end
+		points += 0.1
 	end
 
 	local stars = Scoring.roundToHalf(points)
@@ -1804,6 +1939,67 @@ function Scoring.final(judgeStars: number, votes: { number }): number
 		total += v
 	end
 	return (judgeStars + total / #votes) / 2
+end
+
+------------------------------------------------------------------------------
+-- Awards: every look gets one, so every kid wins something
+
+Scoring.AWARDS = {
+	{ id = "theme", emoji = "⭐" }, -- named "Most <theme>"
+	{ id = "wishes", name = "Wish Granted", emoji = "💌" },
+	{ id = "hair", name = "Best Hair", emoji = "💇" },
+	{ id = "makeup", name = "Makeup Star", emoji = "💄" },
+	{ id = "nails", name = "Nail Queen", emoji = "💅" },
+	{ id = "sparkle", name = "Sparkliest", emoji = "✨" },
+	{ id = "colorful", name = "Most Colorful", emoji = "🌈" },
+	{ id = "extras", name = "Cutest Extras", emoji = "🎀" },
+	{ id = "clean", name = "Squeaky Clean", emoji = "🧼" },
+}
+Scoring.FALLBACK_AWARD = { id = "star", name = "Super Stylist", emoji = "💖" }
+
+function Scoring.awardName(awardId: string, theme: Catalog.Theme): string
+	for _, a in Scoring.AWARDS do
+		if a.id == awardId then
+			return a.emoji .. " " .. (a.name or ("Most " .. Scoring.themeWord(theme)))
+		end
+	end
+	return Scoring.FALLBACK_AWARD.emoji .. " " .. Scoring.FALLBACK_AWARD.name
+end
+
+-- How strongly this look deserves each award (0 = not at all).
+function Scoring.awardScores(entry: Entry, theme: Catalog.Theme): { [string]: number }
+	local look = entry.look
+	local function has(key)
+		return not Catalog.isNone(look[key])
+	end
+	local sparkles, distinct = 0, 0
+	for _, key in THEME_SLOTS do
+		local it = Catalog.byId[look[key] or ""]
+		if it and not Catalog.isNone(it.id) then
+			distinct += 1
+			if it.sparkle or Catalog.hasTag(it, "sparkle") then
+				sparkles += 1
+			end
+		end
+	end
+	local applied = 0
+	for _, key in MAKEUP_KEYS do
+		if has(key) then
+			applied += 1
+		end
+	end
+	local met, total = wishesMet(entry)
+	return {
+		theme = Scoring.themeMatches(look, theme) / THEME_MATCHES_NEEDED,
+		wishes = if total > 0 then met / total else 0,
+		hair = (if has("hairStyle") then 0.5 else 0) + (if slotMatches(look, "hairColor", theme) then 0.3 else 0) + (if has("accessory") then 0.1 else 0),
+		makeup = applied / #MAKEUP_KEYS,
+		nails = (if has("nailColor") then 0.6 else 0) + (if has("nailArt") then 0.4 else 0),
+		sparkle = math.min(sparkles / 3, 1),
+		colorful = distinct / #THEME_SLOTS,
+		extras = (if has("accessory") then 0.5 else 0) + (if has("gems") then 0.4 else 0),
+		clean = if (entry.clean or 0) >= 0.98 and entry.rinsed then 0.7 else 0,
+	}
 end
 
 return Scoring
@@ -1850,6 +2046,8 @@ export type Profile = {
 	weekShows: number,
 	weekClaimed: boolean,
 	weeklyGiven: number, -- weekly prizes collected
+	lookbookChanged: boolean?, -- not saved: send the Look Book with the next push
+	lookbookSent: boolean?, -- not saved: the player has the Look Book already
 	receipts: { string },
 	passes: { [string]: boolean }, -- not saved; checked with Roblox every visit
 	canSave: boolean, -- false if loading failed, so we never overwrite good data with an empty profile
@@ -1938,11 +2136,14 @@ function DataService.push(player: Player)
 			passes = p.passes,
 			totalStars = p.stats.totalStars,
 			calendarDay = p.streak,
-			lookbook = p.lookbook,
-			weekShows = if p.week == os.time() // 604800 then p.weekShows else 0,
-			weekClaimed = p.week == os.time() // 604800 and p.weekClaimed,
+			-- the Look Book is only sent when it changed (it's the biggest part)
+			lookbook = if p.lookbookChanged or not p.lookbookSent then p.lookbook else nil,
+			weekShows = if p.week == DataService.weekNumber() then p.weekShows else 0,
+			weekClaimed = p.week == DataService.weekNumber() and p.weekClaimed,
 			weeklyNext = Catalog.WeeklyItems[p.weeklyGiven + 1],
 		})
+		p.lookbookChanged = false
+		p.lookbookSent = true
 	end
 end
 
@@ -2012,9 +2213,19 @@ function DataService.save(player: Player, release: boolean?): boolean
 	return false
 end
 
+-- Days and weeks change at 05:00 UTC (midnight in New York, 9pm in Los Angeles) so most kids
+-- in the US get a new day in the morning. Weeks start on Monday.
+local DAY_OFFSET = 5 * 3600
+function DataService.dayNumber(): number
+	return (os.time() - DAY_OFFSET) // 86400
+end
+function DataService.weekNumber(): number
+	return (os.time() - DAY_OFFSET + 3 * 86400) // 604800
+end
+
 -- The daily gift calendar: a prize for each new day played. Missing a day just pauses it.
 local function giveDailyGift(player: Player, profile: Profile)
-	local today = os.time() // 86400
+	local today = DataService.dayNumber()
 	if profile.lastDay >= today then
 		return
 	end
@@ -2041,6 +2252,14 @@ local function giveDailyGift(player: Player, profile: Profile)
 			DataService.push(player)
 		end
 	end)
+end
+
+-- Called at the start of each round for players who stayed past midnight.
+function DataService.checkDaily(player: Player)
+	local profile = profiles[player]
+	if profile then
+		giveDailyGift(player, profile)
+	end
 end
 
 local function load(player: Player)
@@ -2214,6 +2433,7 @@ local entries: { [number]: Entry } = {} -- by UserId
 local showcase = nil -- payload of the look currently on the runway
 local results = nil -- payload of the last results
 local spawnedModels: { Model } = {}
+local resultsFor, sendResults -- defined below
 local decorated = false
 
 local WALK_ANIMATION = "rbxassetid://507777826" -- Roblox's default R15 walk
@@ -2264,7 +2484,8 @@ local function pickClient(player: Player): Clients.Client
 		local name = names[rng:NextInteger(1, #names)]
 		return Clients.returning(name, profile.friends[name], rng, state.eventId)
 	end
-	return Clients.generate(rng, state.eventId)
+	-- A new client never gets the same name as one of this stylist's regulars
+	return Clients.generate(rng, state.eventId, profile and profile.friends)
 end
 
 local function assignClient(player: Player)
@@ -2316,6 +2537,13 @@ local function onUpdateLook(player: Player, key: unknown, itemId: unknown)
 		return
 	end
 	entry.look[key] = itemId
+	-- Holiday items you used during the event are yours to keep afterwards
+	if it.event then
+		local profile = DataService.get(player)
+		if profile and not profile.owned[it.id] then
+			profile.owned[it.id] = true
+		end
+	end
 end
 
 local function onWashProgress(player: Player, clean: unknown, rinsed: unknown)
@@ -2557,6 +2785,18 @@ local function walkRunway(entry: Entry)
 	model:SetAttribute("WalkTo", target)
 	model:SetAttribute("WalkStart", now())
 	model:SetAttribute("WalkTime", walkTime)
+	-- The stylist's own avatar steps out to stand next to their client
+	local character = entry.player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local stylistRoot = character and character:FindFirstChild("HumanoidRootPart")
+	local returnTo = stylistRoot and (stylistRoot :: BasePart).CFrame
+	task.delay(math.max(0, walkTime - 1), function()
+		if character and character.Parent and humanoid and stylistRoot then
+			humanoid.Sit = false
+			local spot = world.runwayEnd + Vector3.new(3.5, humanoid.HipHeight + (stylistRoot :: BasePart).Size.Y / 2 + 0.1, 0)
+			character:PivotTo(CFrame.lookAt(spot, spot + Vector3.new(0, 0, 1)))
+		end
+	end)
 	task.wait(walkTime)
 	if walk then
 		walk:Stop()
@@ -2565,6 +2805,12 @@ local function walkRunway(entry: Entry)
 	if root.Parent then
 		root.CFrame = CFrame.lookAt(target, target + Vector3.new(0, 0, 1))
 	end
+	-- After their moment on the runway, the stylist goes back to the salon
+	task.delay(Config.SHOWCASE_SECONDS_PER_LOOK - walkTime - 1, function()
+		if character and character.Parent and returnTo then
+			character:PivotTo(returnTo)
+		end
+	end)
 end
 
 ------------------------------------------------------------------------------
@@ -2639,12 +2885,36 @@ local function scoreAll()
 		return a.score > b.score
 	end)
 
+	-- Everyone gets a different award (best scorers pick first)
+	local taken = {}
+	for _, row in rows do
+		local entry = entries[row.userId]
+		local scores = Scoring.awardScores(entry, theme())
+		local best, bestScore = nil, 0.2
+		for _, award in Scoring.AWARDS do
+			local score = scores[award.id] or 0
+			if not taken[award.id] and score > bestScore then
+				best, bestScore = award.id, score
+			end
+		end
+		if best then
+			taken[best] = true
+		end
+		row.award = Scoring.awardName(best or Scoring.FALLBACK_AWARD.id, theme())
+	end
+
 	for rank, row in rows do
 		row.rank = rank
 		local player = entries[row.userId].player
 		local coins = Config.COINS_PARTICIPATION + math.floor(row.score * Config.COINS_PER_STAR)
 		if row.spotless then
 			coins += Config.COINS_SPOTLESS_BONUS
+		end
+		-- coins for each wish the client got
+		for _, w in entries[row.userId].client.wishes do
+			if Scoring.wishMet(w, entries[row.userId].look) then
+				coins += Config.COINS_PER_WISH
+			end
 		end
 		if count >= 2 and Config.COINS_PLACEMENT[rank] then
 			coins += Config.COINS_PLACEMENT[rank]
@@ -2699,12 +2969,23 @@ local function scoreAll()
 				end)
 			end
 
+			-- Idle players (nothing changed) don't fill the Look Book or the weekly goal
+			local default = Catalog.defaultLook()
+			local touched = entry.clean > 0
+			for k, v in entry.look do
+				if default[k] ~= v then
+					touched = true
+				end
+			end
+
 			-- Weekly goal: play a few shows this week for a prize
-			local week = os.time() // 604800
+			local week = DataService.weekNumber()
 			if profile.week ~= week then
 				profile.week, profile.weekShows, profile.weekClaimed = week, 0, false
 			end
-			profile.weekShows += 1
+			if touched then
+				profile.weekShows += 1
+			end
 			if profile.weekShows >= Config.WEEKLY_GOAL_SHOWS and not profile.weekClaimed then
 				profile.weekClaimed = true
 				local prizeId = Catalog.WeeklyItems[profile.weeklyGiven + 1]
@@ -2725,17 +3006,22 @@ local function scoreAll()
 			end
 
 			-- Save the look in the Look Book (newest first)
-			table.insert(profile.lookbook, 1, {
+			table.insert(profile.lookbook, if touched then 1 else #profile.lookbook + 1, {
 				name = client.name,
 				skin = client.skinIndex,
 				eyes = client.eyesIndex,
 				look = table.clone(entry.look),
 				theme = state.themeId,
 				stars = row.stars,
+				award = row.award,
 			})
+			if not touched then
+				table.remove(profile.lookbook) -- don't keep untouched looks
+			end
 			while #profile.lookbook > Config.LOOKBOOK_SIZE do
 				table.remove(profile.lookbook)
 			end
+			profile.lookbookChanged = true
 			if newLevel > oldLevel then
 				task.delay(4, function()
 					if player.Parent then
@@ -2747,6 +3033,25 @@ local function scoreAll()
 		end
 	end
 	return rows
+end
+
+-- Each player gets the results with only their OWN judge tips (the others' stay private).
+function resultsFor(player: Player, all)
+	local rows = {}
+	for _, row in all.rows do
+		local copy = table.clone(row)
+		if row.userId ~= player.UserId then
+			copy.comments = {}
+		end
+		table.insert(rows, copy)
+	end
+	return { themeId = all.themeId, rows = rows }
+end
+
+function sendResults()
+	for _, player in Players:GetPlayers() do
+		Remotes.Results:FireClient(player, resultsFor(player, results))
+	end
 end
 
 ------------------------------------------------------------------------------
@@ -2761,6 +3066,11 @@ local function runRound()
 		setState("Waiting", 0)
 		task.wait(2)
 	end
+	-- A new day may have started for players who stayed in the game
+	for _, player in Players:GetPlayers() do
+		DataService.checkDaily(player)
+	end
+
 	-- Holiday events: switch decorations, and use the holiday theme about half the time
 	local event = Events.current(now())
 	local eventId = event and event.id or nil
@@ -2836,8 +3146,8 @@ local function runRound()
 	local rows = scoreAll()
 	if #rows > 0 then
 		results = { themeId = state.themeId, rows = rows }
+		sendResults()
 		setState("Results", Config.RESULTS_SECONDS)
-		Remotes.Results:FireAllClients(results)
 		for place = 1, math.min(3, #rows) do
 			local entry = entries[rows[place].userId]
 			if entry then
@@ -2856,7 +3166,7 @@ function RoundService.snapshot(player: Player)
 		state = state,
 		entry = if entry and state.phase == "Makeover" then entryPayload(entry) else nil,
 		showcase = if state.phase == "Showcase" then showcase else nil,
-		results = if state.phase == "Results" then results else nil,
+		results = if state.phase == "Results" and results then resultsFor(player, results) else nil,
 	}
 end
 
@@ -3200,9 +3510,9 @@ end
 
 -- Spots around the salon, runway and podium where decorations go
 local DECOR_SPOTS = {
-	Vector3.new(-30, 0, 36), Vector3.new(30, 0, 36), Vector3.new(-30, 0, 62), Vector3.new(30, 0, 62),
+	Vector3.new(-42, 0, 38), Vector3.new(42, 0, 38), Vector3.new(-42, 0, 62), Vector3.new(42, 0, 62),
 	Vector3.new(-18, 0, -30), Vector3.new(18, 0, -30), Vector3.new(-22, 0, -50), Vector3.new(22, 0, -50),
-	Vector3.new(-44, 0, -6), Vector3.new(-20, 0, -14), Vector3.new(8, 0, 20), Vector3.new(-8, 0, 20),
+	Vector3.new(-52, 0, -8), Vector3.new(-16, 0, 6), Vector3.new(10, 0, 20), Vector3.new(-10, 0, 20),
 }
 
 local built = nil
@@ -3511,13 +3821,11 @@ local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
 
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local UI = script.Parent:WaitForChild("UI")
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
-local Events = require(ReplicatedStorage.Shared.Events)
 local Effects = require(UI.Effects)
 local HUD = require(UI.HUD)
 local Makeover = require(UI.Makeover)
@@ -3534,12 +3842,12 @@ gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 
-local state = { phase = "Waiting", endsAt = 0, themeId = "" }
+local state = { phase = "Waiting", endsAt = 0, themeId = "", eventId = nil :: string? }
 local hud, shop
 
 -- Shared helpers every screen can use
 local ctx = {
-	profile = { coins = 0, owned = {}, passes = {}, totalStars = 0 },
+	profile = { coins = 0, owned = {}, passes = {}, totalStars = 0, lookbook = {} } :: any,
 	state = function()
 		return state
 	end,
@@ -3552,9 +3860,9 @@ local ctx = {
 	promptProduct = function(key: string)
 		shop:askProduct(key)
 	end,
+	-- the server decides the event when a round starts, so use that (not this device's clock)
 	eventId = function(): string?
-		local event = Events.current(Workspace:GetServerTimeNow())
-		return event and event.id
+		return state.eventId
 	end,
 	isModalOpen = function(): boolean
 		return shop.overlay.Visible or shop.confirm.Visible
@@ -3563,6 +3871,8 @@ local ctx = {
 
 hud = HUD.new(gui, function()
 	shop:open()
+end, function()
+	shop:open("Looks")
 end)
 shop = Shop.new(gui, ctx)
 local makeover = Makeover.new(gui, ctx)
@@ -3614,6 +3924,7 @@ local function applyState(newState)
 	end
 	if state.phase == "Intermission" and oldPhase ~= "Intermission" then
 		showcase:setScreen("✨ 5 Minute Glow Up ✨", "Next show starting soon!", nil, nil)
+		showcase:clearScreenPortrait()
 	end
 	if state.phase == "Makeover" and oldPhase ~= "Makeover" then
 		local theme = Catalog.themeById[state.themeId]
@@ -3636,17 +3947,22 @@ Remotes.Results.OnClientEvent:Connect(function(payload)
 	results:show(payload)
 	local winner = payload.rows[1]
 	if winner then
-		showcase:setScreen("🏆 " .. winner.stylist .. " wins!", winner.client.name .. " - " .. Theme.stars(winner.stars), winner.client, winner.look, winner.clean)
+		-- Shown to everyone: always the happy, washed look and an award (never low stars)
+		showcase:setScreen("🏆 " .. winner.stylist .. " wins!", winner.client.name .. "  " .. (winner.award or ""), winner.client, winner.look, 1)
 	end
 end)
 
 Remotes.Profile.OnClientEvent:Connect(function(profile)
+	local lookbookChanged = profile.lookbook ~= nil
+	if not lookbookChanged then
+		profile.lookbook = ctx.profile.lookbook -- unchanged, so it wasn't sent again
+	end
 	ctx.profile = profile
 	hud:setCoins(profile.coins)
 	hud:setLevel(profile.totalStars or 0)
 	hud:setWeekly(profile)
 	makeover:refreshProfile()
-	shop:refreshProfile()
+	shop:refreshProfile(lookbookChanged)
 end)
 
 Remotes.Reaction.OnClientEvent:Connect(function(emoji)
@@ -3656,33 +3972,34 @@ end)
 Remotes.Celebrate.OnClientEvent:Connect(function(info)
 	if info.kind == "daily" then
 		local title = if info.item then "🎁 Day 7: " .. info.item .. "!" else "🎁 Day " .. info.day .. " Gift! +" .. info.coins .. " 🪙"
-		local card = Effects.splash(gui, title, " ", Theme.Colors.gold, 4)
 		-- The 7-day calendar row
-		local row = Theme.new("Frame", {
-			Position = UDim2.fromScale(0, 0.62),
-			Size = UDim2.fromScale(1, 0.36),
-			BackgroundTransparency = 1,
-			ZIndex = 262,
-			Parent = card,
-		}, {
-			Theme.new("UIListLayout", {
-				FillDirection = Enum.FillDirection.Horizontal,
-				HorizontalAlignment = Enum.HorizontalAlignment.Center,
-				Padding = UDim.new(0.015, 0),
-			}),
-		})
-		for d = 1, 7 do
-			local past, today = d < info.day, d == info.day
-			Theme.new("TextLabel", {
-				Size = UDim2.fromScale(0.125, 1),
-				BackgroundTransparency = 0,
-				BackgroundColor3 = if today then Theme.Colors.gold elseif past then Theme.Colors.green else Theme.Colors.lavender,
-				TextColor3 = if today or past then Theme.Colors.white else Theme.Colors.text,
-				Text = if past then "✓" elseif d == 7 then "🎁" else tostring(d),
-				ZIndex = 263,
-				Parent = row,
-			}, { Theme.corner(10), Theme.maxText(30) })
-		end
+		Effects.splash(gui, title, " ", Theme.Colors.gold, 4, function(card)
+			local row = Theme.new("Frame", {
+				Position = UDim2.fromScale(0, 0.62),
+				Size = UDim2.fromScale(1, 0.36),
+				BackgroundTransparency = 1,
+				ZIndex = 262,
+				Parent = card,
+			}, {
+				Theme.new("UIListLayout", {
+					FillDirection = Enum.FillDirection.Horizontal,
+					HorizontalAlignment = Enum.HorizontalAlignment.Center,
+					Padding = UDim.new(0.015, 0),
+				}),
+			})
+			for d = 1, 7 do
+				local past, today = d < info.day, d == info.day
+				Theme.new("TextLabel", {
+					Size = UDim2.fromScale(0.125, 1),
+					BackgroundTransparency = 0,
+					BackgroundColor3 = if today then Theme.Colors.gold elseif past then Theme.Colors.green else Theme.Colors.lavender,
+					TextColor3 = if today or past then Theme.Colors.white else Theme.Colors.text,
+					Text = if past then "✓" elseif d == 7 then "🎁" else tostring(d),
+					ZIndex = 263,
+					Parent = row,
+				}, { Theme.corner(10), Theme.maxText(30) })
+			end
+		end)
 		Effects.confetti(gui, 40)
 	elseif info.kind == "weekly" then
 		Effects.splash(gui, "🎯 Weekly goal done!", if info.item then "You got the " .. info.item .. "! 🎁" else "+" .. info.coins .. " 🪙", Theme.Colors.purple, 4)
@@ -3831,8 +4148,23 @@ function Effects.sparkle(parent: GuiObject, x: number, y: number, emoji: string?
 	fadeAndDestroy(s, 0.4, 0.4)
 end
 
--- A big card in the middle of the screen. Returns the card so callers can add to it.
-function Effects.splash(gui: GuiObject, title: string, subtitle: string?, color: Color3?, seconds: number?): Frame
+local splashFreeAt = 0
+
+-- A big card in the middle of the screen. Cards wait their turn so they never pile up.
+-- `build` can add extra things to the card.
+function Effects.splash(gui: GuiObject, title: string, subtitle: string?, color: Color3?, seconds: number?, build: ((Frame) -> ())?)
+	local now = os.clock()
+	local waitFor = math.max(0, splashFreeAt - now)
+	splashFreeAt = now + waitFor + (seconds or 2.5) + 0.4
+	task.delay(waitFor, function()
+		local card = Effects.showSplash(gui, title, subtitle, color, seconds)
+		if build then
+			build(card)
+		end
+	end)
+end
+
+function Effects.showSplash(gui: GuiObject, title: string, subtitle: string?, color: Color3?, seconds: number?): Frame
 	Sounds.play("Pop")
 	local card = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -3916,7 +4248,7 @@ local PHASE_LABELS = {
 	Results = "🏆 Results",
 }
 
-function HUD.new(gui: ScreenGui, onShop: () -> ())
+function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 	local self = setmetatable({}, HUD)
 	self.state = { phase = "Waiting", endsAt = 0, themeId = Catalog.Themes[1].id }
 
@@ -3964,6 +4296,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 		Parent = right,
 	})
 	shop.Activated:Connect(onShop)
+	self.shopButton = shop
 
 	-- Stylist level, just left of the timer
 	local levelPill = new("Frame", {
@@ -3989,8 +4322,8 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 
 	-- Little messages pop up near the bottom of the screen
 	self.toasts = new("Frame", {
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -96),
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 60),
 		Size = UDim2.new(0.5, 0, 0, 200),
 		BackgroundTransparency = 1,
 		ZIndex = 90,
@@ -3999,7 +4332,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 		new("UIListLayout", {
 			Padding = UDim.new(0, 6),
 			HorizontalAlignment = Enum.HorizontalAlignment.Center,
-			VerticalAlignment = Enum.VerticalAlignment.Bottom,
+			VerticalAlignment = Enum.VerticalAlignment.Top,
 		}),
 	})
 
@@ -4021,6 +4354,17 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 		new("UISizeConstraint", { MinSize = Vector2.new(320, 0) }),
 		new("UIListLayout", { Padding = UDim.new(0, 6), HorizontalAlignment = Enum.HorizontalAlignment.Center }),
 	})
+	local book = Theme.button({
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, 6, 0, -6),
+		Size = UDim2.new(0, 120, 0, 36),
+		Text = "📖 My Looks",
+		Color = C.purple,
+		ZIndex = 45,
+		MaxText = 20,
+		Parent = self.lobby,
+	})
+	book.Activated:Connect(onLookBook)
 	self.lobbyEvent = new("TextLabel", {
 		Size = UDim2.new(1, 0, 0, 30),
 		BackgroundTransparency = 0,
@@ -4052,6 +4396,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 	new("TextLabel", {
 		Size = UDim2.new(1, 0, 0, 104),
 		LayoutOrder = 4,
+		Name = "Steps",
 		Text = "1. 🧼 Wash your client's dirty face\n2. 💇 Do their hair   3. 💄 Put on makeup\n4. 👗 Pick an outfit that fits the theme\n5. 📸 Walk the runway - you only get 5 minutes!",
 		TextColor3 = C.text,
 		ZIndex = 41,
@@ -4069,8 +4414,14 @@ function HUD:setState(state)
 		Theme.pop(self.lobby)
 	end
 	self.lobby.Visible = showLobby
+	-- On short phone screens, skip the how-to steps so the card doesn't cover everything
+	local compact = self.lobby.Parent and (self.lobby.Parent :: GuiObject).AbsoluteSize.Y < 500
+	self.lobby.Steps.Visible = not compact
+	self.lobby.Size = UDim2.new(0.5, 0, 0, if compact then 150 else 262)
+	-- No shopping while the 5-minute timer runs (items can still be unlocked from the menus)
+	self.shopButton.Visible = state.phase ~= "Makeover"
 	self.lobbyTheme.Text = "Next theme: " .. (theme and theme.name or "")
-	local event = Events.current(Workspace:GetServerTimeNow())
+	local event = state.eventId and Events.byId[state.eventId]
 	self.lobbyEvent.Visible = event ~= nil
 	if event then
 		self.lobbyEvent.Text = event.icon .. " " .. event.name .. " event! New looks " .. event.endsText .. " " .. event.icon
@@ -4226,6 +4577,9 @@ function Makeover.new(gui: ScreenGui, ctx)
 
 	self:buildLeft()
 	self:buildRight()
+	self.frame:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+		self:layoutForScreen()
+	end)
 	self:connectInput()
 	self:startAnimations()
 	return self
@@ -4275,6 +4629,17 @@ function Makeover:buildLeft()
 		ZIndex = 110,
 		Parent = self.portraitHolder,
 	}, { Theme.round(), Theme.padding(4) })
+	-- What the client wishes for
+	self.wishLabel = new("TextLabel", {
+		Position = UDim2.fromScale(0.5, 0.805),
+		Size = UDim2.fromScale(0.5, 0.075),
+		BackgroundTransparency = 0,
+		BackgroundColor3 = C.softPink,
+		TextColor3 = C.purple,
+		Text = "",
+		ZIndex = 12,
+		Parent = left,
+	}, { Theme.round(), Theme.maxText(22), Theme.padding(4) })
 
 	-- What the client says
 	self.speech = new("Frame", {
@@ -4313,13 +4678,14 @@ function Makeover:buildLeft()
 
 	self.heartsLabel = new("TextLabel", {
 		Position = UDim2.fromScale(0, 0.8),
-		Size = UDim2.fromScale(1, 0.085),
+		Size = UDim2.fromScale(0.49, 0.085),
 		Text = "",
 		ZIndex = 12,
 		Parent = left,
 	}, { Theme.maxText(30) })
 
 	local checklist = new("Frame", {
+		Name = "Checklist",
 		Position = UDim2.fromScale(0, 0.895),
 		Size = UDim2.fromScale(1, 0.105),
 		BackgroundTransparency = 1,
@@ -4387,7 +4753,7 @@ function Makeover:buildRight()
 	for _, tab in Catalog.Tabs do
 		local b = Theme.button({
 			Text = "",
-			Size = UDim2.fromScale(0.158, 1),
+			Size = UDim2.fromScale(0.155, 1),
 			Color = C.lavender,
 			ZIndex = 13,
 			Parent = tabs,
@@ -4453,6 +4819,17 @@ function Makeover:buildRight()
 	end)
 
 	self:buildWashPanel(right)
+
+	-- Messy hair has to be brushed before picking a style
+	self.brushHint = new("TextLabel", {
+		Position = UDim2.fromScale(0, 0.24),
+		Size = UDim2.fromScale(1, 0.61),
+		Text = "🖌️\nBrush out the tangles!\nRub the messy hair",
+		TextColor3 = C.purple,
+		Visible = false,
+		ZIndex = 20,
+		Parent = right,
+	}, { Theme.maxText(40), Theme.padding(20) })
 
 	self.doneButton = Theme.button({
 		AnchorPoint = Vector2.new(0.5, 1),
@@ -4626,6 +5003,8 @@ function Makeover:assign(payload)
 	self.hearts = 0
 	self.tool = "soap"
 	self.tab = "Wash"
+	self.brushed = self.look.hairStyle ~= "hair_messy"
+	self.tangle = if self.brushed then 0 else 1
 	local visits = self.client.visits or 1
 	self.nameTag.Text = "💖 " .. self.client.name .. (if visits > 1 then "  ⭐" .. visits else "")
 	self:setDone(self.done, true)
@@ -4636,11 +5015,38 @@ function Makeover:assign(payload)
 	else
 		self:say(self.client.story, 5)
 	end
+	local wishes = self.client.wishes or {}
+	if #wishes > 0 then
+		local client = self.client
+		task.delay(if visits > 1 then 6.2 else 5.2, function()
+			if self.client == client then
+				local texts = {}
+				for _, w in wishes do
+					table.insert(texts, w.text)
+				end
+				self:say("I wish for " .. table.concat(texts, " and ") .. "! 💌", 4)
+			end
+		end)
+	end
+end
+
+-- On short screens (phones), hide the checklist so the client's face can be bigger.
+function Makeover:layoutForScreen()
+	local compact = self.frame.AbsoluteSize.Y > 0 and self.frame.AbsoluteSize.Y < 500
+	self.left.Checklist.Visible = not compact
+	self.portraitHolder.Size = UDim2.fromScale(1, if compact then 0.72 else 0.66)
+	self.heartsLabel.Position = UDim2.fromScale(0, if compact then 0.87 else 0.8)
+	self.heartsLabel.Size = UDim2.fromScale(0.49, if compact then 0.13 else 0.085)
+	self.wishLabel.Position = UDim2.fromScale(0.5, if compact then 0.88 else 0.805)
+	self.wishLabel.Size = UDim2.fromScale(0.5, if compact then 0.11 else 0.075)
 end
 
 function Makeover:setVisible(visible: boolean)
 	local wasVisible = self.frame.Visible
 	self.frame.Visible = visible and self.client ~= nil
+	if self.frame.Visible then
+		self:layoutForScreen()
+	end
 	if not self.frame.Visible then
 		self.cursor.Visible = false
 		self.scrubbing = false
@@ -4708,7 +5114,7 @@ function Makeover:previewStars(): number
 	if not theme then
 		return 1
 	end
-	local stars = Scoring.judge({ look = self.look, clean = self:cleanAmount(), rinsed = #self.bubbles == 0 }, theme)
+	local stars = Scoring.judge({ look = self.look, clean = self:cleanAmount(), rinsed = #self.bubbles == 0, client = self.client }, theme)
 	return stars
 end
 
@@ -4723,6 +5129,8 @@ function Makeover:renderPortrait()
 		self.portraitRoot = LookRenderer.render(self.portraitHolder, self.client, self.look, {
 			dirtHealth = self.dirtHealth,
 			mood = Scoring.mood(stars, self:cleanAmount()),
+			brushed = self.brushed,
+			tangle = self.tangle,
 		})
 	end
 	self.dirtFrames = {}
@@ -4730,12 +5138,76 @@ function Makeover:renderPortrait()
 		self.dirtFrames[i] = self.portraitRoot:FindFirstChild("Dirt" .. i)
 	end
 	local full = math.floor(stars)
-	self.heartsLabel.Text = "Happy: " .. string.rep("💖", full) .. string.rep("🤍", 5 - full)
+	self.heartsLabel.Text = "😊" .. string.rep("💖", full) .. string.rep("🤍", 5 - full)
 	if full > self.hearts and self.hearts > 0 then
 		Theme.pop(self.heartsLabel)
 	end
 	self.hearts = full
+	self:refreshWishes()
 	self:refreshChecklist()
+end
+
+function Makeover:wishesMet(): number
+	local met = 0
+	for _, w in self.client.wishes or {} do
+		if Scoring.wishMet(w, self.look) then
+			met += 1
+		end
+	end
+	return met
+end
+
+function Makeover:refreshWishes()
+	local parts = {}
+	for _, w in self.client.wishes or {} do
+		table.insert(parts, (if Scoring.wishMet(w, self.look) then "✅" else "") .. w.text)
+	end
+	self.wishLabel.Visible = #parts > 0
+	self.wishLabel.Text = "💌 " .. table.concat(parts, "  ")
+end
+
+function Makeover:needsBrush(): boolean
+	return self.look.hairStyle == "hair_messy" and not self.brushed
+end
+
+-- Which rubbing tool is in use right now ("wash", "brush" or nil)
+function Makeover:rubMode(): string?
+	if self.tab == "Wash" then
+		return "wash"
+	elseif self.tab == "Hair" and self:needsBrush() then
+		return "brush"
+	end
+	return nil
+end
+
+function Makeover:brush(pos: Vector2, moved: number)
+	local root = self.portraitRoot
+	if not root then
+		return
+	end
+	local size = root.AbsoluteSize.X
+	local rel = (pos - root.AbsolutePosition) / math.max(size, 1)
+	if rel.X < 0.15 or rel.X > 0.85 or rel.Y < 0 or rel.Y > 0.45 then
+		return
+	end
+	self.tangle = math.max(0, self.tangle - moved / (size * 1.6))
+	for _, t in root:GetChildren() do
+		if t.Name == "Tuft" and t:IsA("GuiObject") then
+			t.BackgroundTransparency = 1 - self.tangle
+		end
+	end
+	Sounds.play("Scrub", 0.35)
+	if math.random() < 0.08 then
+		Effects.sparkle(self.bubbleLayer, rel.X, rel.Y, "💨")
+	end
+	if self.tangle <= 0 then
+		self.brushed = true
+		self.scrubbing = false
+		Effects.sparkle(self.bubbleLayer, 0.5, 0.2)
+		self:say("Ahh, no more tangles! Now pick a hairstyle! 💇", 3)
+		self:renderPortrait()
+		self:setTab("Hair")
+	end
 end
 
 function Makeover:stepsDone()
@@ -4771,6 +5243,7 @@ end
 function Makeover:setTab(tabId: string)
 	local wasNails = self.tab == "Nails"
 	self.tab = tabId
+	self.bubbleLayer.Visible = tabId ~= "Nails" -- soap bubbles belong on the face, not the hand
 	if (tabId == "Nails") ~= wasNails and self.client then
 		self:renderPortrait() -- switch between the face and the hand
 	end
@@ -4781,9 +5254,14 @@ function Makeover:setTab(tabId: string)
 		b.Label.TextColor3 = if active then C.white else C.text
 	end
 	local isWash = tabId == "Wash"
+	local brushing = tabId == "Hair" and self:needsBrush()
 	self.washPanel.Visible = isWash
-	self.grid.Visible = not isWash
-	self.chips.Visible = not isWash
+	self.brushHint.Visible = brushing
+	self.grid.Visible = not isWash and not brushing
+	self.chips.Visible = not isWash and not brushing
+	if brushing then
+		return
+	end
 
 	if isWash then
 		self:refreshWash()
@@ -4926,6 +5404,19 @@ function Makeover:renderGrid()
 				Parent = card,
 			})
 		end
+		-- 💌 when this item would make one of the client's wishes come true
+		for _, w in self.client.wishes or {} do
+			if w.key == key and not Scoring.wishMet(w, self.look) and Scoring.wishMet(w, { [key] = it.id }) then
+				new("TextLabel", {
+					Position = UDim2.new(0.24, 3, 0, 3),
+					Size = UDim2.fromScale(0.24, 0.22),
+					Text = "💌",
+					ZIndex = 18,
+					Parent = card,
+				})
+				break
+			end
+		end
 		if it.event or it.gift then
 			new("TextLabel", {
 				AnchorPoint = Vector2.new(0, 1),
@@ -4987,6 +5478,7 @@ function Makeover:choose(key: string, itemId: string)
 		self:setDone(false)
 	end
 	local before = self.hearts
+	local wishesBefore = self:wishesMet()
 	self.look[key] = itemId
 	Remotes.UpdateLook:FireServer(key, itemId)
 	self:renderPortrait()
@@ -5008,7 +5500,10 @@ function Makeover:choose(key: string, itemId: string)
 			end)
 		end
 	end
-	if self.hearts >= 5 and not self.bestShown then
+	if self:wishesMet() > wishesBefore then
+		self:say("Yay! My wish came true! 💌", 2.5)
+		Effects.confetti(self.frame, 15)
+	elseif self.hearts >= 5 and not self.bestShown then
 		self.bestShown = true
 		self:say("This is my BEST look EVER! 💖", 3)
 		Effects.confetti(self.frame, 30)
@@ -5182,7 +5677,7 @@ function Makeover:connectInput()
 	local activeTouch: InputObject? = nil -- only follow the first finger
 
 	UserInputService.InputBegan:Connect(function(input)
-		if self.tab ~= "Wash" or not self.frame.Visible or self.ctx.isModalOpen() then
+		if not self:rubMode() or not self.frame.Visible or self.ctx.isModalOpen() then
 			return
 		end
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -5206,11 +5701,16 @@ function Makeover:connectInput()
 		end
 		local pos = screenPosition(input)
 		self:moveCursor(pos)
-		if self.scrubbing and self.tab == "Wash" then
+		local mode = self:rubMode()
+		if self.scrubbing and mode then
 			local moved = if lastPos then (pos - lastPos).Magnitude else 0
 			lastPos = pos
 			if moved > 0 then
-				self:scrub(pos, moved)
+				if mode == "wash" then
+					self:scrub(pos, moved)
+				else
+					self:brush(pos, moved)
+				end
 			end
 		end
 	end)
@@ -5240,8 +5740,9 @@ function Makeover:isOverPortrait(pos: Vector2): boolean
 end
 
 function Makeover:moveCursor(pos: Vector2)
-	self.cursor.Visible = self:isOverPortrait(pos) and self.tab == "Wash" and self.frame.Visible
-	self.cursor.Text = if self.tool == "soap" then "🧽" else "🚿"
+	local mode = self:rubMode()
+	self.cursor.Visible = self:isOverPortrait(pos) and mode ~= nil and self.frame.Visible
+	self.cursor.Text = if mode == "brush" then "🖌️" elseif self.tool == "soap" then "🧽" else "🚿"
 	local f = self.frame.AbsolutePosition
 	self.cursor.Position = UDim2.fromOffset(pos.X - f.X, pos.Y - f.Y)
 end
@@ -5346,13 +5847,9 @@ function Results:show(results)
 		local isMe = row.userId == Players.LocalPlayer.UserId
 		if isMe then
 			local comments = table.concat(row.comments, "  ", 1, math.min(#row.comments, 3))
-			self.mine.Text = string.format("Your %s: %s\n+%d 🪙\n%s", row.client.name, Theme.stars(row.stars), row.coins, comments)
+			self.mine.Text = string.format("Your %s: %s\n%s  +%d 🪙\n%s", row.client.name, Theme.stars(row.stars), row.award or "", row.coins, comments)
 			LookRenderer.render(self.minePortrait, row.client, row.look, { clean = 1, mood = if row.stars >= 4 then "grin" else "smile" })
 			self:celebrate(row, #results.rows)
-		end
-		-- Only the top 3 and your own look are listed, so nobody is shown in last place
-		if row.rank > 3 and not isMe then
-			continue
 		end
 
 		local card = new("Frame", {
@@ -5365,7 +5862,8 @@ function Results:show(results)
 		new("TextLabel", {
 			Position = UDim2.new(0, 6, 0, 0),
 			Size = UDim2.new(0, 44, 1, 0),
-			Text = MEDALS[row.rank] or ("#" .. row.rank),
+			-- top 3 get a medal; everyone else shows their award's emoji (never a "last place" number)
+			Text = MEDALS[row.rank] or (string.match(row.award or "", "^(%S+)") or "💖"),
 			ZIndex = 43,
 			Parent = card,
 		}, { Theme.maxText(34) })
@@ -5388,7 +5886,8 @@ function Results:show(results)
 		new("TextLabel", {
 			Position = UDim2.new(0, 130, 0, 40),
 			Size = UDim2.new(1, -136, 0, 30),
-			Text = (if row.stars < 3 and not isMe then "💖 Great effort!" else Theme.stars(row.stars)) .. (if row.voteCount == 1 then "  (1 vote)" elseif row.voteCount > 1 then "  (" .. row.voteCount .. " votes)" else ""),
+			-- Everyone sees the award; stars only show when they're great (or it's your own look)
+			Text = (row.award or "") .. (if row.stars >= 4 or isMe then "  " .. Theme.stars(row.stars) else ""),
 			TextColor3 = C.gold,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			ZIndex = 43,
@@ -5679,7 +6178,10 @@ end
 ------------------------------------------------------------------------------
 -- Shop window
 
-function Shop:open()
+function Shop:open(tab: string?)
+	if tab then
+		self.tab = tab
+	end
 	self.overlay.Visible = true
 	Theme.pop(self.panel)
 	self:render()
@@ -5689,8 +6191,9 @@ function Shop:close()
 	self.overlay.Visible = false
 end
 
-function Shop:refreshProfile()
-	if self.overlay.Visible then
+function Shop:refreshProfile(lookbookChanged: boolean?)
+	-- (re-drawing 24 Look Book portraits is slow, so only when the Look Book changed)
+	if self.overlay.Visible and (self.tab ~= "Looks" or lookbookChanged) then
 		self:render()
 	end
 end
@@ -6112,7 +6615,25 @@ function Showcase:setScreen(title: string, sub: string, client, look, clean: num
 	local theme = Catalog.themeById[self.ctx.state().themeId]
 	self.screenTheme.Text = if theme then "Theme: " .. theme.name else ""
 	if client and look then
-		LookRenderer.render(self.screenPortrait, client, look, { clean = clean or 1 })
+		local holder = self.screenPortrait:FindFirstChild("Idle")
+		if holder then
+			holder:Destroy()
+		end
+		LookRenderer.render(self.screenPortrait, client, look, { clean = clean or 1, mood = "grin" })
+	end
+end
+
+-- Between shows the big screen shows sparkles instead of the last client.
+function Showcase:clearScreenPortrait()
+	if not self.screenPortrait then
+		return
+	end
+	local old = self.screenPortrait:FindFirstChild("Portrait")
+	if old then
+		old:Destroy()
+	end
+	if not self.screenPortrait:FindFirstChild("Idle") then
+		new("TextLabel", { Name = "Idle", Size = UDim2.fromScale(1, 1), Text = "💄✨👗", Parent = self.screenPortrait }, { Theme.maxText(200) })
 	end
 end
 
