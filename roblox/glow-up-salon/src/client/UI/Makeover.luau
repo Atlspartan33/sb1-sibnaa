@@ -197,8 +197,9 @@ function Makeover:buildLeft()
 		}),
 	})
 	self.checks = {}
-	for _, step in STEPS do
+	for i, step in STEPS do
 		local chip = new("TextButton", {
+			LayoutOrder = i,
 			Size = UDim2.fromScale(0.235, 1),
 			BackgroundTransparency = 0,
 			BackgroundColor3 = C.lavender,
@@ -248,9 +249,10 @@ function Makeover:buildRight()
 	})
 	self.tabButtons = {}
 	self.tabStrokes = {}
-	for _, tab in Catalog.Tabs do
+	for i, tab in Catalog.Tabs do
 		local b = Theme.button({
 			Text = "",
+			LayoutOrder = i,
 			Size = UDim2.fromScale(0.155, 1),
 			Color = C.lavender,
 			ZIndex = 13,
@@ -785,10 +787,11 @@ function Makeover:setTab(tabId: string)
 	-- Without sub-category chips, the grid moves up to use their space
 	self.grid.Position = UDim2.fromScale(0, if #categories > 1 then 0.33 else 0.24)
 	self.grid.Size = UDim2.fromScale(1, if #categories > 1 then 0.52 else 0.61)
-	for _, category in categories do
+	for i, category in categories do
 		local active = self.subcategory[tabId] == category.key
 		local chip = Theme.button({
 			Text = category.label,
+			LayoutOrder = i,
 			Size = UDim2.fromScale(math.min(0.32, 1 / #categories - 0.015), 1),
 			Color = if active then C.purple else C.lavender,
 			TextColor3 = if active then C.white else C.text,

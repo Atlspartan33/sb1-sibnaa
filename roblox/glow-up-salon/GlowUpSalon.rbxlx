@@ -4089,6 +4089,7 @@ Remotes.Celebrate.OnClientEvent:Connect(function(info)
 			for d = 1, 7 do
 				local past, today = d < info.day, d == info.day
 				Theme.new("TextLabel", {
+					LayoutOrder = d,
 					Size = UDim2.fromScale(0.125, 1),
 					BackgroundTransparency = 0,
 					BackgroundColor3 = if today then Theme.Colors.gold elseif past then Theme.Colors.green else Theme.Colors.lavender,
@@ -4376,6 +4377,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		Parent = gui,
 	}, { new("UIListLayout", { Padding = UDim.new(0, 8), FillDirection = Enum.FillDirection.Horizontal }) })
 	local coinPill = new("Frame", {
+		LayoutOrder = 1,
 		Size = UDim2.new(0, 100, 1, 0),
 		BackgroundColor3 = C.white,
 		ZIndex = 50,
@@ -4389,6 +4391,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 	}, { Theme.maxText(24), Theme.padding(6) })
 	local shop = Theme.button({
 		Text = "🛍️ Shop",
+		LayoutOrder = 2,
 		Size = UDim2.new(0, 98, 1, 0),
 		Color = C.purple,
 		ZIndex = 50,
@@ -4451,6 +4454,15 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		Theme.stroke(C.pink, 4),
 		Theme.padding(14),
 		new("UISizeConstraint", { MinSize = Vector2.new(320, 0) }),
+	})
+	-- The rows stack in their own frame, so the corner "My Looks" button isn't pulled into the list.
+	local rows = new("Frame", {
+		Name = "Rows",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		ZIndex = 40,
+		Parent = self.lobby,
+	}, {
 		new("UIListLayout", { Padding = UDim.new(0, 6), HorizontalAlignment = Enum.HorizontalAlignment.Center }),
 	})
 	local book = Theme.button({
@@ -4473,7 +4485,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		Visible = false,
 		LayoutOrder = 1,
 		ZIndex = 41,
-		Parent = self.lobby,
+		Parent = rows,
 	}, { Theme.round(), Theme.maxText(22), Theme.padding(4) })
 	self.lobbyWeekly = new("TextLabel", {
 		LayoutOrder = 3,
@@ -4482,7 +4494,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		BackgroundColor3 = C.lavender,
 		Text = "",
 		ZIndex = 41,
-		Parent = self.lobby,
+		Parent = rows,
 	}, { Theme.round(), Theme.maxText(20), Theme.padding(4) })
 	self.lobbyTheme = new("TextLabel", {
 		LayoutOrder = 2,
@@ -4490,7 +4502,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		Text = "",
 		TextColor3 = C.hotPink,
 		ZIndex = 41,
-		Parent = self.lobby,
+		Parent = rows,
 	}, { Theme.maxText(40) })
 	new("TextLabel", {
 		Size = UDim2.new(1, 0, 0, 104),
@@ -4499,7 +4511,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		Text = "1. 🧼 Wash your client's dirty face\n2. 💇 Do their hair   3. 💄 Put on makeup\n4. 👗 Pick an outfit that fits the theme\n5. 📸 Walk the runway - you only get 5 minutes!",
 		TextColor3 = C.text,
 		ZIndex = 41,
-		Parent = self.lobby,
+		Parent = rows,
 	}, { Theme.maxText(20) })
 
 	return self
@@ -4515,7 +4527,7 @@ function HUD:setState(state)
 	self.lobby.Visible = showLobby
 	-- On short phone screens, skip the how-to steps so the card doesn't cover everything
 	local compact = self.lobby.Parent and (self.lobby.Parent :: GuiObject).AbsoluteSize.Y < 500
-	self.lobby.Steps.Visible = not compact
+	(self.lobby.Rows :: any).Steps.Visible = not compact
 	self.lobby.Size = UDim2.new(0.5, 0, 0, if compact then 150 else 262)
 	-- No shopping while the 5-minute timer runs (items can still be unlocked from the menus)
 	self.shopButton.Visible = state.phase ~= "Makeover"
@@ -4798,8 +4810,9 @@ function Makeover:buildLeft()
 		}),
 	})
 	self.checks = {}
-	for _, step in STEPS do
+	for i, step in STEPS do
 		local chip = new("TextButton", {
+			LayoutOrder = i,
 			Size = UDim2.fromScale(0.235, 1),
 			BackgroundTransparency = 0,
 			BackgroundColor3 = C.lavender,
@@ -4849,9 +4862,10 @@ function Makeover:buildRight()
 	})
 	self.tabButtons = {}
 	self.tabStrokes = {}
-	for _, tab in Catalog.Tabs do
+	for i, tab in Catalog.Tabs do
 		local b = Theme.button({
 			Text = "",
+			LayoutOrder = i,
 			Size = UDim2.fromScale(0.155, 1),
 			Color = C.lavender,
 			ZIndex = 13,
@@ -5386,10 +5400,11 @@ function Makeover:setTab(tabId: string)
 	-- Without sub-category chips, the grid moves up to use their space
 	self.grid.Position = UDim2.fromScale(0, if #categories > 1 then 0.33 else 0.24)
 	self.grid.Size = UDim2.fromScale(1, if #categories > 1 then 0.52 else 0.61)
-	for _, category in categories do
+	for i, category in categories do
 		local active = self.subcategory[tabId] == category.key
 		local chip = Theme.button({
 			Text = category.label,
+			LayoutOrder = i,
 			Size = UDim2.fromScale(math.min(0.32, 1 / #categories - 0.015), 1),
 			Color = if active then C.purple else C.lavender,
 			TextColor3 = if active then C.white else C.text,
@@ -6124,8 +6139,8 @@ function Shop.new(gui: ScreenGui, ctx)
 		Parent = panel,
 	}, { new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8) }) })
 	self.tabButtons = {}
-	for _, t in { { "Coins", "🪙 Unlock" }, { "Looks", "📖 My Looks" }, { "Robux", "💎 Extras" } } do
-		local b = Theme.button({ Text = t[2], Size = UDim2.new(1 / 3, -6, 1, 0), ZIndex = 63, Parent = tabs })
+	for i, t in { { "Coins", "🪙 Unlock" }, { "Looks", "📖 My Looks" }, { "Robux", "💎 Extras" } } do
+		local b = Theme.button({ Text = t[2], LayoutOrder = i, Size = UDim2.new(1 / 3, -6, 1, 0), ZIndex = 63, Parent = tabs })
 		b.Activated:Connect(function()
 			self.tab = t[1]
 			self:render()
@@ -6639,9 +6654,10 @@ function Showcase.new(gui: ScreenGui, ctx)
 			Padding = UDim.new(0, 10),
 		}),
 	})
-	for _, emoji in CHEERS do
+	for i, emoji in CHEERS do
 		local b = Theme.button({
 			Text = emoji,
+			LayoutOrder = i,
 			Size = UDim2.new(0, 56, 1, 0),
 			Color = C.softPink,
 			ZIndex = 42,
@@ -6994,6 +7010,10 @@ Theme.Colors = {
 
 function Theme.new(className: string, props: { [string]: any }?, children: { Instance }?): any
 	local inst = Instance.new(className)
+	-- Instance.new layouts sort by Name in real Roblox; every list here is ordered by LayoutOrder.
+	if inst:IsA("UIGridStyleLayout") then
+		(inst :: UIGridStyleLayout).SortOrder = Enum.SortOrder.LayoutOrder
+	end
 	if inst:IsA("GuiObject") then
 		inst.BorderSizePixel = 0
 	end

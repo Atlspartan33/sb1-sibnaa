@@ -25,6 +25,10 @@ Theme.Colors = {
 
 function Theme.new(className: string, props: { [string]: any }?, children: { Instance }?): any
 	local inst = Instance.new(className)
+	-- Instance.new layouts sort by Name in real Roblox; every list here is ordered by LayoutOrder.
+	if inst:IsA("UIGridStyleLayout") then
+		(inst :: UIGridStyleLayout).SortOrder = Enum.SortOrder.LayoutOrder
+	end
 	if inst:IsA("GuiObject") then
 		inst.BorderSizePixel = 0
 	end

@@ -173,6 +173,7 @@ Remotes.Celebrate.OnClientEvent:Connect(function(info)
 			for d = 1, 7 do
 				local past, today = d < info.day, d == info.day
 				Theme.new("TextLabel", {
+					LayoutOrder = d,
 					Size = UDim2.fromScale(0.125, 1),
 					BackgroundTransparency = 0,
 					BackgroundColor3 = if today then Theme.Colors.gold elseif past then Theme.Colors.green else Theme.Colors.lavender,

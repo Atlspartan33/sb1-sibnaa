@@ -97,9 +97,10 @@ function Showcase.new(gui: ScreenGui, ctx)
 			Padding = UDim.new(0, 10),
 		}),
 	})
-	for _, emoji in CHEERS do
+	for i, emoji in CHEERS do
 		local b = Theme.button({
 			Text = emoji,
+			LayoutOrder = i,
 			Size = UDim2.new(0, 56, 1, 0),
 			Color = C.softPink,
 			ZIndex = 42,

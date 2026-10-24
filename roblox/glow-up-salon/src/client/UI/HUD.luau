@@ -54,6 +54,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		Parent = gui,
 	}, { new("UIListLayout", { Padding = UDim.new(0, 8), FillDirection = Enum.FillDirection.Horizontal }) })
 	local coinPill = new("Frame", {
+		LayoutOrder = 1,
 		Size = UDim2.new(0, 100, 1, 0),
 		BackgroundColor3 = C.white,
 		ZIndex = 50,
@@ -67,6 +68,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 	}, { Theme.maxText(24), Theme.padding(6) })
 	local shop = Theme.button({
 		Text = "🛍️ Shop",
+		LayoutOrder = 2,
 		Size = UDim2.new(0, 98, 1, 0),
 		Color = C.purple,
 		ZIndex = 50,
@@ -129,11 +131,21 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		Theme.stroke(C.pink, 4),
 		Theme.padding(14),
 		new("UISizeConstraint", { MinSize = Vector2.new(320, 0) }),
+	})
+	-- The rows stack in their own frame, so the corner "My Looks" button isn't pulled into the list.
+	local rows = new("Frame", {
+		Name = "Rows",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		ZIndex = 40,
+		Parent = self.lobby,
+	}, {
 		new("UIListLayout", { Padding = UDim.new(0, 6), HorizontalAlignment = Enum.HorizontalAlignment.Center }),
 	})
 	local book = Theme.button({
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, 6, 0, -6),
+		-- Sits on the card's top edge, clear of the event bar.
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, 0, 0, -6),
 		Size = UDim2.new(0, 120, 0, 36),
 		Text = "📖 My Looks",
 		Color = C.purple,
@@ -151,7 +163,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		Visible = false,
 		LayoutOrder = 1,
 		ZIndex = 41,
-		Parent = self.lobby,
+		Parent = rows,
 	}, { Theme.round(), Theme.maxText(22), Theme.padding(4) })
 	self.lobbyWeekly = new("TextLabel", {
 		LayoutOrder = 3,
@@ -160,7 +172,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		BackgroundColor3 = C.lavender,
 		Text = "",
 		ZIndex = 41,
-		Parent = self.lobby,
+		Parent = rows,
 	}, { Theme.round(), Theme.maxText(20), Theme.padding(4) })
 	self.lobbyTheme = new("TextLabel", {
 		LayoutOrder = 2,
@@ -168,7 +180,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		Text = "",
 		TextColor3 = C.hotPink,
 		ZIndex = 41,
-		Parent = self.lobby,
+		Parent = rows,
 	}, { Theme.maxText(40) })
 	new("TextLabel", {
 		Size = UDim2.new(1, 0, 0, 104),
@@ -177,7 +189,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		Text = "1. 🧼 Wash your client's dirty face\n2. 💇 Do their hair   3. 💄 Put on makeup\n4. 👗 Pick an outfit that fits the theme\n5. 📸 Walk the runway - you only get 5 minutes!",
 		TextColor3 = C.text,
 		ZIndex = 41,
-		Parent = self.lobby,
+		Parent = rows,
 	}, { Theme.maxText(20) })
 
 	return self
@@ -193,7 +205,7 @@ function HUD:setState(state)
 	self.lobby.Visible = showLobby
 	-- On short phone screens, skip the how-to steps so the card doesn't cover everything
 	local compact = self.lobby.Parent and (self.lobby.Parent :: GuiObject).AbsoluteSize.Y < 500
-	self.lobby.Steps.Visible = not compact
+	(self.lobby.Rows :: any).Steps.Visible = not compact
 	self.lobby.Size = UDim2.new(0.5, 0, 0, if compact then 150 else 262)
 	-- No shopping while the 5-minute timer runs (items can still be unlocked from the menus)
 	self.shopButton.Visible = state.phase ~= "Makeover"

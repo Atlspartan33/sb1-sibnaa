@@ -87,8 +87,8 @@ function Shop.new(gui: ScreenGui, ctx)
 		Parent = panel,
 	}, { new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8) }) })
 	self.tabButtons = {}
-	for _, t in { { "Coins", "🪙 Unlock" }, { "Looks", "📖 My Looks" }, { "Robux", "💎 Extras" } } do
-		local b = Theme.button({ Text = t[2], Size = UDim2.new(1 / 3, -6, 1, 0), ZIndex = 63, Parent = tabs })
+	for i, t in { { "Coins", "🪙 Unlock" }, { "Looks", "📖 My Looks" }, { "Robux", "💎 Extras" } } do
+		local b = Theme.button({ Text = t[2], LayoutOrder = i, Size = UDim2.new(1 / 3, -6, 1, 0), ZIndex = 63, Parent = tabs })
 		b.Activated:Connect(function()
 			self.tab = t[1]
 			self:render()
