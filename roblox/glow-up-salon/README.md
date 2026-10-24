@@ -21,7 +21,7 @@ The salon and runway build themselves when the game starts. In Studio you automa
 
 **Coins look high in Studio?** Studio pretends you own the 2x Coins pass too, so coins double.
 
-**Want to see the Halloween, Harvest Festival or Christmas event before its date?** Set `Config.FORCE_EVENT = "halloween"` (or `"thanksgiving"`, `"christmas"`) and press Play. Set it back to `nil` before publishing; events then turn on by date automatically.
+**Want to see the Halloween, Harvest Festival or Christmas event before its date?** Set `Config.FORCE_EVENT = "halloween"` (or `"thanksgiving"`, `"christmas"`) and press Play. This only works in Studio. In the live game, events always turn on by date.
 
 **Want the round shorter while testing?** Open `ReplicatedStorage > Shared > Config` and change `MAKEOVER_SECONDS` (it's `5 * 60`).
 
