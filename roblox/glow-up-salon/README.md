@@ -62,7 +62,7 @@ Until an ID is filled in, that item shows **"Soon!"** in the shop, so it's safe 
 
 ## 4. Add sounds and music (optional)
 
-Sound makes a big difference for young kids. The game already plays music while styling and on the runway, a chime when dirt comes off and a jingle for celebrations. These are free sounds from Roblox's own audio tutorials. For more sounds (button clicks, pops, scrubbing, camera clicks), pick free ones from the Creator Store, which has thousands of sounds and licensed music any game may use.
+Sound makes a big difference for young kids. The game already plays music while styling and on the runway, a chime when dirt comes off and when speech bubbles pop up, and a jingle for celebrations. These are free sounds from Roblox's own audio tutorials. Button clicks, scrubbing and camera clicks are still silent: pick free ones from the Creator Store, which has thousands of sounds and licensed music any game may use.
 
 | Config key | Search the Toolbox for |
 |---|---|
@@ -131,4 +131,4 @@ If you edit scripts directly in Studio instead, save from Studio. `GlowUpSalon.r
 
 ### Play-test without Studio (optional)
 
-`tools/playtest/run.sh` runs the real game scripts in a small fake Roblox engine: a server and two players, a full round (wash, styling, nails, shop, runway, voting, results), purchases, cheating attempts, leaving and rejoining, all three holiday events, the weekly goal, and half an hour of rounds. It also checks that every theme can be matched with free items. It fails if any script errors. `./run.sh --screens` also saves screenshots and 3D renders (needs Node + Playwright). It's a safety net, not a replacement for pressing Play in Studio.
+`tools/playtest/run.sh` runs the real game scripts in a small fake Roblox engine: a server and two players, a full round (wash, styling, nails, shop, runway, voting, results), purchases, cheating attempts, leaving and rejoining, all three holiday events, the weekly goal, and half an hour of rounds. Then four "monkey" players tap random buttons and rub random spots for an hour of game time, to catch anything that breaks when kids do unexpected things. It also checks that every theme can be matched with free items. It fails if any script errors. `./run.sh --screens` also saves screenshots and 3D renders (needs Node + Playwright). It's a safety net, not a replacement for pressing Play in Studio.

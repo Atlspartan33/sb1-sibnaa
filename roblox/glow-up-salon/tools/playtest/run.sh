@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Plays the game in a fake Roblox engine (server + 2 players) and checks that everything works.
+# Plays the game in a fake Roblox engine (server + 2 players) and checks that everything works,
+# then lets 4 "monkey" players tap and rub randomly for an hour of game time.
 #   ./run.sh            run the play-through test
 #   ./run.sh --screens  also take screenshots of every screen and 3D renders of the runway
 # Needs: python3, curl, unzip. Screenshots also need node + Playwright with Chromium.
@@ -30,6 +31,9 @@ grep -v '^@@' "$OUT/events.out"
 grep -q "errors	0	fails	0" "$OUT/events.out" || { echo "HOLIDAY EVENTS TEST FAILED"; exit 1; }
 "$CACHE/luau" play.luau > "$OUT/play.out"
 grep -v '^@@' "$OUT/play.out"
+"$CACHE/luau" monkey.luau > "$OUT/monkey.out"
+cat "$OUT/monkey.out"
+grep -q "errors	0	warnings	0" "$OUT/monkey.out" || { echo "MONKEY TEST FAILED"; exit 1; }
 
 if [ "${1:-}" = "--screens" ]; then
 	if [ ! -d "$CACHE/three/node_modules/three" ]; then

@@ -902,7 +902,7 @@ Config.CoinPackAmounts = {
 -- "Copy Asset ID", and paste it here like "rbxassetid://1234567". Empty ones are skipped.
 Config.Sounds = {
 	Click = "", -- tapping a button or item
-	Pop = "", -- pop-ups and speech bubbles
+	Pop = "rbxassetid://4110925712", -- pop-ups and speech bubbles (the same gentle chime)
 	Scrub = "", -- rubbing with soap
 	Sparkle = "rbxassetid://4110925712", -- a dirt spot comes off (Roblox tutorial "simple chime")
 	Cheer = "rbxassetid://3422389728", -- results, level up, daily gift (Roblox tutorial "retro jingle")
@@ -5415,9 +5415,12 @@ function Makeover:renderGrid()
 	if self.tab == "Wash" or not self.client then
 		return
 	end
-	self:layoutGrid()
 	local key = self.subcategory[self.tab]
-	local category = Catalog.categoryByKey[key]
+	local category = Catalog.categoryByKey[key or ""]
+	if not category or (self.tab == "Hair" and self:needsBrush()) then
+		return -- still brushing out the tangles; the grid is hidden
+	end
+	self:layoutGrid()
 	local theme = self:theme()
 	for _, child in self.grid:GetChildren() do
 		if child:IsA("GuiObject") then

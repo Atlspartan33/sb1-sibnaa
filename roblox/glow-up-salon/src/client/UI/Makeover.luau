@@ -820,9 +820,12 @@ function Makeover:renderGrid()
 	if self.tab == "Wash" or not self.client then
 		return
 	end
-	self:layoutGrid()
 	local key = self.subcategory[self.tab]
-	local category = Catalog.categoryByKey[key]
+	local category = Catalog.categoryByKey[key or ""]
+	if not category or (self.tab == "Hair" and self:needsBrush()) then
+		return -- still brushing out the tangles; the grid is hidden
+	end
+	self:layoutGrid()
 	local theme = self:theme()
 	for _, child in self.grid:GetChildren() do
 		if child:IsA("GuiObject") then

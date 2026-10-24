@@ -51,7 +51,7 @@ Config.CoinPackAmounts = {
 -- "Copy Asset ID", and paste it here like "rbxassetid://1234567". Empty ones are skipped.
 Config.Sounds = {
 	Click = "", -- tapping a button or item
-	Pop = "", -- pop-ups and speech bubbles
+	Pop = "rbxassetid://4110925712", -- pop-ups and speech bubbles (the same gentle chime)
 	Scrub = "", -- rubbing with soap
 	Sparkle = "rbxassetid://4110925712", -- a dirt spot comes off (Roblox tutorial "simple chime")
 	Cheer = "rbxassetid://3422389728", -- results, level up, daily gift (Roblox tutorial "retro jingle")
