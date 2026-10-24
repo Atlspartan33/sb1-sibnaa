@@ -1157,6 +1157,9 @@ function Makeover:scrub(pos: Vector2, moved: number)
 			self:sendWash(true)
 		end
 	else
+		if #self.bubbles > 0 then
+			Sounds.play("Rinse", 1.2)
+		end
 		for i = #self.bubbles, 1, -1 do
 			local b = self.bubbles[i]
 			if (rel - b.pos).Magnitude < b.size / 2 + brush * 2 then

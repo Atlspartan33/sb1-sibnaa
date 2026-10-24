@@ -62,7 +62,7 @@ Until an ID is filled in, that item shows **"Soon!"** in the shop, so it's safe 
 
 ## 4. Add sounds and music (optional)
 
-Sound makes a big difference for young kids. The game already plays music while styling and on the runway, a chime when dirt comes off and when speech bubbles pop up, and a jingle for celebrations. These are free sounds from Roblox's own audio tutorials. Button clicks, scrubbing and camera clicks are still silent: pick free ones from the Creator Store, which has thousands of sounds and licensed music any game may use.
+Sound makes a big difference for young kids. The game already plays music while styling and on the runway, a chime when dirt comes off and when speech bubbles pop up, a soft splash when rinsing, and a jingle for celebrations. These are free sounds from Roblox's own audio tutorials, plus the splash that's built into every Roblox player. Change how loud each one is in `Config.SoundVolumes`. Button clicks, scrubbing and camera clicks are still silent: pick free ones from the Creator Store, which has thousands of sounds and licensed music any game may use.
 
 | Config key | Search the Toolbox for |
 |---|---|

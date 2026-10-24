@@ -235,7 +235,7 @@ print("  after idle rounds, phase pill:", H.findText(mia, "Makeover") ~= nil or 
 
 local counts = {}
 for _, n in W.soundsPlayed do counts[n] = (counts[n] or 0) + 1 end
-print("sounds:", counts.Click, counts.Sparkle, counts.MakeoverMusic)
-H.check((counts.Click or 0) > 3 and (counts.Sparkle or 0) >= 1 and (counts.MakeoverMusic or 0) >= 1, "sounds play when IDs are set")
+print("sounds:", counts.Click, counts.Sparkle, counts.Rinse, counts.MakeoverMusic)
+H.check((counts.Click or 0) > 3 and (counts.Sparkle or 0) >= 1 and (counts.Rinse or 0) >= 1 and (counts.MakeoverMusic or 0) >= 1, "sounds play when IDs are set")
 print("errors", #E.errors, "warnings", #E.warnings, "fails", H.fails)
 for _, w in E.warnings do print("WARN", w) end

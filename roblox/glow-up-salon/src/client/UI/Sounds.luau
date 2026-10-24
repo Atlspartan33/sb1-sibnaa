@@ -21,7 +21,7 @@ local function get(name: string): Sound?
 		sound = Instance.new("Sound")
 		sound.Name = name
 		sound.SoundId = id
-		sound.Volume = 0.6
+		sound.Volume = Config.SoundVolumes[name] or 0.6
 		sound.Parent = SoundService
 		cache[name] = sound
 	end
