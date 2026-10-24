@@ -1,5 +1,6 @@
 -- Starts the game on each player's screen and connects it to the server.
 
+local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -40,7 +41,7 @@ local ctx = {
 		shop:askUnlock(item)
 	end,
 	promptProduct = function(key: string)
-		shop:promptProduct(key)
+		shop:askProduct(key)
 	end,
 	isModalOpen = function(): boolean
 		return shop.overlay.Visible or shop.confirm.Visible
@@ -59,10 +60,31 @@ Theme.onClick = function()
 	Sounds.play("Click")
 end
 
+-- While styling, touching the screen should only wash and style, not walk the character around.
+local function setCharacterControls(enabled: boolean)
+	pcall(function()
+		local module = Players.LocalPlayer:WaitForChild("PlayerScripts"):FindFirstChild("PlayerModule")
+		if module then
+			local controls = (require :: any)(module):GetControls()
+			if enabled then
+				controls:Enable()
+			else
+				controls:Disable()
+			end
+		end
+	end)
+	pcall(function()
+		GuiService.TouchControlsEnabled = enabled
+	end)
+end
+
 local function applyState(newState)
 	local oldPhase = state.phase
 	state = newState
 	hud:setState(state)
+	if state.phase ~= oldPhase and (state.phase == "Makeover" or oldPhase == "Makeover") then
+		setCharacterControls(state.phase ~= "Makeover")
+	end
 	Sounds.music(if state.phase == "Makeover" then "MakeoverMusic" elseif state.phase == "Showcase" then "RunwayMusic" else nil)
 
 	makeover:setVisible(state.phase == "Makeover")
@@ -156,5 +178,6 @@ end)
 
 RunService.RenderStepped:Connect(function()
 	hud:update()
+	showcase:updateWalkers()
 	showcase:followWalker()
 end)

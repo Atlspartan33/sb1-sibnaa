@@ -72,6 +72,10 @@ local function processReceipt(receipt)
 	if table.find(profile.receipts, receipt.PurchaseId) then
 		return Enum.ProductPurchaseDecision.PurchaseGranted
 	end
+	if not profile.canSave and DataService.savingEnabled() then
+		-- Their saved data didn't load, so we couldn't keep this purchase. Roblox will retry next visit.
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
 
 	local name = productName(receipt.ProductId)
 	if name == "SuperSoap" then

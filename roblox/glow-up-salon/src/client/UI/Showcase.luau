@@ -128,11 +128,8 @@ end
 -- Big screen behind the runway
 
 function Showcase:buildScreen()
-	local world = Workspace:WaitForChild("GlowUpWorld", 30)
-	local part = world and world:FindFirstChild("Runway") and world.Runway:FindFirstChild("Screen")
-	if not part then
-		return
-	end
+	-- WaitForChild in case the place streams parts in later
+	local part = Workspace:WaitForChild("GlowUpWorld"):WaitForChild("Runway"):WaitForChild("Screen")
 	local surface = new("SurfaceGui", {
 		Name = "RunwayScreen",
 		Adornee = part,
@@ -204,6 +201,32 @@ function Showcase:setCamera(view: string?)
 		camera.CFrame = marker.CFrame
 	else
 		camera.CameraType = Enum.CameraType.Custom
+	end
+end
+
+-- Moves runway models smoothly on this screen, using the walk the server described in attributes.
+function Showcase:updateWalkers()
+	local world = Workspace:FindFirstChild("GlowUpWorld")
+	if not world then
+		return
+	end
+	local now = Workspace:GetServerTimeNow()
+	for _, m in world:GetChildren() do
+		local from, to, start, walkTime = m:GetAttribute("WalkFrom"), m:GetAttribute("WalkTo"), m:GetAttribute("WalkStart"), m:GetAttribute("WalkTime")
+		local root = m:FindFirstChild("HumanoidRootPart")
+		if typeof(from) == "Vector3" and typeof(to) == "Vector3" and type(start) == "number" and type(walkTime) == "number" and root and root:IsA("BasePart") then
+			local t = now - start
+			local forward = Vector3.new(0, 0, 1)
+			if t < walkTime then
+				local pos = from:Lerp(to, math.max(t, 0) / walkTime)
+				root.CFrame = CFrame.lookAt(pos, pos + forward)
+			elseif t < walkTime + 1 then
+				-- twirl!
+				root.CFrame = CFrame.lookAt(to, to + forward) * CFrame.Angles(0, (t - walkTime) * math.pi * 2, 0)
+			else
+				root.CFrame = CFrame.lookAt(to, to + forward)
+			end
+		end
 	end
 end
 

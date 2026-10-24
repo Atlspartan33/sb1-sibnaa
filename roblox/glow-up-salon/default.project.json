@@ -23,8 +23,21 @@
       "$properties": {
         "ClockTime": 14.5,
         "Brightness": 2,
-        "Ambient": [0.55, 0.45, 0.55],
-        "OutdoorAmbient": [0.7, 0.6, 0.7]
+        "Ambient": [
+          0.55,
+          0.45,
+          0.55
+        ],
+        "OutdoorAmbient": [
+          0.7,
+          0.6,
+          0.7
+        ]
+      }
+    },
+    "Workspace": {
+      "$properties": {
+        "StreamingEnabled": false
       }
     }
   }

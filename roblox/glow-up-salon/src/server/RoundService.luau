@@ -3,7 +3,6 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
@@ -27,6 +26,7 @@ type Entry = {
 	rinsed: boolean,
 	done: boolean,
 	votes: { [number]: number }, -- voter UserId -> stars
+	assignedAt: number,
 }
 
 local world: WorldBuilder.World
@@ -87,6 +87,7 @@ local function assignClient(player: Player)
 		rinsed = false,
 		done = false,
 		votes = {},
+		assignedAt = now(),
 	}
 	entries[player.UserId] = entry
 	Remotes.AssignClient:FireClient(player, entryPayload(entry))
@@ -133,7 +134,9 @@ local function onWashProgress(player: Player, clean: unknown, rinsed: unknown)
 	if not entry or type(clean) ~= "number" or clean ~= clean then
 		return
 	end
-	entry.clean = math.max(entry.clean, math.clamp(clean, 0, 1))
+	-- Nobody can really wash a face in under 4 seconds, so don't trust faster claims
+	local possible = (now() - entry.assignedAt) / 4
+	entry.clean = math.max(entry.clean, math.min(math.clamp(clean, 0, 1), possible))
 	entry.rinsed = rinsed == true
 end
 
@@ -345,23 +348,21 @@ local function walkRunway(entry: Entry)
 		end
 	end
 
+	-- Each player's screen moves the model smoothly from these attributes (moving an anchored
+	-- part from the server looks jerky). See Showcase:updateWalkers on the client.
 	local walkTime = Config.SHOWCASE_SECONDS_PER_LOOK * 0.6
 	local target = world.runwayEnd + Vector3.new(0, rootHeight(model), 0)
-	local tween = TweenService:Create(root, TweenInfo.new(walkTime, Enum.EasingStyle.Linear), {
-		CFrame = CFrame.lookAt(target, target + Vector3.new(0, 0, 1)),
-	})
-	tween:Play()
-	tween.Completed:Wait()
+	model:SetAttribute("WalkFrom", root.Position)
+	model:SetAttribute("WalkTo", target)
+	model:SetAttribute("WalkStart", now())
+	model:SetAttribute("WalkTime", walkTime)
+	task.wait(walkTime)
 	if walk then
 		walk:Stop()
 	end
-	-- A twirl at the end of the runway!
-	for _ = 1, 30 do
-		if not root.Parent then
-			break
-		end
-		root.CFrame *= CFrame.Angles(0, math.rad(12), 0)
-		task.wait(1 / 30)
+	task.wait(1) -- the twirl at the end of the runway
+	if root.Parent then
+		root.CFrame = CFrame.lookAt(target, target + Vector3.new(0, 0, 1))
 	end
 end
 
@@ -372,7 +373,8 @@ local function onVote(player: Player, targetUserId: unknown, stars: unknown)
 	if state.phase ~= "Showcase" or not showcase or showcase.userId ~= targetUserId then
 		return
 	end
-	if player.UserId == targetUserId or type(stars) ~= "number" then
+	-- Only whole stars 1-5 (this also rejects NaN, which would break scores and coins)
+	if player.UserId == targetUserId or type(stars) ~= "number" or not (stars >= 1 and stars <= 5) or stars % 1 ~= 0 then
 		return
 	end
 	local entry = entries[targetUserId :: number]
@@ -380,7 +382,7 @@ local function onVote(player: Player, targetUserId: unknown, stars: unknown)
 		return
 	end
 	local firstVote = entry.votes[player.UserId] == nil
-	entry.votes[player.UserId] = math.clamp(math.floor(stars), 1, 5)
+	entry.votes[player.UserId] = stars
 	if firstVote then
 		DataService.addCoins(player, Config.COINS_PER_VOTE)
 	end
@@ -510,8 +512,16 @@ local function runRound()
 		table.insert(order, entry)
 	end
 	rng:Shuffle(order)
-	for index, entry in order do
+	local index = 0
+	for _, entry in order do
 		if entry.player.Parent then
+			index += 1
+			local total = 0
+			for _, e in order do
+				if e.player.Parent then
+					total += 1
+				end
+			end
 			showcase = {
 				userId = entry.player.UserId,
 				stylist = entry.player.DisplayName,
@@ -521,7 +531,7 @@ local function runRound()
 				look = entry.look,
 				clean = entry.clean,
 				index = index,
-				total = #order,
+				total = math.max(total, index),
 			}
 			setState("Showcase", Config.SHOWCASE_SECONDS_PER_LOOK)
 			Remotes.Showcase:FireAllClients(showcase)

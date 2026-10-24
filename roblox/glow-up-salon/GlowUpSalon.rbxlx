@@ -979,7 +979,9 @@ function LookRenderer.render(container: GuiObject, client, look, options: Option
 	drawCheeksAndLips(root, client, look, options and options.mood)
 	drawGems(root, client, look)
 	drawAccessory(root, look)
-	drawDirt(root, client, options)
+	if (options and options.dirtHealth) or ((options and options.clean) or 0) < 1 then
+		drawDirt(root, client, options)
+	end
 
 	root.Parent = container
 	return root
@@ -1271,6 +1273,10 @@ export type Profile = {
 
 local profiles: { [Player]: Profile } = {}
 
+-- While a server has a player's data open it stamps it with its JobId, so a second server
+-- (e.g. the player quickly hopped servers) waits instead of loading old coins.
+local LOCK_SECONDS = Config.AUTOSAVE_SECONDS + 60
+
 local store: DataStore? = nil
 do
 	local ok, result = pcall(function()
@@ -1348,34 +1354,57 @@ end
 
 function DataService.addCoins(player: Player, amount: number)
 	local p = profiles[player]
+	if amount ~= amount or math.abs(amount) == math.huge then
+		return
+	end
 	if p then
 		p.coins = math.max(0, p.coins + math.floor(amount))
 		DataService.push(player)
 	end
 end
 
-function DataService.save(player: Player): boolean
+-- True when coins and unlocks are really being saved (false in Studio without API access).
+function DataService.savingEnabled(): boolean
+	return store ~= nil
+end
+
+local function lockedByOtherServer(old): boolean
+	return old ~= nil and old.session ~= nil and old.session ~= game.JobId and os.time() - (old.lockTime or 0) < LOCK_SECONDS
+end
+
+-- Saves a player's data. `release` clears this server's lock (when the player leaves).
+function DataService.save(player: Player, release: boolean?): boolean
 	local p = profiles[player]
 	if not p or not p.canSave or not store then
 		return false
 	end
-	local data = {
-		coins = p.coins,
-		owned = p.owned,
-		superSoaps = p.superSoaps,
-		stats = p.stats,
-		receipts = p.receipts,
-		lastDay = p.lastDay,
-		streak = p.streak,
-	}
 	for attempt = 1, 3 do
+		local wrote = false
 		local ok, err = pcall(function()
-			(store :: DataStore):UpdateAsync(keyFor(player), function()
-				return data
+			(store :: DataStore):UpdateAsync(keyFor(player), function(old)
+				if lockedByOtherServer(old) then
+					return nil -- another server has newer data; don't overwrite it
+				end
+				wrote = true
+				-- Built here (not before the loop) so a retry always saves the newest values
+				return {
+					coins = p.coins,
+					owned = p.owned,
+					superSoaps = p.superSoaps,
+					stats = p.stats,
+					receipts = p.receipts,
+					lastDay = p.lastDay,
+					streak = p.streak,
+					session = if release then nil else game.JobId,
+					lockTime = os.time(),
+				}
 			end)
 		end)
 		if ok then
-			return true
+			if not wrote then
+				warn("[GlowUp] Not saving " .. player.Name .. ": their data is open on another server")
+			end
+			return wrote
 		end
 		warn("[GlowUp] Save failed (try " .. attempt .. "):", err)
 		task.wait(attempt)
@@ -1405,24 +1434,39 @@ local function load(player: Player)
 	local saved = nil
 	local loaded = store == nil -- no store (e.g. Studio without API access): play with a fresh profile
 	if store then
-		for attempt = 1, 3 do
+		for attempt = 1, 8 do
+			local claimed = false
 			local ok, result = pcall(function()
-				return (store :: DataStore):GetAsync(keyFor(player))
+				(store :: DataStore):UpdateAsync(keyFor(player), function(old)
+					-- After ~20 seconds of waiting, take over a lock that was never released
+					if lockedByOtherServer(old) and attempt < 8 then
+						saved = old
+						return nil
+					end
+					claimed = true
+					saved = old
+					local new = old or {}
+					new.session = game.JobId
+					new.lockTime = os.time()
+					return new
+				end)
 			end)
-			if ok then
-				saved = result
+			if ok and claimed then
 				loaded = true
 				break
 			end
-			if RunService:IsStudio() then
+			if not ok and RunService:IsStudio() then
 				-- Usually "Enable Studio Access to API Services" is off. Play without saving.
 				warn("[GlowUp] Saving is off in Studio:", result)
 				store = nil
 				loaded = true
+				saved = nil
 				break
 			end
-			warn("[GlowUp] Load failed (try " .. attempt .. "):", result)
-			task.wait(attempt)
+			if not ok then
+				warn("[GlowUp] Load failed (try " .. attempt .. "):", result)
+			end
+			task.wait(3)
 		end
 	end
 	if not player.Parent then
@@ -1447,7 +1491,7 @@ function DataService.init()
 	end
 
 	Players.PlayerRemoving:Connect(function(player)
-		DataService.save(player)
+		DataService.save(player, true)
 		profiles[player] = nil
 	end)
 
@@ -1456,7 +1500,7 @@ function DataService.init()
 		for player in profiles do
 			pending += 1
 			task.spawn(function()
-				DataService.save(player)
+				DataService.save(player, true)
 				pending -= 1
 			end)
 		end
@@ -1517,7 +1561,6 @@ end
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
@@ -1541,6 +1584,7 @@ type Entry = {
 	rinsed: boolean,
 	done: boolean,
 	votes: { [number]: number }, -- voter UserId -> stars
+	assignedAt: number,
 }
 
 local world: WorldBuilder.World
@@ -1601,6 +1645,7 @@ local function assignClient(player: Player)
 		rinsed = false,
 		done = false,
 		votes = {},
+		assignedAt = now(),
 	}
 	entries[player.UserId] = entry
 	Remotes.AssignClient:FireClient(player, entryPayload(entry))
@@ -1647,7 +1692,9 @@ local function onWashProgress(player: Player, clean: unknown, rinsed: unknown)
 	if not entry or type(clean) ~= "number" or clean ~= clean then
 		return
 	end
-	entry.clean = math.max(entry.clean, math.clamp(clean, 0, 1))
+	-- Nobody can really wash a face in under 4 seconds, so don't trust faster claims
+	local possible = (now() - entry.assignedAt) / 4
+	entry.clean = math.max(entry.clean, math.min(math.clamp(clean, 0, 1), possible))
 	entry.rinsed = rinsed == true
 end
 
@@ -1859,23 +1906,21 @@ local function walkRunway(entry: Entry)
 		end
 	end
 
+	-- Each player's screen moves the model smoothly from these attributes (moving an anchored
+	-- part from the server looks jerky). See Showcase:updateWalkers on the client.
 	local walkTime = Config.SHOWCASE_SECONDS_PER_LOOK * 0.6
 	local target = world.runwayEnd + Vector3.new(0, rootHeight(model), 0)
-	local tween = TweenService:Create(root, TweenInfo.new(walkTime, Enum.EasingStyle.Linear), {
-		CFrame = CFrame.lookAt(target, target + Vector3.new(0, 0, 1)),
-	})
-	tween:Play()
-	tween.Completed:Wait()
+	model:SetAttribute("WalkFrom", root.Position)
+	model:SetAttribute("WalkTo", target)
+	model:SetAttribute("WalkStart", now())
+	model:SetAttribute("WalkTime", walkTime)
+	task.wait(walkTime)
 	if walk then
 		walk:Stop()
 	end
-	-- A twirl at the end of the runway!
-	for _ = 1, 30 do
-		if not root.Parent then
-			break
-		end
-		root.CFrame *= CFrame.Angles(0, math.rad(12), 0)
-		task.wait(1 / 30)
+	task.wait(1) -- the twirl at the end of the runway
+	if root.Parent then
+		root.CFrame = CFrame.lookAt(target, target + Vector3.new(0, 0, 1))
 	end
 end
 
@@ -1886,7 +1931,8 @@ local function onVote(player: Player, targetUserId: unknown, stars: unknown)
 	if state.phase ~= "Showcase" or not showcase or showcase.userId ~= targetUserId then
 		return
 	end
-	if player.UserId == targetUserId or type(stars) ~= "number" then
+	-- Only whole stars 1-5 (this also rejects NaN, which would break scores and coins)
+	if player.UserId == targetUserId or type(stars) ~= "number" or not (stars >= 1 and stars <= 5) or stars % 1 ~= 0 then
 		return
 	end
 	local entry = entries[targetUserId :: number]
@@ -1894,7 +1940,7 @@ local function onVote(player: Player, targetUserId: unknown, stars: unknown)
 		return
 	end
 	local firstVote = entry.votes[player.UserId] == nil
-	entry.votes[player.UserId] = math.clamp(math.floor(stars), 1, 5)
+	entry.votes[player.UserId] = stars
 	if firstVote then
 		DataService.addCoins(player, Config.COINS_PER_VOTE)
 	end
@@ -2024,8 +2070,16 @@ local function runRound()
 		table.insert(order, entry)
 	end
 	rng:Shuffle(order)
-	for index, entry in order do
+	local index = 0
+	for _, entry in order do
 		if entry.player.Parent then
+			index += 1
+			local total = 0
+			for _, e in order do
+				if e.player.Parent then
+					total += 1
+				end
+			end
 			showcase = {
 				userId = entry.player.UserId,
 				stylist = entry.player.DisplayName,
@@ -2035,7 +2089,7 @@ local function runRound()
 				look = entry.look,
 				clean = entry.clean,
 				index = index,
-				total = #order,
+				total = math.max(total, index),
 			}
 			setState("Showcase", Config.SHOWCASE_SECONDS_PER_LOOK)
 			Remotes.Showcase:FireAllClients(showcase)
@@ -2190,6 +2244,10 @@ local function processReceipt(receipt)
 	end
 	if table.find(profile.receipts, receipt.PurchaseId) then
 		return Enum.ProductPurchaseDecision.PurchaseGranted
+	end
+	if not profile.canSave and DataService.savingEnabled() then
+		-- Their saved data didn't load, so we couldn't keep this purchase. Roblox will retry next visit.
+		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 
 	local name = productName(receipt.ProductId)
@@ -2565,6 +2623,7 @@ return WorldBuilder
             <string name="Name">Main</string>
             <string name="Source"><![CDATA[-- Starts the game on each player's screen and connects it to the server.
 
+local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -2605,7 +2664,7 @@ local ctx = {
 		shop:askUnlock(item)
 	end,
 	promptProduct = function(key: string)
-		shop:promptProduct(key)
+		shop:askProduct(key)
 	end,
 	isModalOpen = function(): boolean
 		return shop.overlay.Visible or shop.confirm.Visible
@@ -2624,10 +2683,31 @@ Theme.onClick = function()
 	Sounds.play("Click")
 end
 
+-- While styling, touching the screen should only wash and style, not walk the character around.
+local function setCharacterControls(enabled: boolean)
+	pcall(function()
+		local module = Players.LocalPlayer:WaitForChild("PlayerScripts"):FindFirstChild("PlayerModule")
+		if module then
+			local controls = (require :: any)(module):GetControls()
+			if enabled then
+				controls:Enable()
+			else
+				controls:Disable()
+			end
+		end
+	end)
+	pcall(function()
+		GuiService.TouchControlsEnabled = enabled
+	end)
+end
+
 local function applyState(newState)
 	local oldPhase = state.phase
 	state = newState
 	hud:setState(state)
+	if state.phase ~= oldPhase and (state.phase == "Makeover" or oldPhase == "Makeover") then
+		setCharacterControls(state.phase ~= "Makeover")
+	end
 	Sounds.music(if state.phase == "Makeover" then "MakeoverMusic" elseif state.phase == "Showcase" then "RunwayMusic" else nil)
 
 	makeover:setVisible(state.phase == "Makeover")
@@ -2721,6 +2801,7 @@ end)
 
 RunService.RenderStepped:Connect(function()
 	hud:update()
+	showcase:updateWalkers()
 	showcase:followWalker()
 end)
 ]]></string>
@@ -2939,14 +3020,14 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 
 	-- Coins and shop sit in the top bar, just right of the timer
 	local right = new("Frame", {
-		Position = UDim2.new(0.65, 10, 0, 10),
-		Size = UDim2.new(0, 230, 0, 42),
+		Position = UDim2.new(0.65, 8, 0, 10),
+		Size = UDim2.new(0, 206, 0, 42),
 		BackgroundTransparency = 1,
 		ZIndex = 50,
 		Parent = gui,
 	}, { new("UIListLayout", { Padding = UDim.new(0, 8), FillDirection = Enum.FillDirection.Horizontal }) })
 	local coinPill = new("Frame", {
-		Size = UDim2.new(0, 110, 1, 0),
+		Size = UDim2.new(0, 100, 1, 0),
 		BackgroundColor3 = C.white,
 		ZIndex = 50,
 		Parent = right,
@@ -2959,7 +3040,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 	}, { Theme.maxText(24), Theme.padding(6) })
 	local shop = Theme.button({
 		Text = "🛍️ Shop",
-		Size = UDim2.new(0, 110, 1, 0),
+		Size = UDim2.new(0, 98, 1, 0),
 		Color = C.purple,
 		ZIndex = 50,
 		Parent = right,
@@ -2969,8 +3050,8 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 	-- Stylist level, just left of the timer
 	local levelPill = new("Frame", {
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(0.35, -10, 0, 10),
-		Size = UDim2.new(0, 120, 0, 42),
+		Position = UDim2.new(0.35, -8, 0, 10),
+		Size = UDim2.new(0, 104, 0, 42),
 		BackgroundColor3 = C.white,
 		ZIndex = 50,
 		Parent = gui,
@@ -3177,6 +3258,7 @@ function Makeover.new(gui: ScreenGui, ctx)
 		Name = "Makeover",
 		Size = UDim2.fromScale(1, 1),
 		BackgroundColor3 = C.white,
+		Active = true, -- touches here are for styling, not for moving the character
 		Visible = false,
 		ZIndex = 10,
 		Parent = gui,
@@ -3360,7 +3442,13 @@ function Makeover:buildRight()
 			ZIndex = 14,
 			Parent = b,
 		}, { Theme.maxText(20) })
-		self.tabStrokes[tab.id] = Theme.new("UIStroke", { Color = C.gold, Thickness = 4, Transparency = 1, Parent = b })
+		self.tabStrokes[tab.id] = Theme.new("UIStroke", {
+			Color = C.gold,
+			Thickness = 4,
+			Transparency = 1,
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+			Parent = b,
+		})
 		b.Activated:Connect(function()
 			self:setTab(tab.id)
 		end)
@@ -3416,7 +3504,13 @@ function Makeover:buildRight()
 		MaxText = 32,
 		Parent = right,
 	})
-	self.doneStroke = Theme.new("UIStroke", { Color = C.gold, Thickness = 4, Transparency = 1, Parent = self.doneButton })
+	self.doneStroke = Theme.new("UIStroke", {
+		Color = C.gold,
+		Thickness = 4,
+		Transparency = 1,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Parent = self.doneButton,
+	})
 	self.doneButton.Activated:Connect(function()
 		self:setDone(not self.done)
 	end)
@@ -3780,6 +3874,7 @@ function Makeover:renderGrid()
 	end
 
 	local order = 0
+	self.cards = {}
 	for _, it in category.items do
 		if it.hidden then
 			continue
@@ -3798,8 +3893,9 @@ function Makeover:renderGrid()
 			Parent = self.grid,
 		}, {
 			Theme.corner(16),
-			Theme.stroke(if selected then C.hotPink else C.lavender, if selected then 4 else 2),
 		})
+		local stroke = Theme.stroke(if selected then C.hotPink else C.lavender, if selected then 4 else 2)
+		stroke.Parent = card
 
 		local preview = new("Frame", {
 			Position = UDim2.fromScale(0.05, 0.04),
@@ -3864,8 +3960,8 @@ function Makeover:renderGrid()
 				ZIndex = 17,
 				Parent = card,
 			}, { Theme.round(), Theme.padding(2) })
-		elseif selected then
-			new("TextLabel", {
+		else
+			local check = new("TextLabel", {
 				AnchorPoint = Vector2.new(1, 0),
 				Position = UDim2.new(1, -3, 0, 3),
 				Size = UDim2.fromScale(0.22, 0.2),
@@ -3873,9 +3969,11 @@ function Makeover:renderGrid()
 				BackgroundColor3 = C.hotPink,
 				TextColor3 = C.white,
 				Text = "✓",
+				Visible = selected,
 				ZIndex = 17,
 				Parent = card,
 			}, { Theme.round() })
+			self.cards[it.id] = { card = card, stroke = stroke, check = check }
 		end
 
 		card.Activated:Connect(function()
@@ -3896,7 +3994,7 @@ function Makeover:choose(key: string, itemId: string)
 	self.look[key] = itemId
 	Remotes.UpdateLook:FireServer(key, itemId)
 	self:renderPortrait()
-	self:renderGrid()
+	self:refreshSelection(key)
 
 	local theme = self:theme()
 	local it = Catalog.byId[itemId]
@@ -3910,6 +4008,17 @@ function Makeover:choose(key: string, itemId: string)
 		self:say(string.format(pick(THEME_LINES), themeWord(theme)), 2.5)
 	elseif self.hearts >= before then
 		self:say(pick(LIKE_LINES), 2)
+	end
+end
+
+-- Moves the pink "selected" outline and ✓ without rebuilding the whole grid (fast on phones).
+function Makeover:refreshSelection(key: string)
+	for itemId, c in self.cards or {} do
+		local selected = self.look[key] == itemId
+		c.card.BackgroundColor3 = if selected then C.softPink else C.white
+		c.stroke.Color = if selected then C.hotPink else C.lavender
+		c.stroke.Thickness = if selected then 4 else 2
+		c.check.Visible = selected
 	end
 end
 
@@ -3945,7 +4054,7 @@ function Makeover:refreshWash()
 	self.cleanFill.Size = UDim2.fromScale(math.clamp(clean, 0, 1), 1)
 	self.cleanText.Text = "Clean: " .. math.floor(clean * 100 + 0.5) .. "%" .. (if bubbles > 0 then "  🫧 " .. bubbles else "")
 	local soaps = self.ctx.profile.superSoaps or 0
-	self.soapButton.Text = if soaps > 0 then "✨ Super Soap (" .. soaps .. ")" else "✨ Super Soap: instant clean!"
+	self.soapButton.Text = if soaps > 0 then "✨ Use Super Soap (" .. soaps .. " left)" else "✨ Super Soap (Robux)"
 	self.soapButton.Visible = not self:isWashed()
 	self:refreshChecklist()
 end
@@ -4040,6 +4149,8 @@ function Makeover:scrub(pos: Vector2, moved: number)
 			self.tool = "rinse"
 			self.scrubbing = false
 			self:say("No more dirt! Now rinse the bubbles! 🚿", 3)
+			self:refreshWash()
+			self:sendWash(true)
 		end
 	else
 		for i = #self.bubbles, 1, -1 do
@@ -4070,6 +4181,7 @@ end
 
 function Makeover:connectInput()
 	local lastPos: Vector2? = nil
+	local activeTouch: InputObject? = nil -- only follow the first finger
 
 	UserInputService.InputBegan:Connect(function(input)
 		if self.tab ~= "Wash" or not self.frame.Visible or self.ctx.isModalOpen() then
@@ -4077,8 +4189,9 @@ function Makeover:connectInput()
 		end
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			local pos = screenPosition(input)
-			if self:isOverPortrait(pos) then
+			if self:isOverPortrait(pos) and not self.scrubbing then
 				self.scrubbing = true
+				activeTouch = if input.UserInputType == Enum.UserInputType.Touch then input else nil
 				lastPos = pos
 				self:moveCursor(pos)
 			end
@@ -4088,6 +4201,9 @@ function Makeover:connectInput()
 	UserInputService.InputChanged:Connect(function(input)
 		local isMove = input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch
 		if not isMove or not self.frame.Visible then
+			return
+		end
+		if input.UserInputType == Enum.UserInputType.Touch and activeTouch and input ~= activeTouch then
 			return
 		end
 		local pos = screenPosition(input)
@@ -4103,6 +4219,10 @@ function Makeover:connectInput()
 
 	UserInputService.InputEnded:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			if input.UserInputType == Enum.UserInputType.Touch and activeTouch and input ~= activeTouch then
+				return
+			end
+			activeTouch = nil
 			if self.scrubbing then
 				self.scrubbing = false
 				lastPos = nil
@@ -4299,6 +4419,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local Clients = require(ReplicatedStorage.Shared.Clients)
 local Config = require(ReplicatedStorage.Shared.Config)
 local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -4320,6 +4441,9 @@ local ROBUX_ITEMS = {
 }
 
 local priceCache: { [string]: string } = {}
+
+-- A model to show hairstyles, lashes, outfits and extras on in the shop
+local SAMPLE_CLIENT = Clients.generate(Random.new(7))
 
 function Shop.new(gui: ScreenGui, ctx)
 	local self = setmetatable({}, Shop)
@@ -4478,6 +4602,32 @@ function Shop:buildConfirm(gui: ScreenGui)
 	end)
 end
 
+-- Asks before buying a Developer Product (like Super Soap), showing the Robux price.
+function Shop:askProduct(key: string)
+	local id = Config.DevProducts[key]
+	if not id or id == 0 then
+		self.ctx.toast("Coming soon! 💖")
+		return
+	end
+	local entry
+	for _, e in ROBUX_ITEMS do
+		if e.key == key then
+			entry = e
+		end
+	end
+	local price = priceCache["product:" .. key]
+	self.confirmText.Text = (entry and entry.icon .. " " .. entry.title or key) .. "\n" .. (entry and entry.text or "") .. (if price then "\n" .. price else "")
+	self.confirmYes.Text = "Buy" .. (if price then " (" .. price .. ")" else "")
+	self.onConfirm = function()
+		self:promptProduct(key)
+	end
+	self.confirm.Visible = true
+	Theme.pop(self.confirm)
+	if not price and entry then
+		self:fetchPrice(entry, "product:" .. key, self.confirmYes)
+	end
+end
+
 -- Called when a player taps a locked item.
 function Shop:askUnlock(it: Catalog.Item)
 	if it.pass then
@@ -4543,12 +4693,17 @@ function Shop:render()
 end
 
 function Shop:renderCoinItems()
+	-- Cell sizes in pixels: an aspect constraint inside a grid would shrink cells to nothing
+	local width = self.list.AbsoluteSize.X - 12 - self.list.ScrollBarThickness
+	local cols = if width >= 700 then 5 elseif width >= 480 then 4 else 3
+	local gap = 10
+	local cell = math.max(60, math.floor((width - gap * (cols - 1)) / cols))
 	new("UIGridLayout", {
-		CellSize = UDim2.new(0.185, 0, 0, 0),
-		CellPadding = UDim2.new(0.015, 0, 0, 10),
+		CellSize = UDim2.fromOffset(cell, math.floor(cell * 1.3)),
+		CellPadding = UDim2.fromOffset(gap, gap),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = self.list,
-	}, { new("UIAspectRatioConstraint", { AspectRatio = 0.75 }) })
+	})
 
 	local order = 0
 	for _, category in Catalog.Categories do
@@ -4572,10 +4727,17 @@ function Shop:renderCoinItems()
 				ZIndex = 64,
 				Parent = card,
 			}, { new("UIAspectRatioConstraint", { AspectRatio = 1 }), Theme.round() })
-			if it.color then
+			if category.preview == "portrait" then
+				icon.BackgroundColor3 = C.softPink
+				icon.ClipsDescendants = true
+				local look = Catalog.defaultLook()
+				look.hairStyle = "hair_bob"
+				look.hairColor = "hc_blonde"
+				look.outfit = "outfit_tee"
+				look[category.key] = it.id
+				LookRenderer.render(icon, SAMPLE_CLIENT, look, { headOnly = category.key ~= "outfit", clean = 1, mood = "smile" })
+			elseif it.color then
 				LookRenderer.paint(icon, it)
-			else
-				new("TextLabel", { Size = UDim2.fromScale(1, 1), Text = "✨", ZIndex = 65, Parent = icon })
 			end
 			new("TextLabel", {
 				Position = UDim2.fromScale(0.05, 0.4),
@@ -4815,11 +4977,8 @@ end
 -- Big screen behind the runway
 
 function Showcase:buildScreen()
-	local world = Workspace:WaitForChild("GlowUpWorld", 30)
-	local part = world and world:FindFirstChild("Runway") and world.Runway:FindFirstChild("Screen")
-	if not part then
-		return
-	end
+	-- WaitForChild in case the place streams parts in later
+	local part = Workspace:WaitForChild("GlowUpWorld"):WaitForChild("Runway"):WaitForChild("Screen")
 	local surface = new("SurfaceGui", {
 		Name = "RunwayScreen",
 		Adornee = part,
@@ -4891,6 +5050,32 @@ function Showcase:setCamera(view: string?)
 		camera.CFrame = marker.CFrame
 	else
 		camera.CameraType = Enum.CameraType.Custom
+	end
+end
+
+-- Moves runway models smoothly on this screen, using the walk the server described in attributes.
+function Showcase:updateWalkers()
+	local world = Workspace:FindFirstChild("GlowUpWorld")
+	if not world then
+		return
+	end
+	local now = Workspace:GetServerTimeNow()
+	for _, m in world:GetChildren() do
+		local from, to, start, walkTime = m:GetAttribute("WalkFrom"), m:GetAttribute("WalkTo"), m:GetAttribute("WalkStart"), m:GetAttribute("WalkTime")
+		local root = m:FindFirstChild("HumanoidRootPart")
+		if typeof(from) == "Vector3" and typeof(to) == "Vector3" and type(start) == "number" and type(walkTime) == "number" and root and root:IsA("BasePart") then
+			local t = now - start
+			local forward = Vector3.new(0, 0, 1)
+			if t < walkTime then
+				local pos = from:Lerp(to, math.max(t, 0) / walkTime)
+				root.CFrame = CFrame.lookAt(pos, pos + forward)
+			elseif t < walkTime + 1 then
+				-- twirl!
+				root.CFrame = CFrame.lookAt(to, to + forward) * CFrame.Angles(0, (t - walkTime) * math.pi * 2, 0)
+			else
+				root.CFrame = CFrame.lookAt(to, to + forward)
+			end
+		end
 	end
 end
 
@@ -5211,5 +5396,12 @@ return Theme
         </Item>
       </Item>
     </Item>
+  </Item>
+  <Item class="Workspace" referent="30">
+    <Properties>
+      <string name="Name">Workspace</string>
+      <bool name="NeedsPivotMigration">false</bool>
+      <bool name="StreamingEnabled">false</bool>
+    </Properties>
   </Item>
 </roblox>

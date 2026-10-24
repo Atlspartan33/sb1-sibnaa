@@ -45,14 +45,14 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 
 	-- Coins and shop sit in the top bar, just right of the timer
 	local right = new("Frame", {
-		Position = UDim2.new(0.65, 10, 0, 10),
-		Size = UDim2.new(0, 230, 0, 42),
+		Position = UDim2.new(0.65, 8, 0, 10),
+		Size = UDim2.new(0, 206, 0, 42),
 		BackgroundTransparency = 1,
 		ZIndex = 50,
 		Parent = gui,
 	}, { new("UIListLayout", { Padding = UDim.new(0, 8), FillDirection = Enum.FillDirection.Horizontal }) })
 	local coinPill = new("Frame", {
-		Size = UDim2.new(0, 110, 1, 0),
+		Size = UDim2.new(0, 100, 1, 0),
 		BackgroundColor3 = C.white,
 		ZIndex = 50,
 		Parent = right,
@@ -65,7 +65,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 	}, { Theme.maxText(24), Theme.padding(6) })
 	local shop = Theme.button({
 		Text = "🛍️ Shop",
-		Size = UDim2.new(0, 110, 1, 0),
+		Size = UDim2.new(0, 98, 1, 0),
 		Color = C.purple,
 		ZIndex = 50,
 		Parent = right,
@@ -75,8 +75,8 @@ function HUD.new(gui: ScreenGui, onShop: () -> ())
 	-- Stylist level, just left of the timer
 	local levelPill = new("Frame", {
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(0.35, -10, 0, 10),
-		Size = UDim2.new(0, 120, 0, 42),
+		Position = UDim2.new(0.35, -8, 0, 10),
+		Size = UDim2.new(0, 104, 0, 42),
 		BackgroundColor3 = C.white,
 		ZIndex = 50,
 		Parent = gui,

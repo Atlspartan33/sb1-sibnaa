@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local Clients = require(ReplicatedStorage.Shared.Clients)
 local Config = require(ReplicatedStorage.Shared.Config)
 local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -26,6 +27,9 @@ local ROBUX_ITEMS = {
 }
 
 local priceCache: { [string]: string } = {}
+
+-- A model to show hairstyles, lashes, outfits and extras on in the shop
+local SAMPLE_CLIENT = Clients.generate(Random.new(7))
 
 function Shop.new(gui: ScreenGui, ctx)
 	local self = setmetatable({}, Shop)
@@ -184,6 +188,32 @@ function Shop:buildConfirm(gui: ScreenGui)
 	end)
 end
 
+-- Asks before buying a Developer Product (like Super Soap), showing the Robux price.
+function Shop:askProduct(key: string)
+	local id = Config.DevProducts[key]
+	if not id or id == 0 then
+		self.ctx.toast("Coming soon! 💖")
+		return
+	end
+	local entry
+	for _, e in ROBUX_ITEMS do
+		if e.key == key then
+			entry = e
+		end
+	end
+	local price = priceCache["product:" .. key]
+	self.confirmText.Text = (entry and entry.icon .. " " .. entry.title or key) .. "\n" .. (entry and entry.text or "") .. (if price then "\n" .. price else "")
+	self.confirmYes.Text = "Buy" .. (if price then " (" .. price .. ")" else "")
+	self.onConfirm = function()
+		self:promptProduct(key)
+	end
+	self.confirm.Visible = true
+	Theme.pop(self.confirm)
+	if not price and entry then
+		self:fetchPrice(entry, "product:" .. key, self.confirmYes)
+	end
+end
+
 -- Called when a player taps a locked item.
 function Shop:askUnlock(it: Catalog.Item)
 	if it.pass then
@@ -249,12 +279,17 @@ function Shop:render()
 end
 
 function Shop:renderCoinItems()
+	-- Cell sizes in pixels: an aspect constraint inside a grid would shrink cells to nothing
+	local width = self.list.AbsoluteSize.X - 12 - self.list.ScrollBarThickness
+	local cols = if width >= 700 then 5 elseif width >= 480 then 4 else 3
+	local gap = 10
+	local cell = math.max(60, math.floor((width - gap * (cols - 1)) / cols))
 	new("UIGridLayout", {
-		CellSize = UDim2.new(0.185, 0, 0, 0),
-		CellPadding = UDim2.new(0.015, 0, 0, 10),
+		CellSize = UDim2.fromOffset(cell, math.floor(cell * 1.3)),
+		CellPadding = UDim2.fromOffset(gap, gap),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = self.list,
-	}, { new("UIAspectRatioConstraint", { AspectRatio = 0.75 }) })
+	})
 
 	local order = 0
 	for _, category in Catalog.Categories do
@@ -278,10 +313,17 @@ function Shop:renderCoinItems()
 				ZIndex = 64,
 				Parent = card,
 			}, { new("UIAspectRatioConstraint", { AspectRatio = 1 }), Theme.round() })
-			if it.color then
+			if category.preview == "portrait" then
+				icon.BackgroundColor3 = C.softPink
+				icon.ClipsDescendants = true
+				local look = Catalog.defaultLook()
+				look.hairStyle = "hair_bob"
+				look.hairColor = "hc_blonde"
+				look.outfit = "outfit_tee"
+				look[category.key] = it.id
+				LookRenderer.render(icon, SAMPLE_CLIENT, look, { headOnly = category.key ~= "outfit", clean = 1, mood = "smile" })
+			elseif it.color then
 				LookRenderer.paint(icon, it)
-			else
-				new("TextLabel", { Size = UDim2.fromScale(1, 1), Text = "✨", ZIndex = 65, Parent = icon })
 			end
 			new("TextLabel", {
 				Position = UDim2.fromScale(0.05, 0.4),

@@ -16,7 +16,7 @@ for name,w in worlds:
             f=os.path.join(outdir,f'{name}_{kind}{i}.html'); open(f,'w').write(r2d.page(d,'transparent'))
             b['png']=f[:-5]+'.png'; guijobs.append([f,b['png'],max(1,int(d['w'])),max(1,int(d['h']))])
 json.dump(guijobs,open(os.path.join(outdir,'guijobs.json'),'w'))
-subprocess.run(['node',os.path.join(os.path.dirname(os.path.abspath(__file__)),'shots_t.js'),os.path.join(outdir,'guijobs.json')],check=True)
+subprocess.run(['node',os.path.join(os.path.dirname(os.path.abspath(__file__)),'shots_t.cjs'),os.path.join(outdir,'guijobs.json')],check=True)
 def b64(p): return 'data:image/png;base64,'+base64.b64encode(open(p,'rb').read()).decode()
 pages=[]
 for name,w in worlds:
@@ -69,5 +69,5 @@ Promise.all(pending).then(()=>{{comp.render();document.body.dataset.done=1}});
 </script></body></html>'''
     f=os.path.join(outdir,name+'.html'); open(f,'w').write(page); pages.append([f,os.path.join(outdir,name+'.png'),1280,720])
 json.dump(pages,open(os.path.join(outdir,'pages3d.json'),'w'))
-subprocess.run(['node',os.path.join(os.path.dirname(os.path.abspath(__file__)),'shots.js'),os.path.join(outdir,'pages3d.json')],check=True)
+subprocess.run(['node',os.path.join(os.path.dirname(os.path.abspath(__file__)),'shots.cjs'),os.path.join(outdir,'pages3d.json')],check=True)
 print('\n'.join(p[1] for p in pages))

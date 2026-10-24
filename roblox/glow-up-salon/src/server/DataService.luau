@@ -25,6 +25,10 @@ export type Profile = {
 
 local profiles: { [Player]: Profile } = {}
 
+-- While a server has a player's data open it stamps it with its JobId, so a second server
+-- (e.g. the player quickly hopped servers) waits instead of loading old coins.
+local LOCK_SECONDS = Config.AUTOSAVE_SECONDS + 60
+
 local store: DataStore? = nil
 do
 	local ok, result = pcall(function()
@@ -102,34 +106,57 @@ end
 
 function DataService.addCoins(player: Player, amount: number)
 	local p = profiles[player]
+	if amount ~= amount or math.abs(amount) == math.huge then
+		return
+	end
 	if p then
 		p.coins = math.max(0, p.coins + math.floor(amount))
 		DataService.push(player)
 	end
 end
 
-function DataService.save(player: Player): boolean
+-- True when coins and unlocks are really being saved (false in Studio without API access).
+function DataService.savingEnabled(): boolean
+	return store ~= nil
+end
+
+local function lockedByOtherServer(old): boolean
+	return old ~= nil and old.session ~= nil and old.session ~= game.JobId and os.time() - (old.lockTime or 0) < LOCK_SECONDS
+end
+
+-- Saves a player's data. `release` clears this server's lock (when the player leaves).
+function DataService.save(player: Player, release: boolean?): boolean
 	local p = profiles[player]
 	if not p or not p.canSave or not store then
 		return false
 	end
-	local data = {
-		coins = p.coins,
-		owned = p.owned,
-		superSoaps = p.superSoaps,
-		stats = p.stats,
-		receipts = p.receipts,
-		lastDay = p.lastDay,
-		streak = p.streak,
-	}
 	for attempt = 1, 3 do
+		local wrote = false
 		local ok, err = pcall(function()
-			(store :: DataStore):UpdateAsync(keyFor(player), function()
-				return data
+			(store :: DataStore):UpdateAsync(keyFor(player), function(old)
+				if lockedByOtherServer(old) then
+					return nil -- another server has newer data; don't overwrite it
+				end
+				wrote = true
+				-- Built here (not before the loop) so a retry always saves the newest values
+				return {
+					coins = p.coins,
+					owned = p.owned,
+					superSoaps = p.superSoaps,
+					stats = p.stats,
+					receipts = p.receipts,
+					lastDay = p.lastDay,
+					streak = p.streak,
+					session = if release then nil else game.JobId,
+					lockTime = os.time(),
+				}
 			end)
 		end)
 		if ok then
-			return true
+			if not wrote then
+				warn("[GlowUp] Not saving " .. player.Name .. ": their data is open on another server")
+			end
+			return wrote
 		end
 		warn("[GlowUp] Save failed (try " .. attempt .. "):", err)
 		task.wait(attempt)
@@ -159,24 +186,39 @@ local function load(player: Player)
 	local saved = nil
 	local loaded = store == nil -- no store (e.g. Studio without API access): play with a fresh profile
 	if store then
-		for attempt = 1, 3 do
+		for attempt = 1, 8 do
+			local claimed = false
 			local ok, result = pcall(function()
-				return (store :: DataStore):GetAsync(keyFor(player))
+				(store :: DataStore):UpdateAsync(keyFor(player), function(old)
+					-- After ~20 seconds of waiting, take over a lock that was never released
+					if lockedByOtherServer(old) and attempt < 8 then
+						saved = old
+						return nil
+					end
+					claimed = true
+					saved = old
+					local new = old or {}
+					new.session = game.JobId
+					new.lockTime = os.time()
+					return new
+				end)
 			end)
-			if ok then
-				saved = result
+			if ok and claimed then
 				loaded = true
 				break
 			end
-			if RunService:IsStudio() then
+			if not ok and RunService:IsStudio() then
 				-- Usually "Enable Studio Access to API Services" is off. Play without saving.
 				warn("[GlowUp] Saving is off in Studio:", result)
 				store = nil
 				loaded = true
+				saved = nil
 				break
 			end
-			warn("[GlowUp] Load failed (try " .. attempt .. "):", result)
-			task.wait(attempt)
+			if not ok then
+				warn("[GlowUp] Load failed (try " .. attempt .. "):", result)
+			end
+			task.wait(3)
 		end
 	end
 	if not player.Parent then
@@ -201,7 +243,7 @@ function DataService.init()
 	end
 
 	Players.PlayerRemoving:Connect(function(player)
-		DataService.save(player)
+		DataService.save(player, true)
 		profiles[player] = nil
 	end)
 
@@ -210,7 +252,7 @@ function DataService.init()
 		for player in profiles do
 			pending += 1
 			task.spawn(function()
-				DataService.save(player)
+				DataService.save(player, true)
 				pending -= 1
 			end)
 		end

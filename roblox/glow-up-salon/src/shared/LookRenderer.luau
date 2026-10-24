@@ -449,7 +449,9 @@ function LookRenderer.render(container: GuiObject, client, look, options: Option
 	drawCheeksAndLips(root, client, look, options and options.mood)
 	drawGems(root, client, look)
 	drawAccessory(root, look)
-	drawDirt(root, client, options)
+	if (options and options.dirtHealth) or ((options and options.clean) or 0) < 1 then
+		drawDirt(root, client, options)
+	end
 
 	root.Parent = container
 	return root

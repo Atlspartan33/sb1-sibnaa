@@ -541,11 +541,12 @@ function W.startServer()
 	return ctx
 end
 
-function W.addPlayer(name)
+function W.addPlayer(name, userId)
 	W.nextUserId += 1
+	userId = userId or W.nextUserId
 	local p = new("Player")
 	D[p].props.Name = name
-	D[p].props.UserId = W.nextUserId
+	D[p].props.UserId = userId
 	D[p].props.DisplayName = name
 	local pg = new("PlayerGui")
 	D[pg].props.Name = "PlayerGui"

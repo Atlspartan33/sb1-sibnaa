@@ -52,5 +52,5 @@ body{{margin:0;width:{d['w']}px;height:{d['h']}px;position:relative;overflow:hid
 </style></head><body>{body}{FIT}</body></html>'''
     f=os.path.join(outdir,name+'.html'); open(f,'w').write(page); pages.append((f,os.path.join(outdir,name+'.png'),d['w'],d['h']))
 if MAIN: json.dump(pages,open(os.path.join(outdir,'pages.json'),'w'))
-if MAIN: subprocess.run(['node',os.path.join(os.path.dirname(os.path.abspath(__file__)),'shots.js'),os.path.join(outdir,'pages.json')],check=True)
+if MAIN: subprocess.run(['node',os.path.join(os.path.dirname(os.path.abspath(__file__)),'shots.cjs'),os.path.join(outdir,'pages.json')],check=True)
 if MAIN: print('\n'.join(p[1] for p in pages))

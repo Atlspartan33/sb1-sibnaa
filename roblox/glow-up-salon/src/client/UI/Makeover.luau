@@ -65,6 +65,7 @@ function Makeover.new(gui: ScreenGui, ctx)
 		Name = "Makeover",
 		Size = UDim2.fromScale(1, 1),
 		BackgroundColor3 = C.white,
+		Active = true, -- touches here are for styling, not for moving the character
 		Visible = false,
 		ZIndex = 10,
 		Parent = gui,
@@ -248,7 +249,13 @@ function Makeover:buildRight()
 			ZIndex = 14,
 			Parent = b,
 		}, { Theme.maxText(20) })
-		self.tabStrokes[tab.id] = Theme.new("UIStroke", { Color = C.gold, Thickness = 4, Transparency = 1, Parent = b })
+		self.tabStrokes[tab.id] = Theme.new("UIStroke", {
+			Color = C.gold,
+			Thickness = 4,
+			Transparency = 1,
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+			Parent = b,
+		})
 		b.Activated:Connect(function()
 			self:setTab(tab.id)
 		end)
@@ -304,7 +311,13 @@ function Makeover:buildRight()
 		MaxText = 32,
 		Parent = right,
 	})
-	self.doneStroke = Theme.new("UIStroke", { Color = C.gold, Thickness = 4, Transparency = 1, Parent = self.doneButton })
+	self.doneStroke = Theme.new("UIStroke", {
+		Color = C.gold,
+		Thickness = 4,
+		Transparency = 1,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Parent = self.doneButton,
+	})
 	self.doneButton.Activated:Connect(function()
 		self:setDone(not self.done)
 	end)
@@ -668,6 +681,7 @@ function Makeover:renderGrid()
 	end
 
 	local order = 0
+	self.cards = {}
 	for _, it in category.items do
 		if it.hidden then
 			continue
@@ -686,8 +700,9 @@ function Makeover:renderGrid()
 			Parent = self.grid,
 		}, {
 			Theme.corner(16),
-			Theme.stroke(if selected then C.hotPink else C.lavender, if selected then 4 else 2),
 		})
+		local stroke = Theme.stroke(if selected then C.hotPink else C.lavender, if selected then 4 else 2)
+		stroke.Parent = card
 
 		local preview = new("Frame", {
 			Position = UDim2.fromScale(0.05, 0.04),
@@ -752,8 +767,8 @@ function Makeover:renderGrid()
 				ZIndex = 17,
 				Parent = card,
 			}, { Theme.round(), Theme.padding(2) })
-		elseif selected then
-			new("TextLabel", {
+		else
+			local check = new("TextLabel", {
 				AnchorPoint = Vector2.new(1, 0),
 				Position = UDim2.new(1, -3, 0, 3),
 				Size = UDim2.fromScale(0.22, 0.2),
@@ -761,9 +776,11 @@ function Makeover:renderGrid()
 				BackgroundColor3 = C.hotPink,
 				TextColor3 = C.white,
 				Text = "✓",
+				Visible = selected,
 				ZIndex = 17,
 				Parent = card,
 			}, { Theme.round() })
+			self.cards[it.id] = { card = card, stroke = stroke, check = check }
 		end
 
 		card.Activated:Connect(function()
@@ -784,7 +801,7 @@ function Makeover:choose(key: string, itemId: string)
 	self.look[key] = itemId
 	Remotes.UpdateLook:FireServer(key, itemId)
 	self:renderPortrait()
-	self:renderGrid()
+	self:refreshSelection(key)
 
 	local theme = self:theme()
 	local it = Catalog.byId[itemId]
@@ -798,6 +815,17 @@ function Makeover:choose(key: string, itemId: string)
 		self:say(string.format(pick(THEME_LINES), themeWord(theme)), 2.5)
 	elseif self.hearts >= before then
 		self:say(pick(LIKE_LINES), 2)
+	end
+end
+
+-- Moves the pink "selected" outline and ✓ without rebuilding the whole grid (fast on phones).
+function Makeover:refreshSelection(key: string)
+	for itemId, c in self.cards or {} do
+		local selected = self.look[key] == itemId
+		c.card.BackgroundColor3 = if selected then C.softPink else C.white
+		c.stroke.Color = if selected then C.hotPink else C.lavender
+		c.stroke.Thickness = if selected then 4 else 2
+		c.check.Visible = selected
 	end
 end
 
@@ -833,7 +861,7 @@ function Makeover:refreshWash()
 	self.cleanFill.Size = UDim2.fromScale(math.clamp(clean, 0, 1), 1)
 	self.cleanText.Text = "Clean: " .. math.floor(clean * 100 + 0.5) .. "%" .. (if bubbles > 0 then "  🫧 " .. bubbles else "")
 	local soaps = self.ctx.profile.superSoaps or 0
-	self.soapButton.Text = if soaps > 0 then "✨ Super Soap (" .. soaps .. ")" else "✨ Super Soap: instant clean!"
+	self.soapButton.Text = if soaps > 0 then "✨ Use Super Soap (" .. soaps .. " left)" else "✨ Super Soap (Robux)"
 	self.soapButton.Visible = not self:isWashed()
 	self:refreshChecklist()
 end
@@ -928,6 +956,8 @@ function Makeover:scrub(pos: Vector2, moved: number)
 			self.tool = "rinse"
 			self.scrubbing = false
 			self:say("No more dirt! Now rinse the bubbles! 🚿", 3)
+			self:refreshWash()
+			self:sendWash(true)
 		end
 	else
 		for i = #self.bubbles, 1, -1 do
@@ -958,6 +988,7 @@ end
 
 function Makeover:connectInput()
 	local lastPos: Vector2? = nil
+	local activeTouch: InputObject? = nil -- only follow the first finger
 
 	UserInputService.InputBegan:Connect(function(input)
 		if self.tab ~= "Wash" or not self.frame.Visible or self.ctx.isModalOpen() then
@@ -965,8 +996,9 @@ function Makeover:connectInput()
 		end
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			local pos = screenPosition(input)
-			if self:isOverPortrait(pos) then
+			if self:isOverPortrait(pos) and not self.scrubbing then
 				self.scrubbing = true
+				activeTouch = if input.UserInputType == Enum.UserInputType.Touch then input else nil
 				lastPos = pos
 				self:moveCursor(pos)
 			end
@@ -976,6 +1008,9 @@ function Makeover:connectInput()
 	UserInputService.InputChanged:Connect(function(input)
 		local isMove = input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch
 		if not isMove or not self.frame.Visible then
+			return
+		end
+		if input.UserInputType == Enum.UserInputType.Touch and activeTouch and input ~= activeTouch then
 			return
 		end
 		local pos = screenPosition(input)
@@ -991,6 +1026,10 @@ function Makeover:connectInput()
 
 	UserInputService.InputEnded:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			if input.UserInputType == Enum.UserInputType.Touch and activeTouch and input ~= activeTouch then
+				return
+			end
+			activeTouch = nil
 			if self.scrubbing then
 				self.scrubbing = false
 				lastPos = nil

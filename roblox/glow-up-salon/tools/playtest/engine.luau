@@ -89,6 +89,8 @@ V3.__index = function(v, k)
 		return function(a, b) return Vector3.new(a.Y * b.Z - a.Z * b.Y, a.Z * b.X - a.X * b.Z, a.X * b.Y - a.Y * b.X) end
 	elseif k == "Dot" then
 		return function(a, b) return a.X * b.X + a.Y * b.Y + a.Z * b.Z end
+	elseif k == "Lerp" then
+		return function(a, b, t) return Vector3.new(a.X + (b.X - a.X) * t, a.Y + (b.Y - a.Y) * t, a.Z + (b.Z - a.Z) * t) end
 	end
 	error(tostring(k) .. " is not a valid member of Vector3", 2)
 end
@@ -535,6 +537,7 @@ local DEFAULTS = {
 	Part = { Shape = Enum.PartType.Block },
 	Humanoid = { HipHeight = 2, RigType = Enum.HumanoidRigType.R15, Health = 100 },
 	Instance = {},
+	DataModel = { JobId = "sim-server" },
 	Camera = { CFrame = CFrame.new(), CameraType = Enum.CameraType.Custom, FieldOfView = 70 },
 	Lighting = { ClockTime = 14 },
 	ParticleEmitter = { Enabled = true },
