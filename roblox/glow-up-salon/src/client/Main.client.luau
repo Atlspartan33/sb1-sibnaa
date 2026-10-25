@@ -154,7 +154,7 @@ end)
 
 Remotes.Celebrate.OnClientEvent:Connect(function(info)
 	if info.kind == "daily" then
-		local title = if info.item then "🎁 Day 7: " .. info.item .. "!" else "🎁 Day " .. info.day .. " Gift! +" .. info.coins .. " 🪙"
+		local title = if info.item then "🎁 Day 7: " .. info.item .. "!" else "🎁 Day " .. info.day .. " Gift! +" .. info.coins .. " 💰"
 		-- The 7-day calendar row
 		Effects.splash(gui, title, " ", Theme.Colors.gold, 4, function(card)
 			local row = Theme.new("Frame", {
@@ -186,10 +186,10 @@ Remotes.Celebrate.OnClientEvent:Connect(function(info)
 		end)
 		Effects.confetti(gui, 40)
 	elseif info.kind == "weekly" then
-		Effects.splash(gui, "🎯 Weekly goal done!", if info.item then "You got the " .. info.item .. "! 🎁" else "+" .. info.coins .. " 🪙", Theme.Colors.purple, 4)
+		Effects.splash(gui, "🎯 Weekly goal done!", if info.item then "You got the " .. info.item .. "! 🎁" else "+" .. info.coins .. " 💰", Theme.Colors.purple, 4)
 		Effects.confetti(gui, 60)
 	elseif info.kind == "friend" then
-		Effects.splash(gui, "💞 " .. info.name .. " is your BEST friend!", "Visit #" .. info.visits .. "  +" .. info.coins .. " 🪙", Theme.Colors.hotPink, 3.5)
+		Effects.splash(gui, "💞 " .. info.name .. " is your BEST friend!", "Visit #" .. info.visits .. "  +" .. info.coins .. " 💰", Theme.Colors.hotPink, 3.5)
 		Effects.confetti(gui, 40)
 	elseif info.kind == "level" then
 		Effects.splash(gui, "⭐ Level " .. info.level .. "! ⭐", "You're a " .. info.title .. "!", Theme.Colors.purple, 3.5)

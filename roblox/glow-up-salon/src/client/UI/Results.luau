@@ -91,7 +91,7 @@ function Results:show(results)
 		local isMe = row.userId == Players.LocalPlayer.UserId
 		if isMe then
 			local comments = table.concat(row.comments, "  ", 1, math.min(#row.comments, 3))
-			self.mine.Text = string.format("Your %s: %s\n%s  +%d 🪙\n%s", row.client.name, Theme.stars(row.stars), row.award or "", row.coins, comments)
+			self.mine.Text = string.format("Your %s: %s\n%s  +%d 💰\n%s", row.client.name, Theme.stars(row.stars), row.award or "", row.coins, comments)
 			LookRenderer.render(self.minePortrait, row.client, row.look, { clean = 1, mood = if row.stars >= 4 then "grin" else "smile" })
 			self:celebrate(row, #results.rows)
 		end
@@ -157,7 +157,7 @@ function Results:celebrate(row, players: number)
 	else
 		title = "💪 Nice try!"
 	end
-	Effects.splash(self.gui, title, Theme.stars(row.stars) .. "   +" .. row.coins .. " 🪙", C.hotPink, 3)
+	Effects.splash(self.gui, title, Theme.stars(row.stars) .. "   +" .. row.coins .. " 💰", C.hotPink, 3)
 	if row.stars >= 3.5 or (players >= 2 and row.rank == 1) then
 		Effects.confetti(self.gui, 60)
 	end

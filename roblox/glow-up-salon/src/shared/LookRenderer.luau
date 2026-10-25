@@ -18,6 +18,7 @@ export type Options = {
 	brushed: boolean?, -- messy hair with the tangles brushed out
 	tangle: number?, -- 0..1 how tangled messy hair still is (while brushing)
 	zoom: number?, -- >1 zooms in on the face (the container should clip)
+	faceOnly: boolean?, -- just the features and makeup, for the face on a 3D head (no skin, hair or accessory)
 }
 
 -- Layers, back to front
@@ -675,6 +676,8 @@ end
 
 -- Colors any UI frame like an item (used for the color swatches in the menus).
 LookRenderer.paint = paint
+-- Dots, stripes, hearts... on any frame (used on the 3D client's shirt and skirt).
+LookRenderer.drawPattern = drawPattern
 
 function LookRenderer.setDirtHealth(f: GuiObject, health: number)
 	local t = 1 - 0.92 * math.clamp(health, 0, 1)
@@ -709,19 +712,24 @@ function LookRenderer.render(container: GuiObject, client, look, options: Option
 
 	local hairItem = Catalog.byId[look.hairColor]
 
-	drawHair(root, look, hairItem, options)
-	if not (options and options.headOnly) then
-		drawOutfit(root, client, look)
+	local faceOnly = options and options.faceOnly
+	if not faceOnly then
+		drawHair(root, look, hairItem, options)
+		if not (options and options.headOnly) then
+			drawOutfit(root, client, look)
+		end
+		for side = -1, 1, 2 do
+			local ear = shape(root, 0.5 + side * 0.22, 0.47, 0.06, 0.09, client.skin, Z.ears, 0.5)
+			shape(ear, 0.5, 0.5, 0.45, 0.55, darken(client.skin, 0.85), Z.ears, 0.5)
+		end
+		shape(root, 0.5, 0.46, 0.44, 0.56, client.skin, Z.face, 0.5)
 	end
-	for side = -1, 1, 2 do
-		local ear = shape(root, 0.5 + side * 0.22, 0.47, 0.06, 0.09, client.skin, Z.ears, 0.5)
-		shape(ear, 0.5, 0.5, 0.45, 0.55, darken(client.skin, 0.85), Z.ears, 0.5)
-	end
-	shape(root, 0.5, 0.46, 0.44, 0.56, client.skin, Z.face, 0.5)
 	drawEyes(root, client, look, hairItem)
 	drawCheeksAndLips(root, client, look, options and options.mood)
 	drawGems(root, client, look)
-	drawAccessory(root, look)
+	if not faceOnly then
+		drawAccessory(root, look)
+	end
 	if (options and options.dirtHealth) or ((options and options.clean) or 0) < 1 then
 		drawDirt(root, client, options)
 	end

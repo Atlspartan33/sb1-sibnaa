@@ -2,6 +2,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Avatar = require(ReplicatedStorage.Shared.Avatar)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local DataService = require(script.Parent.DataService)
@@ -10,6 +11,7 @@ local ShopService = require(script.Parent.ShopService)
 local WorldBuilder = require(script.Parent.WorldBuilder)
 
 local world = WorldBuilder.build()
+task.spawn(Avatar.preload) -- the clients' bodies and hair, for the makeover, runway and podium
 
 DataService.init()
 ShopService.init()

@@ -5,11 +5,11 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local Avatar = require(ReplicatedStorage.Shared.Avatar)
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Clients = require(ReplicatedStorage.Shared.Clients)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Events = require(ReplicatedStorage.Shared.Events)
-local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
 local Progress = require(ReplicatedStorage.Shared.Progress)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Scoring = require(ReplicatedStorage.Shared.Scoring)
@@ -218,88 +218,28 @@ local function rootHeight(model: Model): number
 	return 3
 end
 
--- Makes a 3D client with the face the stylist designed.
+-- Makes the 3D client wearing the look the stylist designed: a real Roblox character with
+-- their hair, makeup face, outfit and accessory.
 local function buildClientModel(entry: Entry): Model
-	local outfit = Catalog.byId[entry.look.outfit]
-	local skin = entry.client.skin
-	local custom = Catalog.byId[entry.look.outfitColor or ""]
-	local top = if custom and custom.color then custom.color elseif outfit and outfit.color then outfit.color else Color3.new(0.5, 0.5, 0.5)
-	local bottom = outfit and outfit.accent or top
-
-	local model: Model
-	local ok, result = pcall(function()
-		local desc = Instance.new("HumanoidDescription")
-		desc.HeadColor = skin
-		desc.LeftArmColor = skin
-		desc.RightArmColor = skin
-		desc.TorsoColor = top
-		-- Dresses show legs (the skirt goes on top); other outfits get pants
-		local legs = if outfit and outfit.dress then skin else bottom
-		desc.LeftLegColor = legs
-		desc.RightLegColor = legs
-		-- A slimmer, more doll-like shape than the default blocky body
-		desc.WidthScale = 0.8
-		desc.DepthScale = 0.85
-		desc.HeightScale = 1
-		desc.ProportionScale = 1
-		desc.BodyTypeScale = 0.3
-		return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
-	end)
-	if ok and result then
-		model = result
-		local humanoid = model:FindFirstChildOfClass("Humanoid")
-		if humanoid then
-			humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-		end
+	local stars = Scoring.judge(entry, theme())
+	local model = Avatar.new(entry.client)
+	if model then
+		-- everyone sees the client washed and happy; the judges' tips stay private
+		Avatar.dress(model, entry.client, entry.look, {
+			clean = 1,
+			mood = if stars >= 4 then "grin" else "smile",
+			brushed = entry.look.hairStyle ~= "hair_messy",
+		})
 	else
-		model = buildBlockModel(skin, top, bottom)
+		local outfit = Catalog.byId[entry.look.outfit]
+		local top = if outfit and outfit.color then outfit.color else Color3.new(0.5, 0.5, 0.5)
+		model = buildBlockModel(entry.client.skin, top, outfit and outfit.accent or top)
 	end
 	model.Name = entry.client.name
 
-	-- Sleeves in the outfit color and cute shoes
-	for _, partName in { "LeftUpperArm", "RightUpperArm" } do
-		local p = model:FindFirstChild(partName)
-		if p and p:IsA("BasePart") then
-			p.Color = top
-		end
-	end
-	for _, partName in { "LeftFoot", "RightFoot" } do
-		local p = model:FindFirstChild(partName)
-		if p and p:IsA("BasePart") then
-			p.Color = bottom
-		end
-	end
-
-	-- The 3D body is hidden; a "paper doll" of the client (the same drawing as the makeover,
-	-- head to toe) walks the runway instead, so the dress, colors and hair all show.
-	for _, p in model:GetDescendants() do
-		if p:IsA("BasePart") then
-			p.Transparency = 1
-		elseif p:IsA("Decal") then
-			p:Destroy()
-		end
-	end
-	local dollRoot = model.PrimaryPart or model:FindFirstChild("HumanoidRootPart")
-	if dollRoot then
-		local stars = Scoring.judge(entry, theme())
-		local billboard = Instance.new("BillboardGui")
-		billboard.Name = "Doll"
-		billboard.Size = UDim2.fromScale(3.6, 7.2)
-		billboard.StudsOffset = Vector3.new(0, 3.6 - rootHeight(model), 0)
-		billboard.LightInfluence = 0
-		billboard.MaxDistance = 250
-		billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-		local holder = Instance.new("Frame")
-		holder.Name = "Holder"
-		holder.Size = UDim2.fromScale(1, 1)
-		holder.BackgroundTransparency = 1
-		holder.Parent = billboard
-		-- everyone sees the client washed and happy; the judges' tips stay private
-		LookRenderer.renderBody(holder, entry.client, entry.look, { clean = 1, mood = if stars >= 4 then "grin" else "smile" })
-		billboard.Adornee = dollRoot
-		billboard.Parent = dollRoot
-
-		-- a little trail of stars behind every client
+	-- a little trail of stars behind every client
+	local root = model.PrimaryPart or model:FindFirstChild("HumanoidRootPart")
+	if root then
 		local trail = Instance.new("ParticleEmitter")
 		trail.Name = "StarTrail"
 		trail.Texture = Config.Textures.Star
@@ -310,14 +250,11 @@ local function buildClientModel(entry: Entry): Model
 		trail.Size = NumberSequence.new(0.5, 0)
 		trail.LightEmission = 0.6
 		trail.Color = ColorSequence.new(theme().color, Color3.new(1, 1, 1))
-		trail.Parent = dollRoot
+		trail.Parent = root
 	end
 
-	if hasPass(entry.player, "RunwayStar") then
-		local root = model.PrimaryPart or model:FindFirstChild("HumanoidRootPart")
-		if root then
-			Instance.new("Sparkles").Parent = root
-		end
+	if root and hasPass(entry.player, "RunwayStar") then
+		Instance.new("Sparkles").Parent = root
 	end
 
 	for _, p in model:GetDescendants() do
@@ -755,7 +692,9 @@ local function runRound()
 		for place = 1, math.min(3, #rows) do
 			local entry = entries[rows[place].userId]
 			if entry then
-				placeModel(buildClientModel(entry), world.podium[place], Vector3.new(0, 0, 1))
+				local model = buildClientModel(entry)
+				placeModel(model, world.podium[place], Vector3.new(0, 0, 1))
+				Avatar.idle(model)
 			end
 		end
 		task.wait(Config.RESULTS_SECONDS)

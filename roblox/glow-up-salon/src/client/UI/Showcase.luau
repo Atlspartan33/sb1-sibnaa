@@ -306,7 +306,7 @@ function Showcase:vote(stars: number)
 	Remotes.Vote:FireServer(current.userId, stars)
 	self.prompt.Text = "Thanks for voting! 💖 Tap to cheer!"
 	if first then
-		self.ctx.toast("+2 🪙 for voting!", C.gold)
+		self.ctx.toast("+2 💰 for voting!", C.gold)
 	end
 end
 

@@ -62,7 +62,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 	}, { Theme.round(), Theme.stroke(C.gold, 3) })
 	self.coinText = new("TextLabel", {
 		Size = UDim2.fromScale(1, 1),
-		Text = "🪙 0",
+		Text = "💰 0",
 		ZIndex = 51,
 		Parent = coinPill,
 	}, { Theme.maxText(24), Theme.padding(6) })
@@ -225,13 +225,13 @@ function HUD:setWeekly(profile)
 		self.lobbyWeekly.Text = "🎯 Weekly goal done! New prize next week 🎁"
 	else
 		local prize = profile.weeklyNext and Catalog.byId[profile.weeklyNext]
-		local prizeText = if prize then (prize.icon or "🎁") .. " " .. prize.name else Config.WEEKLY_GOAL_COINS .. " 🪙"
+		local prizeText = if prize then (prize.icon or "🎁") .. " " .. prize.name else Config.WEEKLY_GOAL_COINS .. " 💰"
 		self.lobbyWeekly.Text = "🎯 Weekly goal: " .. done .. "/" .. goal .. " shows → " .. prizeText
 	end
 end
 
 function HUD:setCoins(coins: number)
-	self.coinText.Text = "🪙 " .. tostring(coins)
+	self.coinText.Text = "💰 " .. tostring(coins)
 end
 
 function HUD:setLevel(totalStars: number)

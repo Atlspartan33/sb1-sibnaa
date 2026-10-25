@@ -2,10 +2,13 @@
 -- The client reacts as you go: they talk, smile more, and fill up their happy hearts.
 
 local GuiService = game:GetService("GuiService")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 
+local Avatar = require(ReplicatedStorage.Shared.Avatar)
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Events = require(ReplicatedStorage.Shared.Events)
 local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
@@ -25,6 +28,17 @@ local STEPS = { { "Wash", "🧼" }, { "Hair", "💇" }, { "Makeup", "💄" }, { 
 local MAKEUP_KEYS = { "eyeshadow", "lashes", "blush", "lipstick" }
 local MAX_BUBBLES = 24
 local SEND_INTERVAL = 0.25
+
+-- The 3D client stands in front of the middle styling chair, facing the camera.
+local STAND = Vector3.new(0, 0.2, 55.5)
+local FACING = Vector3.new(0, 0, -1)
+-- How much of the character fills the window on each tab (studs tall) and where to look.
+local FRAMING = {
+	Makeup = { height = 2.9, focus = "face" },
+	Hair = { height = 4, focus = "hair" },
+	Extras = { height = 4, focus = "hair" },
+	Outfit = { height = 8.6, focus = "body" },
+}
 
 local WASH_LINES = { "That tickles! 😆", "Scrub scrub! 🧽", "Ooh, bubbles!", "Keep going! 💪", "I can see my face again!" }
 local LIKE_LINES = { "Ooh, cute! 💕", "I like it!", "So pretty! ✨", "Ooh la la!", "Wow!" }
@@ -67,11 +81,13 @@ function Makeover.new(gui: ScreenGui, ctx)
 		Name = "Makeover",
 		Size = UDim2.fromScale(1, 1),
 		BackgroundColor3 = C.white,
+		BackgroundTransparency = 1, -- the salon shows around the panels, with the client in it
 		Active = true, -- touches here are for styling, not for moving the character
 		Visible = false,
 		ZIndex = 10,
 		Parent = gui,
-	}, { Theme.gradient(C.softPink, C.lavender, 45) })
+	})
+	self.spin = 0
 
 	self:buildLeft()
 	self:buildRight()
@@ -80,6 +96,7 @@ function Makeover.new(gui: ScreenGui, ctx)
 	end)
 	self:connectInput()
 	self:startAnimations()
+	self:startStage()
 	return self
 end
 
@@ -116,6 +133,17 @@ function Makeover:buildLeft()
 		ZIndex = 100,
 		Parent = self.portraitHolder,
 	})
+	self.spinHint = new("TextLabel", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.fromScale(0.97, 0.03),
+		Size = UDim2.fromScale(0.4, 0.08),
+		BackgroundTransparency = 0.15,
+		BackgroundColor3 = C.white,
+		Text = "👆 Drag to spin",
+		Visible = false,
+		ZIndex = 110,
+		Parent = self.portraitHolder,
+	}, { Theme.round(), Theme.padding(4) })
 	self.nameTag = new("TextLabel", {
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.fromScale(0.03, 0.97),
@@ -508,6 +536,8 @@ function Makeover:assign(payload)
 	local visits = self.client.visits or 1
 	self.nameTag.Text = "💖 " .. self.client.name .. (if visits > 1 then "  ⭐" .. visits else "")
 	self:setDone(self.done, true)
+	self.spin = 0
+	self:buildAvatar()
 	self:renderPortrait()
 	self:setTab("Wash")
 	if visits > 1 then
@@ -550,7 +580,15 @@ function Makeover:setVisible(visible: boolean)
 	if not self.frame.Visible then
 		self.cursor.Visible = false
 		self.scrubbing = false
-	elseif not wasVisible then
+		self.spinning = false
+		if self.model then
+			self.model:Destroy()
+			self.model = nil
+		end
+	elseif not self.model then
+		self:buildAvatar()
+	end
+	if self.frame.Visible and not wasVisible then
 		self:refreshTheme()
 		self:setTab(self.tab)
 	end
@@ -645,6 +683,9 @@ function Makeover:renderPortrait()
 	self.hearts = full
 	self:refreshWishes()
 	self:refreshChecklist()
+	if self.model then
+		Avatar.dress(self.model, self.client, self.look, self:avatarOptions())
+	end
 end
 
 function Makeover:wishesMet(): number
@@ -748,6 +789,9 @@ function Makeover:setTab(tabId: string)
 		self:renderPortrait() -- switch between the face and the hand
 	end
 	self.cursor.Visible = false
+	if self.model and self.client then
+		Avatar.setFace(self.model, self.client, self.look, self:avatarOptions())
+	end
 	for id, b in self.tabButtons do
 		local active = id == tabId
 		b.BackgroundColor3 = if active then C.pink else C.lavender
@@ -947,7 +991,7 @@ function Makeover:renderGrid()
 				BackgroundTransparency = 0,
 				BackgroundColor3 = if it.pass then C.gold elseif it.level then C.green else C.purple,
 				TextColor3 = C.white,
-				Text = if it.pass == "VIP" then "👑 VIP" elseif it.pass then "👸 Pack" elseif it.level then "⭐ Lv " .. it.level else "🪙 " .. it.price,
+				Text = if it.pass == "VIP" then "👑 VIP" elseif it.pass then "👸 Pack" elseif it.level then "⭐ Lv " .. it.level else "💰 " .. it.price,
 				ZIndex = 17,
 				Parent = card,
 			}, { Theme.round(), Theme.padding(2) })
@@ -1179,9 +1223,163 @@ function Makeover:scrub(pos: Vector2, moved: number)
 	end
 end
 
+------------------------------------------------------------------------------
+-- The client in 3D: a real Roblox character standing by the styling chair. On the Hair, Makeup,
+-- Outfit and Extras tabs the left card becomes a window onto them; washing, brushing and nails
+-- keep their close-up drawings, because that's where you rub and paint.
+
+function Makeover:is3D(): boolean
+	return FRAMING[self.tab] ~= nil and not (self.tab == "Hair" and self:needsBrush())
+end
+
+function Makeover:avatarOptions()
+	return {
+		dirtHealth = self.dirtHealth,
+		mood = Scoring.mood(self:previewStars(), self:cleanAmount()),
+		brushed = self.brushed,
+		tangle = self.tangle,
+	}
+end
+
+function Makeover:buildAvatar()
+	if self.model then
+		self.model:Destroy()
+		self.model = nil
+	end
+	local client = self.client
+	if not client then
+		return
+	end
+	task.spawn(function()
+		local model = Avatar.new(client)
+		if not model then
+			return
+		end
+		if self.client ~= client or not self.frame.Visible or self.model then
+			model:Destroy()
+			return
+		end
+		self.model = model
+		Avatar.place(model, STAND, FACING)
+		self.standCFrame = (model:FindFirstChild("HumanoidRootPart") :: BasePart).CFrame
+		model.Parent = Workspace
+		Avatar.dress(model, client, self.look, self:avatarOptions())
+		Avatar.idle(model)
+	end)
+end
+
+-- Where the camera goes so the client fills the window on the left of the screen.
+function Makeover:cameraTarget(camera: Camera): CFrame?
+	local model = self.model
+	local head = model and model:FindFirstChild("Head")
+	local root = model and model:FindFirstChild("HumanoidRootPart")
+	if not (head and root and head:IsA("BasePart") and root:IsA("BasePart")) then
+		return nil
+	end
+	local framing = FRAMING[self.tab] or FRAMING.Hair
+	-- aimed a little above the head, so it sits below the speech bubble at the top of the window
+	local focus = if framing.focus == "face"
+		then head.Position + Vector3.new(0, 0.55, 0)
+		elseif framing.focus == "hair" then head.Position + Vector3.new(0, 0.55, 0)
+		else Vector3.new(root.Position.X, STAND.Y + 3.4, root.Position.Z)
+	local holder = self.portraitHolder
+	local center = holder.AbsolutePosition + holder.AbsoluteSize / 2
+	local viewport = camera.ViewportSize
+	if viewport.X <= 0 or holder.AbsoluteSize.Y <= 0 then
+		return nil
+	end
+	local tanV = math.tan(math.rad(camera.FieldOfView) / 2)
+	local tanH = tanV * viewport.X / viewport.Y
+	-- far enough back that the framing height fills most of the window
+	local distance = framing.height * viewport.Y / (2 * tanV * holder.AbsoluteSize.Y * 0.92)
+	local position = focus + FACING * distance
+	-- then turn the camera so the client sits in the window instead of the middle of the screen
+	local ndcX = center.X / viewport.X * 2 - 1
+	local ndcY = 1 - center.Y / viewport.Y * 2
+	return CFrame.lookAt(position, focus) * CFrame.Angles(0, math.atan(ndcX * tanH), 0) * CFrame.Angles(-math.atan(ndcY * tanV), 0, 0)
+end
+
+local function setLocalTransparency(character: Model?, amount: number)
+	if character then
+		for _, d in character:GetDescendants() do
+			if d:IsA("BasePart") or d:IsA("Decal") then
+				d.LocalTransparencyModifier = amount
+			end
+		end
+	end
+end
+
+function Makeover:startStage()
+	local controlling = false
+	RunService:BindToRenderStep("GlowUpStage", Enum.RenderPriority.Camera.Value + 1, function(dt)
+		local camera = Workspace.CurrentCamera
+		local active = self.frame.Visible and self.model ~= nil and self.model.Parent ~= nil and self.standCFrame ~= nil
+		local show3D = active and self:is3D()
+		-- the left card turns into a window onto the salon
+		self.left.BackgroundTransparency = if show3D then 1 else 0
+		self.portraitHolder.BackgroundTransparency = if show3D then 1 else 0
+		self.spinHint.Visible = show3D and not self.spinning
+		if self.portraitRoot then
+			self.portraitRoot.Visible = not show3D
+		end
+		self.bubbleLayer.Visible = not show3D and self.tab ~= "Nails"
+
+		local character = Players.LocalPlayer.Character
+		if not active then
+			if controlling then
+				controlling = false
+				camera.CameraType = Enum.CameraType.Custom
+				setLocalTransparency(character, 0)
+			end
+			return
+		end
+		-- The stylist's own avatar steps out of the shot while the makeover screen is up
+		setLocalTransparency(character, 1)
+
+		-- a gentle sway, plus however far the player spun them
+		local sway = if show3D and not self.spinning then math.sin(os.clock() * 0.7) * 0.2 else 0
+		local root = self.model and self.model:FindFirstChild("HumanoidRootPart")
+		if root and root:IsA("BasePart") then
+			root.CFrame = (self.standCFrame :: CFrame) * CFrame.Angles(0, self.spin + sway, 0)
+		end
+
+		local target = self:cameraTarget(camera)
+		if target then
+			camera.CameraType = Enum.CameraType.Scriptable
+			camera.CFrame = if controlling then camera.CFrame:Lerp(target, 1 - math.exp(-dt * 8)) else target
+			controlling = true
+		end
+	end)
+end
+
 function Makeover:connectInput()
 	local lastPos: Vector2? = nil
 	local activeTouch: InputObject? = nil -- only follow the first finger
+
+	-- Drag across the 3D client to spin them around
+	UserInputService.InputBegan:Connect(function(input)
+		local isPress = input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch
+		if isPress and self.frame.Visible and self:is3D() and self.model and not self.ctx.isModalOpen() then
+			local pos = screenPosition(input)
+			if self:isOverPortrait(pos) then
+				self.spinning = true
+				self.spinFrom = pos.X
+			end
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		local isMove = input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch
+		if self.spinning and isMove then
+			local pos = screenPosition(input)
+			self.spin += (pos.X - (self.spinFrom or pos.X)) * 0.012
+			self.spinFrom = pos.X
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			self.spinning = false
+		end
+	end)
 
 	UserInputService.InputBegan:Connect(function(input)
 		if not self:rubMode() or not self.frame.Visible or self.ctx.isModalOpen() then

@@ -68,7 +68,7 @@ local function processReceipt(receipt)
 	local name = productName(receipt.ProductId)
 	if name and Config.CoinPackAmounts[name] then
 		profile.coins += Config.CoinPackAmounts[name]
-		Remotes.Notify:FireClient(player, "+" .. Config.CoinPackAmounts[name] .. " coins! 🪙")
+		Remotes.Notify:FireClient(player, "+" .. Config.CoinPackAmounts[name] .. " coins! 💰")
 	else
 		warn("[GlowUp] Unknown product purchased:", receipt.ProductId)
 		return Enum.ProductPurchaseDecision.NotProcessedYet

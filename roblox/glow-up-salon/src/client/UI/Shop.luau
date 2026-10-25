@@ -21,7 +21,7 @@ Shop.__index = Shop
 local ROBUX_ITEMS = {
 	{ kind = "pass", key = "VIP", icon = "👑", title = "VIP Glam Kit", text = "Rainbow & galaxy hair, Royal Updo, Mermaid Waves, Golden Gala Gown, crown and more - plus a VIP badge on the runway!" },
 	{ kind = "pass", key = "Princess", icon = "👸", title = "Princess Pack", text = "Ice Ball Gown, Rose Gown, Princess Curls, Rose Gold hair, a tiara and pink gems!" },
-	{ kind = "pass", key = "DoubleCoins", icon = "🪙", title = "2x Coins", text = "Earn double coins after every fashion show, forever." },
+	{ kind = "pass", key = "DoubleCoins", icon = "💰", title = "2x Coins", text = "Earn double coins after every fashion show, forever." },
 	{ kind = "pass", key = "RunwayStar", icon = "🌟", title = "Runway Star", text = "Confetti cannons and sparkles every time your client walks the runway!" },
 	{ kind = "pass", key = "RainbowBubbles", icon = "🫧", title = "Rainbow Bubbles", text = "Washing makes rainbow-colored bubbles. Just for fun!" },
 	{ kind = "product", key = "CoinsSmall", icon = "💰", title = "500 Coins", text = "Unlock new looks a little faster." },
@@ -87,7 +87,7 @@ function Shop.new(gui: ScreenGui, ctx)
 		Parent = panel,
 	}, { new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8) }) })
 	self.tabButtons = {}
-	for i, t in { { "Coins", "🪙 Unlock" }, { "Looks", "📖 My Looks" }, { "Robux", "💎 Extras" } } do
+	for i, t in { { "Coins", "💰 Unlock" }, { "Looks", "📖 My Looks" }, { "Robux", "💎 Extras" } } do
 		local b = Theme.button({ Text = t[2], LayoutOrder = i, Size = UDim2.new(1 / 3, -6, 1, 0), ZIndex = 63, Parent = tabs })
 		b.Activated:Connect(function()
 			self.tab = t[1]
@@ -233,7 +233,7 @@ function Shop:askUnlock(it: Catalog.Item)
 			self.ctx.toast("You need " .. (it.price - coins) .. " more coins for " .. it.name .. ". Win shows to earn more!", C.purple)
 			return
 		end
-		self.confirmText.Text = "Unlock " .. it.name .. " for 🪙 " .. it.price .. "?"
+		self.confirmText.Text = "Unlock " .. it.name .. " for 💰 " .. it.price .. "?"
 		self.confirmYes.Text = "Unlock!"
 		self.onConfirm = function()
 			self:buy(it)
@@ -348,7 +348,7 @@ function Shop:renderCoinItems()
 				AnchorPoint = Vector2.new(0.5, 1),
 				Position = UDim2.new(0.5, 0, 1, -6),
 				Size = UDim2.new(0.9, 0, 0.2, 0),
-				Text = if owned then "Owned ✓" else "🪙 " .. it.price,
+				Text = if owned then "Owned ✓" else "💰 " .. it.price,
 				Color = if owned then C.green else C.hotPink,
 				ZIndex = 64,
 				MaxText = 18,

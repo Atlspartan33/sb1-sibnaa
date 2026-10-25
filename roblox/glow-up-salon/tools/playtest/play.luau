@@ -11,7 +11,7 @@ print("== Lobby + daily gift")
 H.check(H.findText(tori, "Day 1 Gift") ~= nil, "daily gift calendar shown")
 H.shot(tori, "01_lobby")
 H.shot(tori, "01_lobby_phone", 844, 390)
-local coinsAfterGift = H.findText(tori, "🪙 ")
+local coinsAfterGift = H.findText(tori, "💰 ")
 print("  coins after gift:", coinsAfterGift and coinsAfterGift.Text)
 
 -- turn on a few sounds for Tori to test the sound code
@@ -185,7 +185,7 @@ local r1 = receipt(tori, 222, "p1")
 local r1b = receipt(tori, 222, "p1")
 E.runFor(0.5)
 H.check(tostring(r1) == "Enum.ProductPurchaseDecision.PurchaseGranted" and tostring(r1b) == "Enum.ProductPurchaseDecision.PurchaseGranted", "coin pack granted, duplicate receipt safe")
-print("  coins:", H.findText(tori, "🪙 ").Text)
+print("  coins:", H.findText(tori, "💰 ").Text)
 H.click(H.button(tori, "Shop"), "Shop")
 H.click(H.button(tori, "My Looks"), "Look Book tab")
 E.runFor(0.3)
@@ -197,13 +197,13 @@ E.runFor(30)
 print("== Round 2: super soap + leave/rejoin")
 H.check(H.shown(H.ui(tori).Makeover), "round 2 makeover visible")
 H.check(H.findText(tori, "Rub the dirt off") ~= nil, "round 2 starts with a dirty face")
-local coinsBefore = H.findText(tori, "🪙 ").Text
+local coinsBefore = H.findText(tori, "💰 ").Text
 local toriId = tori.UserId
 W.removePlayer(tori)
 E.runFor(2)
 local tori2, ct2 = W.addPlayer("Tori", toriId)
 E.runFor(4)
-local coinsAfter = H.findText(tori2, "🪙 ").Text
+local coinsAfter = H.findText(tori2, "💰 ").Text
 print("  coins before leaving:", coinsBefore, " after rejoining:", coinsAfter)
 H.check(coinsBefore == coinsAfter, "rejoining loads saved coins")
 
