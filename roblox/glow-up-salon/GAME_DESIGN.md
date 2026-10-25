@@ -1,4 +1,4 @@
-# 5 Minute Glow Up Salon: Game Design
+# Glow Up Runway: Game Design
 
 **Pitch:** Every round has a fun theme: Superhero, Pirate Adventure, Under the Sea, Dinosaur Party, Outer Space, Princess Ball, Fairy Garden, Rock Star, Animal Friends and more. You get **5 minutes** to dress up your own Roblox character to fit it, with hair, makeup, an outfit, costume pieces, a pet and a runway pose. Then everyone walks the runway, everyone votes, and the best look wins.
 

@@ -220,7 +220,7 @@ function Showcase:buildScreen()
 		Position = UDim2.fromScale(0.5, 0.05),
 		Size = UDim2.fromScale(0.46, 0.2),
 		TextColor3 = C.white,
-		Text = "✨ 5 Minute Glow Up ✨",
+		Text = "✨ Glow Up Runway ✨",
 		Parent = bg,
 	})
 	self.screenSub = new("TextLabel", {

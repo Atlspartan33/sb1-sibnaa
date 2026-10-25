@@ -114,7 +114,7 @@ local function applyState(newState)
 		showcase:setCamera(nil)
 	end
 	if state.phase == "Intermission" and oldPhase ~= "Intermission" then
-		showcase:setScreen("✨ 5 Minute Glow Up ✨", "Next show starting soon!", nil, nil)
+		showcase:setScreen("✨ Glow Up Runway ✨", "Next show starting soon!", nil, nil)
 		showcase:clearScreenPortrait()
 	end
 	if state.phase == "Makeover" and oldPhase ~= "Makeover" then

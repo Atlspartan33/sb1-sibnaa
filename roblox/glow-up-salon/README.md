@@ -1,4 +1,4 @@
-# ✨ 5 Minute Glow Up Salon (Roblox)
+# ✨ Glow Up Runway (Roblox)
 
 Tori's dress-up game. Every round has a theme (Superhero, Pirate, Under the Sea, Princess Ball...). You get 5 minutes to walk around the **Dressing Hall** in **your own Roblox avatar** (your own skin and body) and style yourself at six stations: hair, makeup, an outfit, costume pieces from the avatar shop (wings, capes, masks, tails, hats, shoulder buddies), a pet to walk with you, and a runway pose and effect. Then everyone struts the runway in a model's catwalk walk, votes with hearts, and the judges pick the winners.
 
@@ -31,7 +31,7 @@ The salon and runway build themselves when the game starts. In Studio you automa
 
 On Roblox, nobody "downloads" a game. Once it's **public**, anyone can find it and play on phone, tablet, computer or Xbox.
 
-1. In Studio: **File → Publish to Roblox**. Give it a name, description and icon.
+1. In Studio: **File → Publish to Roblox**. Name it **Glow Up Runway ✨** (put the current event in front during holidays, like "[🎃] Glow Up Runway ✨"), and give it a description and icon.
    - **Use a parent's account** (or a Roblox Group the parent owns). Robux earnings and payouts go to the account owner. Roblox may ask that account to verify its email, phone or ID before the game can be public or sell things.
 2. **Game Settings → Security → turn on "Enable Studio Access to API Services".** This lets coins and unlocks save.
 3. At **create.roblox.com → your game**, fill out the **Maturity & Compliance questionnaire**. Roblox requires it before the game can be public.

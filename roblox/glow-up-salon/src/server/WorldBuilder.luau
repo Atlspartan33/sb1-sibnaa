@@ -735,7 +735,7 @@ function WorldBuilder.build(): World
 		part(salon, "ChairBase", Vector3.new(1, 1.5, 1), CFrame.new(x, 0.75, 59), rgb(200, 200, 210), Enum.Material.Metal)
 	end
 	local salonSign = part(salon, "SalonSign", Vector3.new(36, 6, 1), CFrame.new(0, 14.6, 67), rgb(190, 20, 105))
-	sign(salonSign, Enum.NormalId.Front, "✨ 5 Minute Glow Up Salon ✨", rgb(255, 255, 255))
+	sign(salonSign, Enum.NormalId.Front, "✨ Glow Up Runway ✨", rgb(255, 255, 255))
 	part(salon, "SalonSignFrame", Vector3.new(37, 7, 0.6), CFrame.new(0, 14.6, 67.6), GOLD, Enum.Material.Neon)
 	buildStations(salon)
 	buildDanceFloor(salon)
