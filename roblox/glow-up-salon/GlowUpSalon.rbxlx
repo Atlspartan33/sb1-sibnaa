@@ -4617,6 +4617,7 @@ local Avatar = require(ReplicatedStorage.Shared.Avatar)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local DataService = require(script.Parent.DataService)
+local R15Guard = require(script.Parent.R15Guard)
 local RoundService = require(script.Parent.RoundService)
 local ShopService = require(script.Parent.ShopService)
 local WorldBuilder = require(script.Parent.WorldBuilder)
@@ -4624,6 +4625,7 @@ local WorldBuilder = require(script.Parent.WorldBuilder)
 local world = WorldBuilder.build()
 task.spawn(Avatar.preload) -- the clients' bodies and hair, for the makeover, runway and podium
 
+R15Guard.init() -- everyone plays as R15, so real clothes, the catwalk and the poses work
 DataService.init()
 ShopService.init()
 RoundService.init(world)
@@ -4637,6 +4639,59 @@ end
         </Properties>
       </Item>
       <Item class="ModuleScript" referent="19">
+        <Properties>
+          <string name="Name">R15Guard</string>
+          <string name="Source"><![CDATA[-- Real clothes, the catwalk walk and the poses only work on R15 (jointed) avatars. If the game's
+-- Avatar Settings ever let someone in with an old blocky R6 avatar, rebuild them as R15 from their
+-- own look (their own skin, body, hair and clothes) the moment they spawn.
+
+local Players = game:GetService("Players")
+
+local R15Guard = {}
+
+local function upgrade(player: Player, character: Model)
+	local humanoid = character:FindFirstChildOfClass("Humanoid") or character:WaitForChild("Humanoid", 5)
+	if not humanoid or not humanoid:IsA("Humanoid") or humanoid.RigType ~= Enum.HumanoidRigType.R6 then
+		return
+	end
+	local ok, err = pcall(function()
+		local description = humanoid:GetAppliedDescription()
+		local root = character:FindFirstChild("HumanoidRootPart")
+		local where = if root and root:IsA("BasePart") then root.CFrame else nil
+		local model = Players:CreateHumanoidModelFromDescription(description, Enum.HumanoidRigType.R15)
+		model.Name = player.Name
+		if where then
+			model:PivotTo(where)
+		end
+		player.Character = model
+		model.Parent = workspace
+		character:Destroy()
+	end)
+	if not ok then
+		warn("[GlowUp] Couldn't rebuild an R6 avatar as R15:", err)
+	end
+end
+
+function R15Guard.init()
+	local function watch(player: Player)
+		player.CharacterAdded:Connect(function(character)
+			upgrade(player, character)
+		end)
+		if player.Character then
+			task.spawn(upgrade, player, player.Character)
+		end
+	end
+	Players.PlayerAdded:Connect(watch)
+	for _, player in Players:GetPlayers() do
+		watch(player)
+	end
+end
+
+return R15Guard
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="20">
         <Properties>
           <string name="Name">RoundService</string>
           <string name="Source"><![CDATA[-- Runs the game loop that everyone in the server plays together:
@@ -5780,7 +5835,7 @@ return RoundService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="20">
+      <Item class="ModuleScript" referent="21">
         <Properties>
           <string name="Name">ShopService</string>
           <string name="Source"><![CDATA[-- Unlocking items with coins, plus Robux Game Passes and Developer Products.
@@ -5898,7 +5953,7 @@ return ShopService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="21">
+      <Item class="ModuleScript" referent="22">
         <Properties>
           <string name="Name">StarHunt</string>
           <string name="Source"><![CDATA[-- Something to chase between rounds: glowing stars pop up around the rooftop during the lobby.
@@ -6005,7 +6060,7 @@ return StarHunt
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="22">
+      <Item class="ModuleScript" referent="23">
         <Properties>
           <string name="Name">WorldBuilder</string>
           <string name="Source"><![CDATA[-- Builds the salon, runway, big screen, audience seats and winners' podium when the game starts.
@@ -6890,19 +6945,19 @@ return WorldBuilder
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="23">
+  <Item class="StarterPlayer" referent="24">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="24">
+    <Item class="StarterPlayerScripts" referent="25">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="Folder" referent="25">
+      <Item class="Folder" referent="26">
         <Properties>
           <string name="Name">Client</string>
         </Properties>
-        <Item class="LocalScript" referent="26">
+        <Item class="LocalScript" referent="27">
           <Properties>
             <string name="Name">Main</string>
             <string name="Source"><![CDATA[-- Starts the game on each player's screen and connects it to the server.
@@ -7383,11 +7438,11 @@ end)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="Folder" referent="27">
+        <Item class="Folder" referent="28">
           <Properties>
             <string name="Name">UI</string>
           </Properties>
-          <Item class="ModuleScript" referent="28">
+          <Item class="ModuleScript" referent="29">
             <Properties>
               <string name="Name">Effects</string>
               <string name="Source"><![CDATA[-- Fun screen effects: confetti, floating emoji, camera flashes, sparkles and big pop-up cards.
@@ -7561,7 +7616,7 @@ return Effects
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="29">
+          <Item class="ModuleScript" referent="30">
             <Properties>
               <string name="Name">HUD</string>
               <string name="Source"><![CDATA[-- The always-on parts of the screen: round timer, coins, shop button, pop-up messages,
@@ -7900,7 +7955,7 @@ return HUD
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="30">
+          <Item class="ModuleScript" referent="31">
             <Properties>
               <string name="Name">Makeover</string>
               <string name="Source"><![CDATA[-- The Dressing Hall: walk your own avatar from station to station and style yourself for the
@@ -9814,7 +9869,7 @@ return Makeover
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="31">
+          <Item class="ModuleScript" referent="32">
             <Properties>
               <string name="Name">Results</string>
               <string name="Source"><![CDATA[-- Shows who won the fashion show, what the judges said, and the coins you earned.
@@ -10008,7 +10063,7 @@ return Results
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="32">
+          <Item class="ModuleScript" referent="33">
             <Properties>
               <string name="Name">Shop</string>
               <string name="Source"><![CDATA[-- The shop: unlock looks with coins you earn, or get Robux extras.
@@ -10526,7 +10581,7 @@ return Shop
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="33">
+          <Item class="ModuleScript" referent="34">
             <Properties>
               <string name="Name">Showcase</string>
               <string name="Source"><![CDATA[-- The fashion show: points the camera at the runway, puts the look on the big screen,
@@ -11045,7 +11100,7 @@ return Showcase
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="34">
+          <Item class="ModuleScript" referent="35">
             <Properties>
               <string name="Name">Sounds</string>
               <string name="Source"><![CDATA[-- Plays the sounds and music listed in Config.Sounds (empty ones are skipped).
@@ -11112,7 +11167,7 @@ return Sounds
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="35">
+          <Item class="ModuleScript" referent="36">
             <Properties>
               <string name="Name">Theme</string>
               <string name="Source"><![CDATA[-- Colors, fonts and little helpers for building the game's screens in code.
@@ -11276,7 +11331,7 @@ return Theme
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="36">
+  <Item class="Workspace" referent="37">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>
