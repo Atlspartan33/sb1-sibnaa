@@ -52,6 +52,7 @@ local decorated = false
 local WALK_ANIMATION = "rbxassetid://507777826" -- Roblox's default R15 walk
 local REACTIONS = { ["😍"] = true, ["👏"] = true, ["🔥"] = true, ["✨"] = true, ["💖"] = true }
 local lastReaction: { [Player]: number } = {}
+local lastCheer: { [Player]: number } = {}
 
 local function now(): number
 	return Workspace:GetServerTimeNow()
@@ -520,6 +521,11 @@ local function onReact(player: Player, emoji: unknown)
 	end
 	lastReaction[player] = t
 	Remotes.Reaction:FireAllClients(emoji)
+	-- the cheering player's avatar cheers in the audience too (at most every few seconds)
+	if player.Character and (not lastCheer[player] or t - lastCheer[player] > 2.5) then
+		lastCheer[player] = t
+		Avatar.pose(player.Character, "pose_cheer")
+	end
 end
 
 ------------------------------------------------------------------------------
@@ -866,6 +872,7 @@ function RoundService.init(builtWorld: WorldBuilder.World)
 		end
 		entries[player.UserId] = nil
 		lastReaction[player] = nil
+		lastCheer[player] = nil
 	end)
 
 	task.spawn(function()

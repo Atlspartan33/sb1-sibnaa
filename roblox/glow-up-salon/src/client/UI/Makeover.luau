@@ -1017,7 +1017,8 @@ function Makeover:renderGrid()
 			ZIndex = 14,
 			Parent = card,
 		})
-		if category.preview == "portrait" then
+		-- avatar-shop items (hair, costume pieces, hats) show a picture of the real thing
+		if category.preview == "portrait" and not it.asset then
 			local previewLook = table.clone(self.look)
 			previewLook[key] = it.id
 			local body = key == "outfit" or key == "outfitPattern"

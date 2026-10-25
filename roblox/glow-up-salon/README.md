@@ -5,7 +5,7 @@ Tori's dress-up game. Every round has a theme (Superhero, Pirate, Under the Sea,
 - **How the game works and how it makes money:** [GAME_DESIGN.md](GAME_DESIGN.md)
 - **What it looks like:** [docs/face-preview.jpg](docs/face-preview.jpg) and the screenshots in [docs/screens](docs/screens)
 
-Everything is built with code: the salon, runway, screens, faces, pets and effects. Hair and costume pieces are real avatar-shop items, loaded by ID when the game starts (`Avatar.HAIR` and the `asset = ...` items in `Catalog`). You don't need to upload any images or models.
+Everything is built with code: the salon, runway, screens, faces, pets and effects. Hair and costume pieces are real avatar-shop items, loaded by ID when the game starts (the `asset = ...` items in `Catalog`; hairstyles lose their texture so any hair color works). You don't need to upload any images or models.
 
 ---
 

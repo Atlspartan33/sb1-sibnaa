@@ -14,22 +14,6 @@ local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
 
 local Avatar = {}
 
--- Avatar-shop hair for each hairstyle. The textures are removed so any hair color can be used.
-Avatar.HAIR = {
-	hair_messy = 12342908716, -- Messy Bedhead Hairstyle
-	hair_long = 15946668750, -- Long Straight Hair
-	hair_bob = 12794888069, -- Bob hair
-	hair_pixie = 7323152045, -- Pixie Cut
-	hair_puff = 6203040671, -- Cute Afro Puff
-	hair_curls = 117879284859863, -- Big Fluffy Afro
-	hair_pigtails = 103016744198849, -- Star Curly Puffs Pigtails
-	hair_buns = 15951713439, -- Cute Messy Space Buns
-	hair_braid = 115091588498903, -- Sleek Side Braid
-	hair_updo = 78492501747860, -- Neat Gala Bun
-	hair_mermaid = 13353394855, -- Long and Wavy Loose Hair
-	hair_princess = 18376297830, -- Long Wavy Hair w/ Bangs
-}
-
 -- How far each hairstyle sticks up above the head (studs), so hats and bows sit on the hair.
 local HAIR_LIFT = {
 	hair_curls = 0.9,
@@ -105,31 +89,10 @@ function Avatar.preload()
 		warn("[GlowUp] Could not build the client body:", rig)
 	end
 
-	-- Hairstyles load side by side; each one that fails is simply skipped.
+	-- Avatar-shop items load side by side; each one that fails is simply skipped.
 	local pending = 0
-	for style, id in Avatar.HAIR do
-		pending += 1
-		task.spawn(function()
-			local loaded, model = pcall(InsertService.LoadAsset, InsertService, id)
-			local acc = loaded and model and model:FindFirstChildWhichIsA("Accessory", true)
-			if acc then
-				local handle = acc:FindFirstChild("Handle")
-				if handle and handle:IsA("BasePart") then
-					stripTexture(handle)
-					handle.CanCollide = false
-					handle.CanQuery = false
-					handle.CanTouch = false
-					handle.Massless = true
-					acc.Name = style
-					acc.Parent = hairFolder
-				end
-			else
-				warn("[GlowUp] Could not load hair", style, id, model)
-			end
-			pending -= 1
-		end)
-	end
-	-- Costume pieces (wings, capes, masks, tails, buddies, hats) keep their own colors
+	-- Hairstyles lose their textures so any hair color can be used; costume pieces (wings, capes,
+	-- masks, tails, buddies, hats) keep their own colors
 	local costumeFolder = Instance.new("Folder")
 	costumeFolder.Name = "Costume"
 	costumeFolder.Parent = folder
@@ -152,9 +115,14 @@ function Avatar.preload()
 							end
 						end
 						acc.Name = it.id
-						acc.Parent = costumeFolder
+						if it.category == "hairStyle" then
+							stripTexture(handle)
+							acc.Parent = hairFolder
+						else
+							acc.Parent = costumeFolder
+						end
 					else
-						warn("[GlowUp] Could not load costume", it.id, assetId, model)
+						warn("[GlowUp] Could not load", it.id, assetId, model)
 					end
 					pending -= 1
 				end)
@@ -574,7 +542,8 @@ local function addAccessory(glam: Folder, head: BasePart, look)
 	local c = it.color or WHITE
 	local gradient = it.gradient
 	local hs = head.Size
-	local lift = HAIR_LIFT[look.hairStyle or ""] or 0.2
+	local styleItem = Catalog.byId[look.hairStyle or ""]
+	local lift = HAIR_LIFT[look.hairStyle or ""] or (styleItem and styleItem.draw and HAIR_LIFT[styleItem.draw]) or 0.2
 	local topY = hs.Y * 0.5 + lift
 	local cf = head.CFrame
 	local function p(name, size, offset: CFrame, color, shape, material)
