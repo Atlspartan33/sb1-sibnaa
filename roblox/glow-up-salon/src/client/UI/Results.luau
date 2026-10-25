@@ -90,8 +90,10 @@ function Results:show(results)
 	for _, row in results.rows do
 		local isMe = row.userId == Players.LocalPlayer.UserId
 		if isMe then
-			local comments = table.concat(row.comments, "  ", 1, math.min(#row.comments, 3))
-			self.mine.Text = string.format("%s: %s\n%s  +%d 💰\n%s", row.client.name, Theme.stars(row.stars), row.award or "", row.coins, comments)
+			-- the two most useful judge tips, short; stars only when they're good news
+			local comments = table.concat(row.comments, "  ", 1, math.min(#row.comments, 2))
+			local stars = if row.stars >= 3 then "  " .. Theme.stars(row.stars) else ""
+			self.mine.Text = string.format("%s:%s\n%s  +%d 💰\n%s", row.client.name, stars, row.award or "", row.coins, comments)
 			LookRenderer.render(self.minePortrait, row.client, row.look, { clean = 1, mood = if row.stars >= 4 then "grin" else "smile" })
 			self:celebrate(row, #results.rows)
 		end
@@ -132,7 +134,7 @@ function Results:show(results)
 			Size = UDim2.new(1, -136, 0, 30),
 			-- Everyone sees the award; stars only show when they're great (or it's your own look)
 			Text = (row.award or "") .. (if row.stars >= 4 or isMe then "  " .. Theme.stars(row.stars) else ""),
-			TextColor3 = C.gold,
+			TextColor3 = C.goldText,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			ZIndex = 43,
 			Parent = card,
@@ -155,9 +157,10 @@ function Results:celebrate(row, players: number)
 	elseif row.stars >= 3 then
 		title = "✨ Great job!"
 	else
-		title = "💪 Nice try!"
+		title = "💖 You walked the runway!"
 	end
-	Effects.splash(self.gui, title, Theme.stars(row.stars) .. "   +" .. row.coins .. " 💰", C.hotPink, 3)
+	local stars = if row.stars >= 3 then Theme.stars(row.stars) .. "   " else ""
+	Effects.splash(self.gui, title, stars .. (row.award or "") .. "   +" .. row.coins .. " 💰", C.hotPink, 3)
 	if row.stars >= 3.5 or (players >= 2 and row.rank == 1) then
 		Effects.confetti(self.gui, 60)
 	end

@@ -46,7 +46,7 @@ local entries: { [number]: Entry } = {} -- by UserId
 local showcase = nil -- payload of the look currently on the runway
 local results = nil -- payload of the last results
 local spawnedModels: { Model } = {}
-local resultsFor, sendResults -- defined below
+local resultsFor, sendResults, strikePose -- defined below
 local decorated = false
 
 local WALK_ANIMATION = "rbxassetid://507777826" -- Roblox's default R15 walk
@@ -92,7 +92,9 @@ local function dressCharacter(entry: Entry)
 	if not character or not character.Parent then
 		return
 	end
-	Avatar.dress(character, entry.client, entry.look, { clean = 1, mood = "smile", brushed = true })
+	-- always a happy face: a smile, and a big grin once the look is really good
+	local stars = Scoring.judge(entry, theme())
+	Avatar.dress(character, entry.client, entry.look, { clean = 1, mood = if stars >= 4 then "grin" else "smile", brushed = true })
 	local petId = entry.look.pet
 	if not entry.pet or entry.pet:GetAttribute("PetId") ~= petId then
 		if entry.pet then
@@ -360,6 +362,13 @@ local function clearModels()
 	table.clear(spawnedModels)
 end
 
+-- Asks a player's screen to play a pose on their own character (it replicates to everyone).
+function strikePose(character: Model, poseId: string?)
+	if poseId and not Catalog.isNone(poseId) then
+		character:SetAttribute("Pose", poseId .. "|" .. tostring(os.clock()))
+	end
+end
+
 -- Everyone not on the runway sits in the audience seats along it.
 local function seatAudience(except: Player?)
 	local seats = {}
@@ -438,20 +447,17 @@ local function walkRunway(entry: Entry)
 		end)
 	end
 
+	-- A player's own device moves their character, so the walk and the pose are asked for with
+	-- attributes, and their screen does them (see Main.client)
 	local walkTime = Config.SHOWCASE_SECONDS_PER_LOOK * 0.6
-	local speed = humanoid.WalkSpeed or 16
-	humanoid.WalkSpeed = (world.runwayEnd - world.runwayStart).Magnitude / walkTime
-	humanoid:MoveTo(world.runwayEnd)
+	character:SetAttribute("RunwaySpeed", (world.runwayEnd - world.runwayStart).Magnitude / walkTime)
+	character:SetAttribute("WalkTarget", world.runwayEnd)
 	local started = os.clock()
 	while os.clock() - started < walkTime + 1.5 and (Vector3.new(root.Position.X, 0, root.Position.Z) - Vector3.new(world.runwayEnd.X, 0, world.runwayEnd.Z)).Magnitude > 1.5 do
 		task.wait(0.1)
 	end
-	humanoid.WalkSpeed = speed
-	if root.Parent then
-		-- face the crowd and strike the pose
-		root.CFrame = CFrame.lookAt(root.Position, root.Position + Vector3.new(0, 0, 1))
-		Avatar.pose(character, entry.look.pose)
-	end
+	character:SetAttribute("WalkTarget", nil)
+	strikePose(character, entry.look.pose)
 	task.delay(Config.SHOWCASE_SECONDS_PER_LOOK - walkTime - 0.5, function()
 		if character.Parent then
 			character:SetAttribute("Walking", nil)
@@ -524,7 +530,7 @@ local function onReact(player: Player, emoji: unknown)
 	-- the cheering player's avatar cheers in the audience too (at most every few seconds)
 	if player.Character and (not lastCheer[player] or t - lastCheer[player] > 2.5) then
 		lastCheer[player] = t
-		Avatar.pose(player.Character, "pose_cheer")
+		strikePose(player.Character, "pose_cheer")
 	end
 end
 
@@ -812,7 +818,7 @@ local function runRound()
 				local pos = spot + Vector3.new(0, humanoid.HipHeight + root.Size.Y / 2 + 0.1, 0)
 				character:PivotTo(CFrame.lookAt(pos, pos + Vector3.new(0, 0, 1)))
 				if row.rank == 1 then
-					Avatar.pose(character, "pose_cheer")
+					strikePose(character, "pose_cheer")
 				end
 			elseif entry and row.rank <= 3 then
 				local model = buildClientModel(entry)

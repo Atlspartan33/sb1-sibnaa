@@ -43,22 +43,6 @@ local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
 
 local Avatar = {}
 
--- Avatar-shop hair for each hairstyle. The textures are removed so any hair color can be used.
-Avatar.HAIR = {
-	hair_messy = 12342908716, -- Messy Bedhead Hairstyle
-	hair_long = 15946668750, -- Long Straight Hair
-	hair_bob = 12794888069, -- Bob hair
-	hair_pixie = 7323152045, -- Pixie Cut
-	hair_puff = 6203040671, -- Cute Afro Puff
-	hair_curls = 117879284859863, -- Big Fluffy Afro
-	hair_pigtails = 103016744198849, -- Star Curly Puffs Pigtails
-	hair_buns = 15951713439, -- Cute Messy Space Buns
-	hair_braid = 115091588498903, -- Sleek Side Braid
-	hair_updo = 78492501747860, -- Neat Gala Bun
-	hair_mermaid = 13353394855, -- Long and Wavy Loose Hair
-	hair_princess = 18376297830, -- Long Wavy Hair w/ Bangs
-}
-
 -- How far each hairstyle sticks up above the head (studs), so hats and bows sit on the hair.
 local HAIR_LIFT = {
 	hair_curls = 0.9,
@@ -134,31 +118,10 @@ function Avatar.preload()
 		warn("[GlowUp] Could not build the client body:", rig)
 	end
 
-	-- Hairstyles load side by side; each one that fails is simply skipped.
+	-- Avatar-shop items load side by side; each one that fails is simply skipped.
 	local pending = 0
-	for style, id in Avatar.HAIR do
-		pending += 1
-		task.spawn(function()
-			local loaded, model = pcall(InsertService.LoadAsset, InsertService, id)
-			local acc = loaded and model and model:FindFirstChildWhichIsA("Accessory", true)
-			if acc then
-				local handle = acc:FindFirstChild("Handle")
-				if handle and handle:IsA("BasePart") then
-					stripTexture(handle)
-					handle.CanCollide = false
-					handle.CanQuery = false
-					handle.CanTouch = false
-					handle.Massless = true
-					acc.Name = style
-					acc.Parent = hairFolder
-				end
-			else
-				warn("[GlowUp] Could not load hair", style, id, model)
-			end
-			pending -= 1
-		end)
-	end
-	-- Costume pieces (wings, capes, masks, tails, buddies, hats) keep their own colors
+	-- Hairstyles lose their textures so any hair color can be used; costume pieces (wings, capes,
+	-- masks, tails, buddies, hats) keep their own colors
 	local costumeFolder = Instance.new("Folder")
 	costumeFolder.Name = "Costume"
 	costumeFolder.Parent = folder
@@ -181,9 +144,14 @@ function Avatar.preload()
 							end
 						end
 						acc.Name = it.id
-						acc.Parent = costumeFolder
+						if it.category == "hairStyle" then
+							stripTexture(handle)
+							acc.Parent = hairFolder
+						else
+							acc.Parent = costumeFolder
+						end
 					else
-						warn("[GlowUp] Could not load costume", it.id, assetId, model)
+						warn("[GlowUp] Could not load", it.id, assetId, model)
 					end
 					pending -= 1
 				end)
@@ -238,6 +206,26 @@ local function attach(p: BasePart, to: BasePart)
 	weld.Parent = p
 end
 
+-- The makeover face goes on the front of the head as a SurfaceGui, scaled so its eyes and mouth
+-- land where a face would be.
+local function addFaceGui(head: BasePart)
+	local gui = Instance.new("SurfaceGui")
+	gui.Name = "GlamFace"
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 260
+	gui.LightInfluence = 0.5
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	local holder = Instance.new("Frame")
+	holder.Name = "Holder"
+	holder.AnchorPoint = Vector2.new(0.5, 0.5)
+	holder.Position = UDim2.fromScale(0.5, 0.6)
+	holder.Size = UDim2.fromScale(1.8, 1.8)
+	holder.BackgroundTransparency = 1
+	holder.Parent = gui
+	gui.Parent = head
+end
+
 -- A fresh client body. Returns nil if the body couldn't be loaded.
 function Avatar.new(client): Model?
 	local assets = Avatar.assets()
@@ -255,25 +243,55 @@ function Avatar.new(client): Model?
 	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
 	root.Anchored = true
 	model.PrimaryPart = root
-
-	local head = model:FindFirstChild("Head") :: BasePart
-	local gui = Instance.new("SurfaceGui")
-	gui.Name = "GlamFace"
-	gui.Face = Enum.NormalId.Front
-	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.PixelsPerStud = 260
-	gui.LightInfluence = 0.5
-	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	-- The makeover drawing is scaled so its eyes and mouth land on the front of the head.
-	local holder = Instance.new("Frame")
-	holder.Name = "Holder"
-	holder.AnchorPoint = Vector2.new(0.5, 0.5)
-	holder.Position = UDim2.fromScale(0.5, 0.6)
-	holder.Size = UDim2.fromScale(1.8, 1.8)
-	holder.BackgroundTransparency = 1
-	holder.Parent = gui
-	gui.Parent = head
+	addFaceGui(model:FindFirstChild("Head") :: BasePart)
 	return model
+end
+
+-- Gets a player's own character ready for a round. They keep their own body, skin and
+-- animations; the round swaps in a classic head (so makeup lines up with the drawn face) and
+-- takes off their own hair, clothes and accessories (the round adds new ones). Their normal look
+-- comes back when they respawn after the show. Server only. Returns their skin color.
+function Avatar.prepareCharacter(character: Model): Color3?
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return nil
+	end
+	local ok, desc = pcall(function()
+		return humanoid:GetAppliedDescription()
+	end)
+	if not ok or not desc then
+		return nil
+	end
+	local base = desc:Clone()
+	base.Head = 0
+	base.Face = 0
+	base.Shirt, base.Pants, base.GraphicTShirt = 0, 0, 0
+	base.HatAccessory, base.HairAccessory, base.FaceAccessory, base.NeckAccessory = "", "", "", ""
+	base.ShouldersAccessory, base.FrontAccessory, base.BackAccessory, base.WaistAccessory = "", "", "", ""
+	pcall(function()
+		base:SetAccessories({}, true) -- layered clothing too
+	end)
+	local applied = pcall(function()
+		humanoid:ApplyDescription(base)
+	end)
+	if not applied then
+		-- still take off their own hair and hats so the round's look can go on
+		for _, d in character:GetChildren() do
+			if d:IsA("Accessory") or d:IsA("Shirt") or d:IsA("Pants") or d:IsA("ShirtGraphic") then
+				d:Destroy()
+			end
+		end
+	end
+	local head = character:FindFirstChild("Head")
+	if head and head:IsA("BasePart") and not head:FindFirstChild("GlamFace") then
+		for _, d in head:GetChildren() do
+			if d:IsA("Decal") then
+				d:Destroy()
+			end
+		end
+		addFaceGui(head)
+	end
+	return desc.HeadColor
 end
 
 -- Plays the default idle on a client standing somewhere (makeover screen, podium).
@@ -553,7 +571,8 @@ local function addAccessory(glam: Folder, head: BasePart, look)
 	local c = it.color or WHITE
 	local gradient = it.gradient
 	local hs = head.Size
-	local lift = HAIR_LIFT[look.hairStyle or ""] or 0.2
+	local styleItem = Catalog.byId[look.hairStyle or ""]
+	local lift = HAIR_LIFT[look.hairStyle or ""] or (styleItem and styleItem.draw and HAIR_LIFT[styleItem.draw]) or 0.2
 	local topY = hs.Y * 0.5 + lift
 	local cf = head.CFrame
 	local function p(name, size, offset: CFrame, color, shape, material)
@@ -838,7 +857,7 @@ return Avatar
       <Item class="ModuleScript" referent="4">
         <Properties>
           <string name="Name">Catalog</string>
-          <string name="Source"><![CDATA[-- Everything you can put on your avatar: hairstyles, skin, makeup, outfits, costume pieces,
+          <string name="Source"><![CDATA[-- Everything you can put on your avatar: hairstyles, makeup, outfits, costume pieces,
 -- a pet to walk with, and a runway pose and effect.
 --
 -- Item fields:
@@ -912,7 +931,8 @@ Catalog.Tabs = {
 	{ id = "Show", label = "Show", icon = "💃" },
 }
 
--- Skin tones, light to deep. Your own avatar's skin is picked to start.
+-- Skin tones, light to deep. There's no skin picker: everyone plays in their own avatar's skin.
+-- These only help save a look (the Look Book stores the closest tone).
 Catalog.SkinTones = {
 	{ "Cream", rgb(255, 224, 196) },
 	{ "Peach", rgb(250, 205, 175) },
@@ -931,18 +951,52 @@ Catalog.Categories = {
 		tab = "Hair",
 		preview = "portrait",
 		items = {
-			item({ id = "hair_messy", name = "Messy", hidden = true }),
-			item({ id = "hair_long", name = "Long & Silky" }),
-			item({ id = "hair_bob", name = "Cute Bob" }),
-			item({ id = "hair_pixie", name = "Pixie Cut" }),
-			item({ id = "hair_puff", name = "High Puff" }),
-			item({ id = "hair_curls", name = "Big Curls" }),
-			item({ id = "hair_pigtails", name = "Pigtails", price = 60 }),
-			item({ id = "hair_buns", name = "Space Buns", price = 80 }),
-			item({ id = "hair_braid", name = "Side Braid", price = 120 }),
-			item({ id = "hair_updo", name = "Royal Updo", pass = "VIP", tags = { "sparkle", "princess" } }),
-			item({ id = "hair_mermaid", name = "Mermaid Waves", pass = "VIP", tags = { "sparkle", "ocean" } }),
-			item({ id = "hair_princess", name = "Princess Curls", pass = "Princess", draw = "hair_curls", tags = { "sparkle", "princess" } }),
+			item({ id = "hair_messy", asset = 12342908716, name = "Messy", hidden = true }),
+			item({ id = "hair_long", asset = 15946668750, name = "Long & Silky" }),
+			item({ id = "hair_bob", asset = 12794888069, name = "Cute Bob" }),
+			item({ id = "hair_pixie", asset = 7323152045, name = "Pixie Cut" }),
+			item({ id = "hair_puff", asset = 6203040671, name = "High Puff" }),
+			item({ id = "hair_curls", asset = 117879284859863, name = "Big Curls" }),
+			item({ id = "hair_pigtails", asset = 103016744198849, name = "Pigtails", price = 60 }),
+			item({ id = "hair_buns", asset = 15951713439, name = "Space Buns", price = 80 }),
+			item({ id = "hair_braid", asset = 115091588498903, name = "Side Braid", price = 120 }),
+			item({ id = "hair_updo", asset = 78492501747860, name = "Royal Updo", pass = "VIP", tags = { "sparkle", "princess" } }),
+			item({ id = "hair_mermaid", asset = 13353394855, name = "Mermaid Waves", pass = "VIP", tags = { "sparkle", "ocean" } }),
+			item({ id = "hair_princess", asset = 18376297830, name = "Princess Curls", pass = "Princess", draw = "hair_curls", tags = { "sparkle", "princess" } }),
+			-- Black hairstyles from the avatar shop (each borrows a similar drawing for the little faces)
+			item({ id = "hair_boxbraids", asset = 8828670109, name = "Box Braids", draw = "hair_long", tags = { "dark" } }),
+			item({ id = "hair_longbraids", asset = 5132599285, name = "Long Braids", draw = "hair_long", tags = {  } }),
+			item({ id = "hair_braidbuns", asset = 5132605131, name = "Braids + Buns", draw = "hair_buns", tags = { "party" } }),
+			item({ id = "hair_knotless", asset = 112586356873829, name = "Knotless Braids", draw = "hair_long", price = 40, tags = { "fairy" } }),
+			item({ id = "hair_goddess", asset = 11708540153, name = "Goddess Braids", draw = "hair_mermaid", price = 60, tags = { "princess" } }),
+			item({ id = "hair_beadedbraids", asset = 77702057442605, name = "Beaded Braids", draw = "hair_long", tags = { "bright" } }),
+			item({ id = "hair_cornrows", asset = 15475827398, name = "Cornrow Braids", draw = "hair_braid", tags = { "superhero" } }),
+			item({ id = "hair_heartrows", asset = 117064685486156, name = "Heart Cornrows", draw = "hair_braid", price = 40, tags = { "pink" } }),
+			item({ id = "hair_fulani", asset = 117962258187267, name = "Fulani Braids", draw = "hair_long", price = 40, tags = {  } }),
+			item({ id = "hair_braidbob", asset = 113958214135872, name = "Braid Bob", draw = "hair_bob", tags = {  } }),
+			item({ id = "hair_twists", asset = 11506622360, name = "Twists", draw = "hair_curls", tags = {  } }),
+			item({ id = "hair_twistout", asset = 15774206246, name = "Twist Out", draw = "hair_curls", price = 40, tags = {  } }),
+			item({ id = "hair_shortlocs", asset = 11341159679, name = "Short Locs", draw = "hair_pixie", tags = {  } }),
+			item({ id = "hair_longlocs", asset = 13514851277, name = "Long Locs", draw = "hair_long", price = 40, tags = { "rockstar" } }),
+			item({ id = "hair_playlocs", asset = 13908388320, name = "Playful Locs", draw = "hair_bob", tags = { "rockstar" } }),
+			item({ id = "hair_beadedlocs", asset = 7184385830, name = "Beaded Locs", draw = "hair_long", price = 60, tags = { "ocean" } }),
+			item({ id = "hair_locbuns", asset = 92054620932635, name = "Loc Buns", draw = "hair_buns", price = 40, tags = {  } }),
+			item({ id = "hair_bantu", asset = 94192611966704, name = "Bantu Knots", draw = "hair_buns", tags = {  } }),
+			item({ id = "hair_halfknots", asset = 18247698974, name = "Half-Up Knots", draw = "hair_buns", price = 40, tags = {  } }),
+			item({ id = "hair_miniafro", asset = 6905430450, name = "Mini Afro", draw = "hair_curls", tags = {  } }),
+			item({ id = "hair_sideafro", asset = 6471990109, name = "Side Part Afro", draw = "hair_curls", tags = { "animal" } }),
+			item({ id = "hair_bigafro", asset = 16179369065, name = "Big Afro", draw = "hair_curls", tags = { "rockstar", "party" } }),
+			item({ id = "hair_onepuff", asset = 86812348209728, name = "One Puff", draw = "hair_puff", tags = {  } }),
+			item({ id = "hair_twopuffs", asset = 8705233070, name = "Two Puffs", draw = "hair_pigtails", tags = { "animal" } }),
+			item({ id = "hair_coils", asset = 122559201360323, name = "Short Coils", draw = "hair_pixie", tags = {  } }),
+			item({ id = "hair_fluffy", asset = 15069727041, name = "Fluffy Curls", draw = "hair_curls", price = 40, tags = {  } }),
+			item({ id = "hair_bouncy", asset = 18757370852, name = "Bouncy Curls", draw = "hair_curls", price = 40, tags = {  } }),
+			item({ id = "hair_silkpress", asset = 15960674286, name = "Silk Press", draw = "hair_long", tags = { "princess" } }),
+			item({ id = "hair_silkbangs", asset = 119865951138422, name = "Silk Press Bangs", draw = "hair_long", price = 40, tags = {  } }),
+			item({ id = "hair_curlybuns", asset = 96572495518172, name = "Curly Space Buns", draw = "hair_buns", price = 40, tags = { "space" } }),
+			item({ id = "hair_sleekpony", asset = 113300721819171, name = "Sleek Pony", draw = "hair_puff", price = 40, tags = { "superhero" } }),
+			item({ id = "hair_braidpony", asset = 5318621744, name = "Braided Pony", draw = "hair_puff", tags = { "pirate" } }),
+			item({ id = "hair_braidbun", asset = 136697234614741, name = "Braided Bun", draw = "hair_updo", price = 60, tags = { "princess" } }),
 		},
 	},
 	{
@@ -1003,19 +1057,6 @@ Catalog.Categories = {
 				tags = { "red", "white", "sparkle" },
 			}),
 		},
-	},
-	{
-		key = "skin",
-		label = "Skin",
-		tab = "Face",
-		preview = "swatch",
-		items = (function()
-			local list = {}
-			for i, tone in Catalog.SkinTones do
-				table.insert(list, item({ id = "skin_" .. i, name = tone[1], color = tone[2] }))
-			end
-			return list
-		end)(),
 	},
 	{
 		key = "eyeshadow",
@@ -1472,7 +1513,7 @@ Catalog.Categories = {
 		tab = "Pet",
 		preview = "icon",
 		items = {
-			item({ id = "pet_none", name = "No Pet", icon = "🚫" }),
+			item({ id = "pet_none", name = "No Pet", icon = "⚪" }),
 			item({ id = "pet_bean", name = "Bean", icon = "🐶", tags = { "animal", "dark", "white" } }),
 			item({ id = "pet_kitty", name = "Kitty", icon = "🐱", tags = { "animal", "orange" } }),
 			item({ id = "pet_bunny", name = "Bunny", icon = "🐰", tags = { "animal", "white", "fairy" } }),
@@ -1503,7 +1544,7 @@ Catalog.Categories = {
 		tab = "Show",
 		preview = "icon",
 		items = {
-			item({ id = "fx_none", name = "None", icon = "🚫" }),
+			item({ id = "fx_none", name = "None", icon = "⚪" }),
 			item({ id = "fx_sparkles", name = "Sparkles", icon = "✨", tags = { "sparkle", "fairy", "princess" } }),
 			item({ id = "fx_hearts", name = "Hearts", icon = "💖", tags = { "pink", "princess" } }),
 			item({ id = "fx_bubbles", name = "Bubbles", icon = "💧", tags = { "ocean", "blue" } }),
@@ -1566,7 +1607,6 @@ function Catalog.defaultLook(): { [string]: string }
 	return {
 		hairStyle = "hair_puff",
 		hairColor = "hc_black",
-		skin = "skin_7",
 		eyeshadow = "es_none",
 		lashes = "lash_none",
 		blush = "bl_none",
@@ -2227,9 +2267,14 @@ local function drawHair(root: Frame, look, hairItem: Catalog.Item?, options: Opt
 		hair(0.28, 0.36, 0.05, 0.12, Z.hairFront, 0.5)
 		hair(0.72, 0.36, 0.05, 0.12, Z.hairFront, 0.5)
 	elseif style == "hair_puff" then
-		hair(0.5, 0.08, 0.32, 0.32, Z.hairBack, 0.5)
-		hair(0.5, 0.21, 0.48, 0.13, Z.hairFront, 0.5)
-		shape(root, 0.5, 0.17, 0.12, 0.03, TIE, Z.hairFront, 0.5)
+		-- a big round, fluffy puff on top (bumpy edges so it reads as hair, not a hat)
+		hair(0.5, 0.07, 0.38, 0.3, Z.hairBack, 0.5)
+		for i = 0, 5 do
+			local a = i / 6 * math.pi * 2
+			hair(0.5 + math.cos(a) * 0.16, 0.07 + math.sin(a) * 0.12, 0.13, 0.11, Z.hairBack, 0.5)
+		end
+		hair(0.5, 0.22, 0.48, 0.12, Z.hairFront, 0.5)
+		shape(root, 0.5, 0.165, 0.2, 0.025, TIE, Z.hairFront, 0.5)
 	elseif style == "hair_curls" then
 		hair(0.5, 0.4, 0.8, 0.8, Z.hairBack, 0.5)
 		for i = 0, 6 do
@@ -3378,17 +3423,70 @@ return Scoring
 ]]></string>
         </Properties>
       </Item>
+      <Item class="ModuleScript" referent="13">
+        <Properties>
+          <string name="Name">Stations</string>
+          <string name="Source"><![CDATA[-- The Dressing Hall: walk up to a station and its menu opens. One list drives both the 3D world
+-- (WorldBuilder builds a glowing pad, sign and props for each) and the menus (Makeover opens the
+-- matching tab when you stand on a pad).
+
+local Stations = {}
+
+export type Station = {
+	id: string,
+	tab: string, -- the Makeover tab this station opens
+	name: string,
+	icon: string,
+	pad: Vector3, -- center of the glowing pad on the floor
+	facing: Vector3, -- the way you face while standing on it (the camera looks back at you)
+	color: Color3,
+}
+
+local rgb = Color3.fromRGB
+
+-- Five stations along the mirrors at the back of the salon, and the Pet Park by the door.
+Stations.list = {
+	{ id = "hair", tab = "Hair", name = "Hair Chair", icon = "💇", pad = Vector3.new(-26, 0.2, 55), facing = Vector3.new(0, 0, -1), color = rgb(255, 120, 190) },
+	{ id = "face", tab = "Face", name = "Makeup Vanity", icon = "💄", pad = Vector3.new(-13, 0.2, 55), facing = Vector3.new(0, 0, -1), color = rgb(255, 90, 120) },
+	{ id = "outfit", tab = "Outfit", name = "Wardrobe", icon = "👗", pad = Vector3.new(0, 0.2, 55), facing = Vector3.new(0, 0, -1), color = rgb(90, 160, 255) },
+	{ id = "costume", tab = "Costume", name = "Costume Closet", icon = "🦸", pad = Vector3.new(13, 0.2, 55), facing = Vector3.new(0, 0, -1), color = rgb(150, 90, 220) },
+	{ id = "show", tab = "Show", name = "Pose Stage", icon = "💃", pad = Vector3.new(26, 0.2, 55), facing = Vector3.new(0, 0, -1), color = rgb(245, 200, 70) },
+	{ id = "pet", tab = "Pet", name = "Pet Park", icon = "🐶", pad = Vector3.new(24, 0.2, 39), facing = Vector3.new(-1, 0, 0), color = rgb(90, 200, 120) },
+} :: { Station }
+
+Stations.PAD_RADIUS = 4.5
+
+Stations.byTab = {} :: { [string]: Station }
+for _, s in Stations.list do
+	Stations.byTab[s.tab] = s
+end
+
+-- The station whose pad this position is standing on, if any.
+function Stations.at(position: Vector3): Station?
+	for _, s in Stations.list do
+		local d = Vector3.new(position.X - s.pad.X, 0, position.Z - s.pad.Z)
+		if d.Magnitude <= Stations.PAD_RADIUS then
+			return s
+		end
+	end
+	return nil
+end
+
+return Stations
+]]></string>
+        </Properties>
+      </Item>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="13">
+  <Item class="ServerScriptService" referent="14">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Folder" referent="14">
+    <Item class="Folder" referent="15">
       <Properties>
         <string name="Name">Server</string>
       </Properties>
-      <Item class="ModuleScript" referent="15">
+      <Item class="ModuleScript" referent="16">
         <Properties>
           <string name="Name">DataService</string>
           <string name="Source"><![CDATA[-- Saves each player's coins, unlocked items and Super Soaps between visits.
@@ -3728,7 +3826,7 @@ return DataService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="16">
+      <Item class="Script" referent="17">
         <Properties>
           <string name="Name">Main</string>
           <token name="RunContext">0</token>
@@ -3759,7 +3857,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="17">
+      <Item class="ModuleScript" referent="18">
         <Properties>
           <string name="Name">RoundService</string>
           <string name="Source"><![CDATA[-- Runs the game loop that everyone in the server plays together:
@@ -3776,6 +3874,8 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Events = require(ReplicatedStorage.Shared.Events)
 local Progress = require(ReplicatedStorage.Shared.Progress)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Pets = require(ReplicatedStorage.Shared.Pets)
+local RunService = game:GetService("RunService")
 local Scoring = require(ReplicatedStorage.Shared.Scoring)
 
 local DataService = require(script.Parent.DataService)
@@ -3792,6 +3892,7 @@ type Entry = {
 	done: boolean,
 	votes: { [number]: number }, -- voter UserId -> stars
 	assignedAt: number,
+	pet: Model?, -- their pet, trotting after them during the round
 }
 
 local world: WorldBuilder.World
@@ -3807,12 +3908,13 @@ local entries: { [number]: Entry } = {} -- by UserId
 local showcase = nil -- payload of the look currently on the runway
 local results = nil -- payload of the last results
 local spawnedModels: { Model } = {}
-local resultsFor, sendResults -- defined below
+local resultsFor, sendResults, strikePose -- defined below
 local decorated = false
 
 local WALK_ANIMATION = "rbxassetid://507777826" -- Roblox's default R15 walk
 local REACTIONS = { ["😍"] = true, ["👏"] = true, ["🔥"] = true, ["✨"] = true, ["💖"] = true }
 local lastReaction: { [Player]: number } = {}
+local lastCheer: { [Player]: number } = {}
 
 local function now(): number
 	return Workspace:GetServerTimeNow()
@@ -3846,20 +3948,55 @@ end
 ------------------------------------------------------------------------------
 -- Makeover
 
--- Each player dresses up themselves: their name, and the skin tone closest to their own avatar.
-local function assignClient(player: Player)
-	local skinId = "skin_7"
-	local character = player.Character
-	local head = character and character:FindFirstChild("Head")
-	if head and head:IsA("BasePart") then
-		skinId = Catalog.closestSkin(head.Color)
+-- Puts the entry's look on the player's real character (everyone sees it), and keeps their pet.
+local function dressCharacter(entry: Entry)
+	local character = entry.player.Character
+	if not character or not character.Parent then
+		return
 	end
-	local look = Catalog.defaultLook()
-	look.skin = skinId
+	-- always a happy face: a smile, and a big grin once the look is really good
+	local stars = Scoring.judge(entry, theme())
+	Avatar.dress(character, entry.client, entry.look, { clean = 1, mood = if stars >= 4 then "grin" else "smile", brushed = true })
+	local petId = entry.look.pet
+	if not entry.pet or entry.pet:GetAttribute("PetId") ~= petId then
+		if entry.pet then
+			entry.pet:Destroy()
+			entry.pet = nil
+		end
+		local pet = Pets.build(petId)
+		local root = character:FindFirstChild("HumanoidRootPart")
+		if pet and root and root:IsA("BasePart") then
+			pet:SetAttribute("PetId", petId)
+			pet.Name = entry.player.Name .. "'s Pet"
+			pet:PivotTo(root.CFrame * CFrame.new(2.6, -3, 0.6))
+			pet.Parent = world.folder
+			entry.pet = pet
+		end
+	end
+end
+
+-- Gets the character ready for the round (own body and skin, classic head, own hair and clothes
+-- off) and puts the look on. Also used when someone respawns in the middle of a round.
+local function prepareCharacter(entry: Entry)
+	local character = entry.player.Character
+	if not character then
+		return
+	end
+	local skin = Avatar.prepareCharacter(character)
+	if skin then
+		entry.client.skin = skin
+		local index = tonumber(string.match(Catalog.closestSkin(skin), "%d+"))
+		entry.client.skinIndex = index or entry.client.skinIndex
+	end
+	dressCharacter(entry)
+end
+
+-- Each player dresses up themselves, in their own avatar.
+local function assignClient(player: Player)
 	local entry: Entry = {
 		player = player,
-		client = Clients.forPlayer(player.DisplayName, tonumber(string.match(skinId, "%d+")) or 7),
-		look = look,
+		client = Clients.forPlayer(player.DisplayName, 7),
+		look = Catalog.defaultLook(),
 		clean = 1, -- no washing: you come in fresh
 		rinsed = true,
 		done = false,
@@ -3867,6 +4004,8 @@ local function assignClient(player: Player)
 		assignedAt = now(),
 	}
 	entries[player.UserId] = entry
+	-- their real skin goes in the payload, so the menus' little faces match them
+	prepareCharacter(entry)
 	Remotes.AssignClient:FireClient(player, entryPayload(entry))
 end
 
@@ -3904,6 +4043,7 @@ local function onUpdateLook(player: Player, key: unknown, itemId: unknown)
 		return
 	end
 	entry.look[key] = itemId
+	dressCharacter(entry)
 	-- Holiday items you used during the event are yours to keep afterwards
 	if it.event then
 		local profile = DataService.get(player)
@@ -4084,34 +4224,133 @@ local function clearModels()
 	table.clear(spawnedModels)
 end
 
-local function walkRunway(entry: Entry)
-	local model = buildClientModel(entry)
-	model:SetAttribute("Walking", true) -- the runway camera follows this model
-	local root = placeModel(model, world.runwayStart, Vector3.new(0, 0, 1))
-	local walk = playWalk(model)
+-- Asks a player's screen to play a pose on their own character (it replicates to everyone).
+function strikePose(character: Model, poseId: string?)
+	if poseId and not Catalog.isNone(poseId) then
+		character:SetAttribute("Pose", poseId .. "|" .. tostring(os.clock()))
+	end
+end
 
+-- Everyone not on the runway sits in the audience seats along it.
+local function seatAudience(except: Player?)
+	local seats = {}
+	for _, d in world.folder.Runway:GetChildren() do
+		if d:IsA("Seat") and d.Name == "AudienceSeat" and not d.Occupant then
+			table.insert(seats, d)
+		end
+	end
+	for _, player in Players:GetPlayers() do
+		local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+		if player ~= except and humanoid and not humanoid.SeatPart and #seats > 0 then
+			local seat = table.remove(seats, 1)
+			player.Character:PivotTo(seat.CFrame + Vector3.new(0, 3, 0))
+			seat:Sit(humanoid)
+		end
+	end
+end
+
+local function unseat(character: Model)
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		local seat = humanoid.SeatPart
+		humanoid.Sit = false
+		if seat then
+			local weld = seat:FindFirstChild("SeatWeld")
+			if weld then
+				weld:Destroy()
+			end
+		end
+	end
+end
+
+-- The player's own character walks the runway (their pet trots along), then strikes their pose.
+-- If they have no character (just left), a stand-in model walks instead.
+local function walkRunway(entry: Entry)
+	local character = entry.player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not (character and humanoid and root and root:IsA("BasePart")) then
+		local model = buildClientModel(entry)
+		model:SetAttribute("Walking", true)
+		local r = placeModel(model, world.runwayStart, Vector3.new(0, 0, 1))
+		local walk = playWalk(model)
+		local walkTime = Config.SHOWCASE_SECONDS_PER_LOOK * 0.6
+		local target = world.runwayEnd + Vector3.new(0, rootHeight(model), 0)
+		model:SetAttribute("WalkFrom", r.Position)
+		model:SetAttribute("WalkTo", target)
+		model:SetAttribute("WalkStart", now())
+		model:SetAttribute("WalkTime", walkTime)
+		task.wait(walkTime)
+		if walk then
+			walk:Stop()
+		end
+		Avatar.pose(model, entry.look.pose)
+		return
+	end
+
+	unseat(character)
+	task.wait(0.1)
+	local height = humanoid.HipHeight + root.Size.Y / 2
+	local start = world.runwayStart + Vector3.new(0, height, 0)
+	character:PivotTo(CFrame.lookAt(start, start + Vector3.new(0, 0, 1)))
+	if entry.pet then
+		entry.pet:PivotTo(CFrame.new(world.runwayStart + Vector3.new(2.6, 0, 0)))
+	end
+	character:SetAttribute("Walking", true) -- the runway camera follows them
 	if hasPass(entry.player, "RunwayStar") then
 		for _, emitter in world.confetti do
 			emitter:Emit(80)
 		end
+		local sparkles = Instance.new("Sparkles")
+		sparkles.Name = "RunwayStar"
+		sparkles.Parent = root
+		task.delay(Config.SHOWCASE_SECONDS_PER_LOOK, function()
+			sparkles:Destroy()
+		end)
 	end
 
-	-- Each player's screen moves the model smoothly from these attributes (moving an anchored
-	-- part from the server looks jerky). See Showcase:updateWalkers on the client.
+	-- A player's own device moves their character, so the walk and the pose are asked for with
+	-- attributes, and their screen does them (see Main.client)
 	local walkTime = Config.SHOWCASE_SECONDS_PER_LOOK * 0.6
-	local target = world.runwayEnd + Vector3.new(0, rootHeight(model), 0)
-	model:SetAttribute("WalkFrom", root.Position)
-	model:SetAttribute("WalkTo", target)
-	model:SetAttribute("WalkStart", now())
-	model:SetAttribute("WalkTime", walkTime)
-	task.wait(walkTime)
-	if walk then
-		walk:Stop()
+	character:SetAttribute("RunwaySpeed", (world.runwayEnd - world.runwayStart).Magnitude / walkTime)
+	character:SetAttribute("WalkTarget", world.runwayEnd)
+	local started = os.clock()
+	while os.clock() - started < walkTime + 1.5 and (Vector3.new(root.Position.X, 0, root.Position.Z) - Vector3.new(world.runwayEnd.X, 0, world.runwayEnd.Z)).Magnitude > 1.5 do
+		task.wait(0.1)
 	end
-	task.wait(1) -- the twirl at the end of the runway
-	if root.Parent then
-		root.CFrame = CFrame.lookAt(target, target + Vector3.new(0, 0, 1))
-		Avatar.pose(model, entry.look.pose) -- then strike their pose
+	character:SetAttribute("WalkTarget", nil)
+	strikePose(character, entry.look.pose)
+	task.delay(Config.SHOWCASE_SECONDS_PER_LOOK - walkTime - 0.5, function()
+		if character.Parent then
+			character:SetAttribute("Walking", nil)
+		end
+	end)
+end
+
+-- Pets trot after their owners all round long.
+local function followPets(dt: number)
+	for _, entry in entries do
+		local character = entry.player.Character
+		if entry.pet and entry.pet.Parent and character then
+			Pets.follow(entry.pet, character, dt)
+		end
+	end
+end
+
+-- After the show everyone gets their own look back.
+local function restoreEveryone()
+	for _, entry in entries do
+		if entry.pet then
+			entry.pet:Destroy()
+			entry.pet = nil
+		end
+		if entry.player.Parent then
+			task.spawn(function()
+				pcall(function()
+					entry.player:LoadCharacter()
+				end)
+			end)
+		end
 	end
 end
 
@@ -4150,6 +4389,11 @@ local function onReact(player: Player, emoji: unknown)
 	end
 	lastReaction[player] = t
 	Remotes.Reaction:FireAllClients(emoji)
+	-- the cheering player's avatar cheers in the audience too (at most every few seconds)
+	if player.Character and (not lastCheer[player] or t - lastCheer[player] > 2.5) then
+		lastCheer[player] = t
+		strikePose(player.Character, "pose_cheer")
+	end
 end
 
 ------------------------------------------------------------------------------
@@ -4331,9 +4575,10 @@ end
 -- Main loop
 
 local function runRound()
-	-- Intermission
+	-- Intermission: everyone back in their own look
 	results = nil
 	showcase = nil
+	restoreEveryone()
 	table.clear(entries)
 	while #Players:GetPlayers() < Config.MIN_PLAYERS do
 		setState("Waiting", 0)
@@ -4367,10 +4612,11 @@ local function runRound()
 	task.wait(Config.INTERMISSION_SECONDS)
 
 	-- Makeover: 5 minutes!
-	for _, player in Players:GetPlayers() do
-		assignClient(player)
-	end
 	setState("Makeover", Config.MAKEOVER_SECONDS)
+	-- getting each avatar ready takes a moment, so everyone is set up side by side
+	for _, player in Players:GetPlayers() do
+		task.spawn(assignClient, player)
+	end
 	while now() < state.endsAt do
 		task.wait(0.5)
 		if allDone() then
@@ -4407,6 +4653,7 @@ local function runRound()
 			}
 			setState("Showcase", Config.SHOWCASE_SECONDS_PER_LOOK)
 			Remotes.Showcase:FireAllClients(showcase)
+			seatAudience(entry.player)
 			local started = os.clock()
 			walkRunway(entry)
 			task.wait(math.max(0, Config.SHOWCASE_SECONDS_PER_LOOK - (os.clock() - started)))
@@ -4421,11 +4668,23 @@ local function runRound()
 		results = { themeId = state.themeId, rows = rows }
 		sendResults()
 		setState("Results", Config.RESULTS_SECONDS)
-		for place = 1, math.min(3, #rows) do
-			local entry = entries[rows[place].userId]
-			if entry then
+		-- The top 3 stand on the podium in their looks; everyone else gathers in front
+		for _, row in rows do
+			local entry = entries[row.userId]
+			local character = entry and entry.player.Character
+			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+			local root = character and character:FindFirstChild("HumanoidRootPart")
+			if character and humanoid and root and root:IsA("BasePart") then
+				unseat(character)
+				local spot = world.podium[row.rank] or (world.podium[1] + Vector3.new((row.rank - 5) * 3, -world.podium[1].Y, 9))
+				local pos = spot + Vector3.new(0, humanoid.HipHeight + root.Size.Y / 2 + 0.1, 0)
+				character:PivotTo(CFrame.lookAt(pos, pos + Vector3.new(0, 0, 1)))
+				if row.rank == 1 then
+					strikePose(character, "pose_cheer")
+				end
+			elseif entry and row.rank <= 3 then
 				local model = buildClientModel(entry)
-				placeModel(model, world.podium[place], Vector3.new(0, 0, 1))
+				placeModel(model, world.podium[row.rank], Vector3.new(0, 0, 1))
 				Avatar.idle(model)
 			end
 		end
@@ -4463,9 +4722,25 @@ function RoundService.init(builtWorld: WorldBuilder.World)
 			end
 		end
 	end)
+	-- Respawning in the middle of a round puts the look straight back on
+	Players.PlayerAdded:Connect(function(player)
+		player.CharacterAdded:Connect(function()
+			local entry = entries[player.UserId]
+			if entry and (state.phase == "Makeover" or state.phase == "Showcase") then
+				task.wait(0.5)
+				prepareCharacter(entry)
+			end
+		end)
+	end)
+	RunService.Heartbeat:Connect(followPets)
 	Players.PlayerRemoving:Connect(function(player)
+		local entry = entries[player.UserId]
+		if entry and entry.pet then
+			entry.pet:Destroy()
+		end
 		entries[player.UserId] = nil
 		lastReaction[player] = nil
+		lastCheer[player] = nil
 	end)
 
 	task.spawn(function()
@@ -4484,7 +4759,7 @@ return RoundService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="18">
+      <Item class="ModuleScript" referent="19">
         <Properties>
           <string name="Name">ShopService</string>
           <string name="Source"><![CDATA[-- Unlocking items with coins, plus Robux Game Passes and Developer Products.
@@ -4602,7 +4877,7 @@ return ShopService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="19">
+      <Item class="ModuleScript" referent="20">
         <Properties>
           <string name="Name">WorldBuilder</string>
           <string name="Source"><![CDATA[-- Builds the salon, runway, big screen, audience seats and winners' podium when the game starts.
@@ -4613,6 +4888,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Stations = require(ReplicatedStorage.Shared.Stations)
 
 local WorldBuilder = {}
 
@@ -4886,6 +5162,98 @@ local function cameraMarker(parent: Instance, name: string, from: Vector3, to: V
 	p.CanTouch = false
 end
 
+-- The Dressing Hall: a glowing pad, a sign and a few props for each station (see Shared.Stations).
+local function buildStations(salon: Instance)
+	local folder = Instance.new("Folder")
+	folder.Name = "Stations"
+	folder.Parent = salon
+	for _, s in Stations.list do
+		local pad = part(folder, "Pad_" .. s.id, Vector3.new(0.3, Stations.PAD_RADIUS * 2, Stations.PAD_RADIUS * 2), CFrame.new(s.pad) * CFrame.Angles(0, 0, math.rad(90)), s.color, Enum.Material.Neon)
+		pad.Shape = Enum.PartType.Cylinder
+		pad.Transparency = 0.35
+		pad.CanCollide = false
+		pad:SetAttribute("Station", s.id)
+		-- A floating sign over each pad, readable from the salon floor
+		local board = part(folder, "Sign_" .. s.id, Vector3.new(9, 2.4, 0.4), CFrame.lookAt(s.pad + Vector3.new(0, 10.5, 0), s.pad + Vector3.new(0, 10.5, 0) + s.facing), rgb(255, 255, 255))
+		board.CanCollide = false
+		sign(board, Enum.NormalId.Front, s.icon .. " " .. s.name, s.color:Lerp(rgb(40, 20, 60), 0.35))
+		local beam = Instance.new("PointLight")
+		beam.Color = s.color
+		beam.Range = 10
+		beam.Brightness = 1.2
+		beam.Parent = pad
+	end
+
+	-- Props that say what each station is for
+	local hair = Stations.byTab.Hair.pad
+	part(folder, "Dryer", Vector3.new(2.2, 1.6, 2.2), CFrame.new(hair + Vector3.new(0, 5.6, 4.6)), rgb(240, 240, 250), Enum.Material.Metal).Shape = Enum.PartType.Ball
+	local face = Stations.byTab.Face.pad
+	for i, c in { rgb(255, 60, 120), rgb(200, 30, 60), rgb(255, 140, 180) } do
+		part(folder, "Lipstick", Vector3.new(0.5, 1.4, 0.5), CFrame.new(face + Vector3.new(-2 + i, 3.9, 9.3)), c)
+	end
+	local outfit = Stations.byTab.Outfit.pad
+	part(folder, "RackBar", Vector3.new(8, 0.2, 0.2), CFrame.new(outfit + Vector3.new(0, 6.2, 8.6)), rgb(200, 200, 210), Enum.Material.Metal)
+	for i, c in { rgb(255, 120, 190), rgb(90, 160, 255), rgb(245, 200, 70), rgb(130, 210, 90), rgb(170, 120, 230) } do
+		part(folder, "Shirt", Vector3.new(1.2, 2.2, 0.3), CFrame.new(outfit + Vector3.new(-3.2 + i * 1.3, 4.9, 8.6)), c, Enum.Material.Fabric)
+	end
+	local costume = Stations.byTab.Costume.pad
+	part(folder, "Trunk", Vector3.new(4, 2, 2.4), CFrame.new(costume + Vector3.new(3.5, 1, 6)), rgb(140, 80, 40), Enum.Material.Wood)
+	part(folder, "Cape", Vector3.new(2.4, 3.6, 0.2), CFrame.new(costume + Vector3.new(-3.6, 3.6, 8.2)), rgb(220, 30, 50), Enum.Material.Fabric)
+	local show = Stations.byTab.Show.pad
+	local stage = part(folder, "PoseStage", Vector3.new(0.5, 9.5, 9.5), CFrame.new(show + Vector3.new(0, -0.3, 0)) * CFrame.Angles(0, 0, math.rad(90)), GOLD, Enum.Material.SmoothPlastic)
+	stage.Shape = Enum.PartType.Cylinder
+	stage.CanCollide = false
+	local light = part(folder, "StageLight", Vector3.new(1.2, 1.2, 1.2), CFrame.new(show + Vector3.new(0, 13, 0)), rgb(255, 250, 230), Enum.Material.Neon)
+	local spot = Instance.new("SpotLight")
+	spot.Face = Enum.NormalId.Bottom
+	spot.Color = rgb(255, 240, 220)
+	spot.Range = 16
+	spot.Brightness = 3
+	spot.Angle = 45
+	spot.Parent = light
+	local pet = Stations.byTab.Pet.pad
+	local grass = part(folder, "PetGrass", Vector3.new(14, 0.15, 12), CFrame.new(pet + Vector3.new(2, -0.12, 0)), rgb(120, 200, 110), Enum.Material.Grass)
+	grass.CanCollide = false
+	for _, z in { -6, 6 } do
+		part(folder, "Fence", Vector3.new(14, 1.4, 0.3), CFrame.new(pet + Vector3.new(2, 0.7, z)), rgb(255, 255, 255), Enum.Material.Wood)
+	end
+	part(folder, "DogHouse", Vector3.new(3, 3, 3), CFrame.new(pet + Vector3.new(7, 1.5, 0)), rgb(255, 160, 80), Enum.Material.Wood)
+	part(folder, "DogRoof", Vector3.new(3.6, 1.2, 3.6), CFrame.new(pet + Vector3.new(7, 3.6, 0)), rgb(200, 60, 80), Enum.Material.Wood)
+end
+
+-- Somewhere to hang out between rounds: step on the floor and you dance (see Main.client)
+local function buildDanceFloor(salon: Instance)
+	local floor = Instance.new("Folder")
+	floor.Name = "DanceFloor"
+	floor.Parent = salon
+	local center = Vector3.new(-24, 0.25, 39)
+	local colors = { PINK, PURPLE, GOLD, rgb(90, 200, 255) }
+	local tiles = {}
+	for ix = -2, 1 do
+		for iz = -2, 1 do
+			local t = part(floor, "DanceTile", Vector3.new(2.9, 0.3, 2.9), CFrame.new(center + Vector3.new(ix * 3 + 1.5, 0, iz * 3 + 1.5)), colors[(ix + iz) % 4 + 1], Enum.Material.Neon)
+			t.CanCollide = false
+			table.insert(tiles, t)
+		end
+	end
+	local board = part(floor, "DanceSign", Vector3.new(9, 2.4, 0.4), CFrame.lookAt(center + Vector3.new(0, 9, 0), center + Vector3.new(1, 9, 0)), rgb(255, 255, 255))
+	board.CanCollide = false
+	sign(board, Enum.NormalId.Front, "🕺 Dance Floor 💃", PURPLE)
+	floor:SetAttribute("Center", center)
+	floor:SetAttribute("Radius", 6)
+	-- the tiles twinkle through the colors
+	task.spawn(function()
+		local step = 0
+		while floor.Parent do
+			step += 1
+			for i, t in tiles do
+				t.Color = colors[(i + step) % #colors + 1]
+			end
+			task.wait(0.6)
+		end
+	end)
+end
+
 function WorldBuilder.build(): World
 	local old = Workspace:FindFirstChild("GlowUpWorld")
 	if old then
@@ -4933,6 +5301,7 @@ function WorldBuilder.build(): World
 		local seat = Instance.new("Seat")
 		seat.Name = "SalonChair"
 		seat.Anchored = true
+		seat.Disabled = true -- scenery: you stand on the glowing pad in front of it
 		seat.Size = Vector3.new(3, 1, 3)
 		seat.CFrame = CFrame.new(x, 2, 59) * CFrame.Angles(0, math.pi, 0)
 		seat.Color = PURPLE
@@ -4942,6 +5311,8 @@ function WorldBuilder.build(): World
 	end
 	local salonSign = part(salon, "SalonSign", Vector3.new(36, 7, 1), CFrame.new(0, 15, 67), rgb(255, 255, 255))
 	sign(salonSign, Enum.NormalId.Front, "✨ 5 Minute Glow Up Salon ✨", PINK)
+	buildStations(salon)
+	buildDanceFloor(salon)
 
 	-- Runway
 	local runway = Instance.new("Folder")
@@ -5080,19 +5451,19 @@ return WorldBuilder
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="20">
+  <Item class="StarterPlayer" referent="21">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="21">
+    <Item class="StarterPlayerScripts" referent="22">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="Folder" referent="22">
+      <Item class="Folder" referent="23">
         <Properties>
           <string name="Name">Client</string>
         </Properties>
-        <Item class="LocalScript" referent="23">
+        <Item class="LocalScript" referent="24">
           <Properties>
             <string name="Name">Main</string>
             <string name="Source"><![CDATA[-- Starts the game on each player's screen and connects it to the server.
@@ -5102,6 +5473,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local Avatar = require(ReplicatedStorage.Shared.Avatar)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local UI = script.Parent:WaitForChild("UI")
@@ -5185,8 +5557,11 @@ local function applyState(newState)
 	local oldPhase = state.phase
 	state = newState
 	hud:setState(state)
-	if state.phase ~= oldPhase and (state.phase == "Makeover" or oldPhase == "Makeover") then
-		setCharacterControls(state.phase ~= "Makeover")
+	-- You walk around the Dressing Hall while getting ready and between rounds; during the show and
+	-- the results you sit in the audience (or stand on the podium), so your controls rest
+	local canWalk = state.phase ~= "Showcase" and state.phase ~= "Results"
+	if state.phase ~= oldPhase then
+		setCharacterControls(canWalk)
 	end
 	Sounds.music(if state.phase == "Makeover" then "MakeoverMusic" elseif state.phase == "Showcase" then "RunwayMusic" else nil)
 
@@ -5289,7 +5664,16 @@ Remotes.Celebrate.OnClientEvent:Connect(function(info)
 		Effects.splash(gui, "💞 " .. info.name .. " is your BEST friend!", "Visit #" .. info.visits .. "  +" .. info.coins .. " 💰", Theme.Colors.hotPink, 3.5)
 		Effects.confetti(gui, 40)
 	elseif info.kind == "level" then
-		Effects.splash(gui, "⭐ Level " .. info.level .. "! ⭐", "You're a " .. info.title .. "!", Theme.Colors.purple, 3.5)
+		local unlocked = {}
+		for _, category in Catalog.Categories do
+			for _, it in category.items do
+				if it.level == info.level then
+					table.insert(unlocked, it.name)
+				end
+			end
+		end
+		local subtitle = if #unlocked > 0 then "You unlocked: " .. table.concat(unlocked, ", ") .. "! Try it on next round!" else "You're a " .. info.title .. "!"
+		Effects.splash(gui, "⭐ Level " .. info.level .. "! ⭐", subtitle, Theme.Colors.purple, 4.5)
 		Effects.confetti(gui, 60)
 	end
 end)
@@ -5313,19 +5697,85 @@ task.spawn(function()
 	end
 end)
 
+-- The server asks this screen to walk your character down the runway and to strike poses (your
+-- own device moves your character, so it has to happen here).
+local function watchCharacter(character: Model)
+	character:GetAttributeChangedSignal("WalkTarget"):Connect(function()
+		local target = character:GetAttribute("WalkTarget")
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			if typeof(target) == "Vector3" then
+				local speed = character:GetAttribute("RunwaySpeed")
+				humanoid.WalkSpeed = if type(speed) == "number" then speed else 10
+				humanoid:MoveTo(target)
+			else
+				humanoid.WalkSpeed = 16
+				local root = character:FindFirstChild("HumanoidRootPart")
+				if root and root:IsA("BasePart") then
+					-- face the crowd at the end of the runway
+					root.CFrame = CFrame.lookAt(root.Position, root.Position + Vector3.new(0, 0, 1))
+				end
+			end
+		end
+	end)
+	character:GetAttributeChangedSignal("Pose"):Connect(function()
+		local value = character:GetAttribute("Pose")
+		local poseId = type(value) == "string" and string.match(value, "^[^|]+")
+		if poseId then
+			Avatar.pose(character, poseId)
+		end
+	end)
+end
+Players.LocalPlayer.CharacterAdded:Connect(watchCharacter)
+if Players.LocalPlayer.Character then
+	watchCharacter(Players.LocalPlayer.Character)
+end
+
+-- Step onto the dance floor and you dance (everyone sees it); step off and you stop.
+local danceTrack: AnimationTrack? = nil
+local function updateDance()
+	local character = Players.LocalPlayer.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local floor = workspace:FindFirstChild("GlowUpWorld") and workspace.GlowUpWorld:FindFirstChild("DanceFloor", true)
+	local center, radius = floor and floor:GetAttribute("Center"), floor and floor:GetAttribute("Radius")
+	local on = false
+	if root and root:IsA("BasePart") and typeof(center) == "Vector3" and type(radius) == "number" then
+		on = Vector3.new(root.Position.X - center.X, 0, root.Position.Z - center.Z).Magnitude <= radius and state.phase ~= "Showcase"
+	end
+	if on and not danceTrack then
+		local animator = character:FindFirstChildOfClass("Humanoid") and character:FindFirstChildOfClass("Humanoid"):FindFirstChildOfClass("Animator")
+		if animator then
+			local anim = Instance.new("Animation")
+			anim.AnimationId = "rbxassetid://507771019" -- Roblox's default dance
+			local ok, track = pcall(function()
+				return animator:LoadAnimation(anim)
+			end)
+			if ok and track then
+				track.Looped = true
+				track:Play(0.3)
+				danceTrack = track
+			end
+		end
+	elseif not on and danceTrack then
+		danceTrack:Stop(0.3)
+		danceTrack = nil
+	end
+end
+
 RunService.RenderStepped:Connect(function()
 	hud:update()
 	showcase:updateWalkers()
 	showcase:followWalker()
+	updateDance()
 end)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="Folder" referent="24">
+        <Item class="Folder" referent="25">
           <Properties>
             <string name="Name">UI</string>
           </Properties>
-          <Item class="ModuleScript" referent="25">
+          <Item class="ModuleScript" referent="26">
             <Properties>
               <string name="Name">Effects</string>
               <string name="Source"><![CDATA[-- Fun screen effects: confetti, floating emoji, camera flashes, sparkles and big pop-up cards.
@@ -5449,7 +5899,7 @@ function Effects.showSplash(gui: GuiObject, title: string, subtitle: string?, co
 	Sounds.play("Pop")
 	local card = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.45),
+		Position = UDim2.fromScale(0.32, 0.45),
 		Size = UDim2.fromScale(0.5, 0.34),
 		BackgroundColor3 = C.white,
 		ZIndex = 260,
@@ -5499,7 +5949,7 @@ return Effects
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="26">
+          <Item class="ModuleScript" referent="27">
             <Properties>
               <string name="Name">HUD</string>
               <string name="Source"><![CDATA[-- The always-on parts of the screen: round timer, coins, shop button, pop-up messages,
@@ -5519,6 +5969,9 @@ local C = Theme.Colors
 local new = Theme.new
 
 local HUD = {}
+
+-- How to play, on the lobby card (phones get a row of icons instead)
+local STEPS_TEXT = "Walk to each station:\n💇 Hair   💄 Makeup   👗 Wardrobe\n🦸 Costume   🐶 Pet Park   💃 Pose Stage\nMatch the theme ⭐ then 📸 walk the runway!"
 HUD.__index = HUD
 
 local PHASE_LABELS = {
@@ -5650,7 +6103,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		-- Sits on the card's top edge, clear of the event bar.
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, 0, 0, -6),
-		Size = UDim2.new(0, 120, 0, 36),
+		Size = UDim2.new(0, 132, 0, 44),
 		Text = "📖 My Looks",
 		Color = C.purple,
 		ZIndex = 45,
@@ -5662,7 +6115,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		Size = UDim2.new(1, 0, 0, 30),
 		BackgroundTransparency = 0,
 		BackgroundColor3 = C.gold,
-		TextColor3 = C.white,
+		TextColor3 = C.text,
 		Text = "",
 		Visible = false,
 		LayoutOrder = 1,
@@ -5690,7 +6143,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		Size = UDim2.new(1, 0, 0, 104),
 		LayoutOrder = 4,
 		Name = "Steps",
-		Text = "1. 💇 Do your hair   2. 💄 Your face\n3. 👗 An outfit + 🦸 costume that fit the theme\n4. 🐶 Bring a pet   💃 Pick a pose\n5. 📸 Walk the runway - you only get 5 minutes!",
+		Text = STEPS_TEXT,
 		TextColor3 = C.text,
 		ZIndex = 41,
 		Parent = rows,
@@ -5709,8 +6162,11 @@ function HUD:setState(state)
 	self.lobby.Visible = showLobby
 	-- On short phone screens, skip the how-to steps so the card doesn't cover everything
 	local compact = self.lobby.Parent and (self.lobby.Parent :: GuiObject).AbsoluteSize.Y < 500
-	(self.lobby.Rows :: any).Steps.Visible = not compact
-	self.lobby.Size = UDim2.new(0.5, 0, 0, if compact then 150 else 262)
+	local steps = (self.lobby.Rows :: any).Steps
+	steps.Visible = true
+	steps.Text = if compact then "💇 → 💄 → 👗 → 🦸 → 🐶 → 💃 → 📸" else STEPS_TEXT
+	steps.Size = UDim2.new(1, 0, 0, if compact then 40 else 104)
+	self.lobby.Size = UDim2.new(0.5, 0, 0, if compact then 196 else 262)
 	-- No shopping while the 5-minute timer runs (items can still be unlocked from the menus)
 	self.shopButton.Visible = state.phase ~= "Makeover"
 	self.lobbyTheme.Text = "Next theme: " .. (theme and theme.name or "")
@@ -5790,12 +6246,13 @@ return HUD
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="27">
+          <Item class="ModuleScript" referent="28">
             <Properties>
               <string name="Name">Makeover</string>
-              <string name="Source"><![CDATA[-- The dressing room: style your own avatar for the theme. Hair, face, outfit, costume pieces,
--- a pet to walk with you, and your runway pose and effect. Your avatar reacts as you go: it talks,
--- smiles more, and fills up its happy hearts.
+              <string name="Source"><![CDATA[-- The Dressing Hall: walk your own avatar from station to station and style yourself for the
+-- theme. Hair, face, outfit, costume pieces, a pet to walk with you, and your runway pose and
+-- effect. A guide on the left shows what's done and walks you to the next station; you react as
+-- you go (speech, a bigger smile, happy hearts).
 
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
@@ -5805,12 +6262,12 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local Avatar = require(ReplicatedStorage.Shared.Avatar)
-local Pets = require(ReplicatedStorage.Shared.Pets)
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Events = require(ReplicatedStorage.Shared.Events)
 local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Scoring = require(ReplicatedStorage.Shared.Scoring)
+local Stations = require(ReplicatedStorage.Shared.Stations)
 local Effects = require(script.Parent.Effects)
 local Sounds = require(script.Parent.Sounds)
 local Theme = require(script.Parent.Theme)
@@ -5821,18 +6278,16 @@ local new = Theme.new
 local Makeover = {}
 Makeover.__index = Makeover
 
-local STEPS = { { "Hair", "💇" }, { "Face", "💄" }, { "Outfit", "👗" }, { "Costume", "🦸" } }
+-- The stations in the order the guide suggests them
+local STEPS = { { "Hair", "💇" }, { "Face", "💄" }, { "Outfit", "👗" }, { "Costume", "🦸" }, { "Pet", "🐶" }, { "Show", "💃" } }
 local COSTUME_KEYS = { "costumeBack", "costumeFace", "costumeWaist", "costumeShoulder", "accessory" }
 local MAKEUP_KEYS = { "eyeshadow", "lashes", "blush", "lipstick" }
 local MAX_BUBBLES = 24
 local SEND_INTERVAL = 0.25
 
--- The 3D client stands in front of the middle styling chair, facing the camera.
-local STAND = Vector3.new(0, 0.2, 55.5)
-local FACING = Vector3.new(0, 0, -1)
--- How much of the character fills the window on each tab (studs tall) and where to look.
+-- How much of your avatar fills the space next to the menu at each station (studs tall).
 local FRAMING = {
-	Face = { height = 2.9, focus = "face" },
+	Face = { height = 3.4, focus = "face" },
 	Hair = { height = 4, focus = "hair" },
 	Outfit = { height = 8.6, focus = "body" },
 	Costume = { height = 8.6, focus = "body" },
@@ -5881,8 +6336,8 @@ function Makeover.new(gui: ScreenGui, ctx)
 		Name = "Makeover",
 		Size = UDim2.fromScale(1, 1),
 		BackgroundColor3 = C.white,
-		BackgroundTransparency = 1, -- the salon shows around the panels, with the client in it
-		Active = true, -- touches here are for styling, not for moving the character
+		BackgroundTransparency = 1, -- the hall shows around the panels
+		Active = false, -- touches outside the panels still walk you around
 		Visible = false,
 		ZIndex = 10,
 		Parent = gui,
@@ -5891,6 +6346,7 @@ function Makeover.new(gui: ScreenGui, ctx)
 
 	self:buildLeft()
 	self:buildRight()
+	self:buildGuide()
 	self.frame:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
 		self:layoutForScreen()
 	end)
@@ -6045,9 +6501,11 @@ end
 
 function Makeover:buildRight()
 	local right = new("Frame", {
-		Position = UDim2.new(0.46, 0, 0, 62),
-		Size = UDim2.new(0.525, 0, 1, -70),
+		Position = UDim2.new(0.52, 0, 0, 62),
+		Size = UDim2.new(0.465, 0, 1, -70),
 		BackgroundColor3 = C.white,
+		Active = true,
+		Visible = false, -- opens when you step onto a station
 		ZIndex = 11,
 		Parent = self.frame,
 	}, { Theme.corner(24), Theme.stroke(C.purple, 4), Theme.padding(10) })
@@ -6062,10 +6520,12 @@ function Makeover:buildRight()
 		Parent = right,
 	}, { Theme.round(), Theme.maxText(22), Theme.padding(3) })
 
+	-- The station decides the tab, so the tab row stays hidden (the guide does the switching)
 	local tabs = new("Frame", {
 		Position = UDim2.fromScale(0, 0.09),
 		Size = UDim2.fromScale(1, 0.135),
 		BackgroundTransparency = 1,
+		Visible = false,
 		ZIndex = 12,
 		Parent = right,
 	}, {
@@ -6109,17 +6569,23 @@ function Makeover:buildRight()
 		self.tabButtons[tab.id] = b
 	end
 
-	self.chips = new("Frame", {
-		Position = UDim2.fromScale(0, 0.24),
-		Size = UDim2.fromScale(1, 0.075),
+	-- Sub-categories: big enough for small fingers, and they scroll sideways if they don't fit
+	self.chips = new("ScrollingFrame", {
+		Position = UDim2.new(0, 0, 0.075, 6),
+		Size = UDim2.new(1, 0, 0, 56),
 		BackgroundTransparency = 1,
+		ScrollBarThickness = 0,
+		ScrollingDirection = Enum.ScrollingDirection.X,
+		AutomaticCanvasSize = Enum.AutomaticSize.X,
+		CanvasSize = UDim2.new(),
 		ZIndex = 12,
 		Parent = right,
 	}, {
 		new("UIListLayout", {
 			FillDirection = Enum.FillDirection.Horizontal,
-			HorizontalAlignment = Enum.HorizontalAlignment.Center,
-			Padding = UDim.new(0.012, 0),
+			HorizontalAlignment = Enum.HorizontalAlignment.Left,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			Padding = UDim.new(0, 6),
 		}),
 	})
 
@@ -6169,6 +6635,7 @@ function Makeover:buildRight()
 		MaxText = 32,
 		Parent = right,
 	})
+	self.doneButton.Visible = false -- the guide has the Done button
 	self.doneStroke = Theme.new("UIStroke", {
 		Color = C.gold,
 		Thickness = 4,
@@ -6213,6 +6680,109 @@ function Makeover:buildRight()
 		end
 		self:say(pick(PERFUME_LINES), 1.5)
 	end)
+end
+
+-- The guide down the left: your happy hearts, a button for each station (green with a check when
+-- it's done, glowing when it's next; tap one to walk there) and the I'm Done button.
+function Makeover:buildGuide()
+	self.left.Visible = false -- the old portrait card isn't used in the Dressing Hall
+	local guide = new("Frame", {
+		Name = "Guide",
+		Position = UDim2.new(0, 10, 0, 62),
+		Size = UDim2.new(0, 152, 0, 300),
+		BackgroundColor3 = C.white,
+		BackgroundTransparency = 0.08,
+		Active = true,
+		ZIndex = 11,
+		Parent = self.frame,
+	}, { Theme.corner(20), Theme.stroke(C.pink, 3), Theme.padding(6) })
+	self.guide = guide
+	self.heartsLabel.Parent = guide
+	self.heartsLabel.Position = UDim2.new(0, 0, 0, 0)
+	self.heartsLabel.Size = UDim2.new(1, 0, 0, 26)
+	self.heartsLabel.ZIndex = 12
+
+	local grid = new("Frame", {
+		Position = UDim2.new(0, 0, 0, 30),
+		Size = UDim2.new(1, 0, 0, 198),
+		BackgroundTransparency = 1,
+		ZIndex = 12,
+		Parent = guide,
+	}, {
+		new("UIGridLayout", { CellSize = UDim2.new(0.5, -4, 0, 62), CellPadding = UDim2.fromOffset(6, 6) }),
+	})
+	self.checks = {}
+	self.tabStrokes = {}
+	for i, step in STEPS do
+		local station = Stations.byTab[step[1]]
+		local b = Theme.button({
+			Text = "",
+			LayoutOrder = i,
+			Color = C.lavender,
+			ZIndex = 13,
+			Parent = grid,
+		})
+		b.Name = "Go" .. step[1]
+		new("TextLabel", { Name = "Icon", Size = UDim2.fromScale(1, 0.6), Text = step[2], ZIndex = 14, Parent = b }, { Theme.maxText(30) })
+		new("TextLabel", {
+			Name = "Label",
+			Position = UDim2.fromScale(0, 0.58),
+			Size = UDim2.fromScale(1, 0.4),
+			Text = step[1],
+			TextColor3 = C.text,
+			ZIndex = 14,
+			Parent = b,
+		}, { Theme.maxText(16) })
+		self.tabStrokes[step[1]] = Theme.new("UIStroke", {
+			Color = C.gold,
+			Thickness = 4,
+			Transparency = 1,
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+			Parent = b,
+		})
+		b.Activated:Connect(function()
+			if station then
+				self:walkTo(station)
+			end
+		end)
+		self.checks[step[1]] = b
+	end
+
+	local done = Theme.button({
+		Position = UDim2.new(0, 0, 1, -60),
+		Size = UDim2.new(1, 0, 0, 60),
+		Text = "I'm Done! ✨",
+		Color = C.hotPink,
+		ZIndex = 13,
+		MaxText = 24,
+		Parent = guide,
+	})
+	done.Activated:Connect(function()
+		if not self.done and self:stepsDoneCount() < 3 then
+			local t = os.clock()
+			if not self.confirmDoneAt or t - self.confirmDoneAt > 4 then
+				self.confirmDoneAt = t
+				self:say("There's still time to style! 💖 Tap again to go to the runway", 3.5)
+				return
+			end
+		end
+		self.confirmDoneAt = nil
+		self:setDone(not self.done)
+	end)
+	self.doneButton = done
+	self.doneStroke = Theme.new("UIStroke", {
+		Color = C.gold,
+		Thickness = 4,
+		Transparency = 1,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Parent = done,
+	})
+
+	-- What you say pops up at the top of the hall
+	self.speech.Parent = self.frame
+	self.speech.AnchorPoint = Vector2.new(0, 0)
+	self.speech.Position = UDim2.new(0, 172, 0, 66)
+	self.speech.Size = UDim2.new(0.3, 0, 0, 58)
 end
 
 function Makeover:buildWashPanel(parent: GuiObject)
@@ -6336,7 +6906,6 @@ function Makeover:assign(payload)
 	self.nameTag.Text = "💖 " .. self.client.name
 	self:setDone(self.done, true)
 	self.spin = 0
-	self:buildAvatar()
 	self:renderPortrait()
 	self:setTab("Hair")
 	local theme = self:theme()
@@ -6357,14 +6926,20 @@ function Makeover:assign(payload)
 end
 
 -- On short screens (phones), hide the checklist so the client's face can be bigger.
+-- On short screens (phones) the guide's buttons get a little shorter so it all fits.
 function Makeover:layoutForScreen()
+	if not self.guide then
+		return
+	end
 	local compact = self.frame.AbsoluteSize.Y > 0 and self.frame.AbsoluteSize.Y < 500
-	self.left.Checklist.Visible = not compact
-	self.portraitHolder.Size = UDim2.fromScale(1, if compact then 0.72 else 0.66)
-	self.heartsLabel.Position = UDim2.fromScale(0, if compact then 0.87 else 0.8)
-	self.heartsLabel.Size = UDim2.fromScale(0.49, if compact then 0.13 else 0.085)
-	self.wishLabel.Position = UDim2.fromScale(0.5, if compact then 0.88 else 0.805)
-	self.wishLabel.Size = UDim2.fromScale(0.5, if compact then 0.11 else 0.075)
+	local cell = if compact then 56 else 62
+	local grid = self.guide:FindFirstChildOfClass("Frame")
+	local layout = grid and grid:FindFirstChildOfClass("UIGridLayout")
+	if grid and layout then
+		layout.CellSize = UDim2.new(0.5, -4, 0, cell)
+		grid.Size = UDim2.new(1, 0, 0, cell * 3 + 12)
+	end
+	self.guide.Size = UDim2.new(0, 152, 0, 30 + cell * 3 + 12 + 6 + 60 + 12)
 end
 
 function Makeover:setVisible(visible: boolean)
@@ -6376,18 +6951,9 @@ function Makeover:setVisible(visible: boolean)
 	if not self.frame.Visible then
 		self.cursor.Visible = false
 		self.scrubbing = false
-		self.spinning = false
-		if self.model then
-			self.model:Destroy()
-			self.model = nil
+		if self.station then
+			self:closeStation()
 		end
-		if self.pet then
-			self.pet:Destroy()
-			self.pet = nil
-		end
-		self.petId = nil
-	elseif not self.model then
-		self:buildAvatar()
 	end
 	if self.frame.Visible and not wasVisible then
 		self:refreshTheme()
@@ -6424,8 +6990,7 @@ end
 function Makeover:setDone(done: boolean, silent: boolean?)
 	self.done = done
 	self.waiting.Visible = done
-	self.doneButton.Text = if done then "Keep Styling ✏️" else "I'm Done! ✨"
-	self.doneButton.BackgroundColor3 = if done then C.purple else C.hotPink
+	self:styleDone()
 	if not silent then
 		Remotes.Done:FireServer(done)
 	end
@@ -6484,22 +7049,6 @@ function Makeover:renderPortrait()
 	self.hearts = full
 	self:refreshWishes()
 	self:refreshChecklist()
-	if self.model then
-		Avatar.dress(self.model, self.client, self.look, self:avatarOptions())
-		if self.petId ~= self.look.pet then
-			self.petId = self.look.pet
-			if self.pet then
-				self.pet:Destroy()
-				self.pet = nil
-			end
-			local pet = Pets.build(self.look.pet)
-			if pet then
-				pet:PivotTo(CFrame.new(STAND + Vector3.new(2.6, 0, 0)))
-				pet.Parent = Workspace
-				self.pet = pet
-			end
-		end
-	end
 end
 
 function Makeover:wishesMet(): number
@@ -6583,7 +7132,27 @@ function Makeover:stepsDone()
 		Face = makeupCount >= 2,
 		Outfit = not Catalog.isNone(self.look.outfit),
 		Costume = costume,
+		Pet = not Catalog.isNone(self.look.pet),
+		Show = not Catalog.isNone(self.look.pose) or not Catalog.isNone(self.look.effect),
 	}
+end
+
+function Makeover:stepsDoneCount(): number
+	local n = 0
+	for _, ok in self:stepsDone() do
+		if ok then
+			n += 1
+		end
+	end
+	return n
+end
+
+-- "I'm Done!" stays quiet (lavender) until three stations are done, then turns hot pink.
+function Makeover:styleDone()
+	local ready = self.done or self:stepsDoneCount() >= 3
+	self.doneButton.Text = if self.done then "Keep Styling ✏️" else "I'm Done! ✨"
+	self.doneButton.BackgroundColor3 = if self.done then C.purple elseif ready then C.hotPink else C.lavender
+	self.doneButton.TextColor3 = if self.done or ready then C.white else C.text
 end
 
 function Makeover:refreshChecklist()
@@ -6591,6 +7160,12 @@ function Makeover:refreshChecklist()
 	for step, chip in self.checks do
 		chip.BackgroundColor3 = if done[step] then C.green else C.lavender
 		chip.TextColor3 = if done[step] then C.white else C.text
+		-- a check mark too, so done isn't shown by color alone
+		local label = chip:FindFirstChild("Label")
+		if label and label:IsA("TextLabel") then
+			label.Text = step .. (if done[step] then " ✓" else "")
+			label.TextColor3 = if done[step] then C.white else C.text
+		end
 	end
 	self.nextStep = "Done"
 	for _, step in STEPS do
@@ -6599,6 +7174,7 @@ function Makeover:refreshChecklist()
 			break
 		end
 	end
+	self:styleDone()
 end
 
 function Makeover:setTab(tabId: string)
@@ -6609,9 +7185,6 @@ function Makeover:setTab(tabId: string)
 		self:renderPortrait() -- switch between the face and the hand
 	end
 	self.cursor.Visible = false
-	if self.model and self.client then
-		Avatar.setFace(self.model, self.client, self.look, self:avatarOptions())
-	end
 	for id, b in self.tabButtons do
 		local active = id == tabId
 		b.BackgroundColor3 = if active then C.pink else C.lavender
@@ -6649,16 +7222,17 @@ function Makeover:setTab(tabId: string)
 	end
 	self.chips.Visible = #categories > 1
 	-- Without sub-category chips, the grid moves up to use their space
-	self.grid.Position = UDim2.fromScale(0, if #categories > 1 then 0.33 else 0.24)
-	self.grid.Size = UDim2.fromScale(1, if #categories > 1 then 0.52 else 0.61)
+	self.grid.Position = UDim2.new(0, 0, 0.075, if #categories > 1 then 66 else 6)
+	self.grid.Size = UDim2.new(1, 0, 0.925, if #categories > 1 then -66 else -6)
 	for i, category in categories do
 		local active = self.subcategory[tabId] == category.key
 		local chip = Theme.button({
-			Text = category.label,
 			LayoutOrder = i,
-			Size = UDim2.fromScale(math.min(0.32, 1 / #categories - 0.015), 1),
+			Size = UDim2.new(0, 124, 0, 52),
 			Color = if active then C.purple else C.lavender,
 			TextColor3 = if active then C.white else C.text,
+			-- the chosen one is marked with a dot too, not just its color
+			Text = (if active then "● " else "") .. category.label,
 			ZIndex = 13,
 			MaxText = 22,
 			Parent = self.chips,
@@ -6712,8 +7286,13 @@ function Makeover:renderGrid()
 		local unlocked = Catalog.isUnlocked(it, self.ctx.profile, eventId)
 
 		local card = new("TextButton", {
-			-- "Remove" first, then holiday items, then everything else
-			LayoutOrder = if Catalog.isNone(it.id) then 0 elseif it.event then order else order + 1000,
+			-- what you can wear that fits the theme first, then everything else you can wear,
+			-- then locked items, and "None" last
+			LayoutOrder = if Catalog.isNone(it.id)
+				then 9999
+				elseif not unlocked then order + 4000
+				elseif theme and Catalog.matchesTheme(it, theme) then order
+				else order + 2000,
 			Text = "",
 			BackgroundTransparency = 0,
 			BackgroundColor3 = if selected then C.softPink else C.white,
@@ -6734,12 +7313,17 @@ function Makeover:renderGrid()
 			ZIndex = 14,
 			Parent = card,
 		})
-		if category.preview == "portrait" then
+		-- avatar-shop items (hair, costume pieces, hats) show a picture of the real thing
+		if category.preview == "portrait" and not it.asset then
 			local previewLook = table.clone(self.look)
 			previewLook[key] = it.id
-			local body = key == "outfit" or key == "outfitPattern"
-			local zoom = if body then 1 elseif key == "hairStyle" or key == "accessory" then 1.1 else 1.45
-			LookRenderer.render(preview, self.client, previewLook, { headOnly = not body, clean = 1, mood = "smile", zoom = zoom })
+			if key == "outfit" or key == "outfitPattern" then
+				-- outfits show head to toe, so the whole dress or pattern is visible
+				LookRenderer.renderBody(preview, self.client, previewLook, { clean = 1, mood = "smile" })
+			else
+				local zoom = if key == "hairStyle" or key == "accessory" then 1.1 else 1.45
+				LookRenderer.render(preview, self.client, previewLook, { headOnly = true, clean = 1, mood = "smile", zoom = zoom })
+			end
 		elseif it.asset then
 			new("ImageLabel", {
 				Size = UDim2.fromScale(1, 1),
@@ -6761,13 +7345,13 @@ function Makeover:renderGrid()
 			}, { new("UIAspectRatioConstraint", { AspectRatio = 1 }), Theme.round(), Theme.stroke(C.white, 3) })
 			LookRenderer.paint(dot, it)
 		else
-			new("TextLabel", { Size = UDim2.fromScale(1, 1), Text = "🚫", ZIndex = 15, Parent = preview }, { Theme.maxText(48) })
+			new("TextLabel", { Size = UDim2.fromScale(1, 1), Text = "⚪", ZIndex = 15, Parent = preview }, { Theme.maxText(48) })
 		end
 
 		new("TextLabel", {
 			Position = UDim2.fromScale(0.04, 0.77),
 			Size = UDim2.fromScale(0.92, 0.2),
-			Text = if Catalog.isNone(it.id) then "Remove" else it.name,
+			Text = if Catalog.isNone(it.id) then "None" else it.name,
 			ZIndex = 15,
 			Parent = card,
 		}, { Theme.maxText(18) })
@@ -6819,8 +7403,8 @@ function Makeover:renderGrid()
 				Size = UDim2.fromScale(0.62, 0.18),
 				BackgroundTransparency = 0,
 				BackgroundColor3 = if it.pass then C.gold elseif it.level then C.green else C.purple,
-				TextColor3 = C.white,
-				Text = if it.pass == "VIP" then "👑 VIP" elseif it.pass then "👸 Pack" elseif it.level then "⭐ Lv " .. it.level else "💰 " .. it.price,
+				TextColor3 = if it.pass then C.text else C.white,
+				Text = "🔒 " .. (if it.pass == "VIP" then "VIP" elseif it.pass then "Pack" elseif it.level then "Lv " .. it.level else "💰" .. it.price),
 				ZIndex = 17,
 				Parent = card,
 			}, { Theme.round(), Theme.padding(2) })
@@ -6860,9 +7444,19 @@ function Makeover:choose(key: string, itemId: string)
 	Remotes.UpdateLook:FireServer(key, itemId)
 	self:renderPortrait()
 	self:refreshSelection(key)
-	if key == "pose" and self.model then
-		Avatar.pose(self.model, itemId) -- show it right away
+	if key == "pose" then
+		self:previewPose()
+	elseif key == "costumeBack" and not Catalog.isNone(itemId) then
+		-- wings and capes are on your back: turn around to show them off, then turn back
+		self.spin = math.pi
+		local picked = itemId
+		task.delay(2.2, function()
+			if self.look.costumeBack == picked then
+				self.spin = 0
+			end
+		end)
 	end
+	Theme.pop(self.heartsLabel)
 
 	local theme = self:theme()
 	local it = Catalog.byId[itemId]
@@ -7056,128 +7650,149 @@ function Makeover:scrub(pos: Vector2, moved: number)
 end
 
 ------------------------------------------------------------------------------
--- The client in 3D: a real Roblox character standing by the styling chair. On the Hair, Makeup,
--- Outfit and Extras tabs the left card becomes a window onto them; washing, brushing and nails
--- keep their close-up drawings, because that's where you rub and paint.
+-- The Dressing Hall: you walk around in your own avatar. Step on a station's glowing pad and its
+-- menu slides in on the right while the camera frames you on the left; walk off and it closes.
+-- The look itself is put on by the server, so everyone in the hall sees it.
 
 function Makeover:is3D(): boolean
-	return FRAMING[self.tab] ~= nil and not (self.tab == "Hair" and self:needsBrush())
+	return self.station ~= nil
 end
 
-function Makeover:avatarOptions()
-	return {
-		dirtHealth = self.dirtHealth,
-		mood = Scoring.mood(self:previewStars(), self:cleanAmount()),
-		brushed = self.brushed,
-		tangle = self.tangle,
-	}
+function Makeover:character(): Model?
+	return Players.LocalPlayer.Character
 end
 
-function Makeover:buildAvatar()
-	if self.model then
-		self.model:Destroy()
-		self.model = nil
+-- The guide buttons walk you over to a station.
+function Makeover:walkTo(station: Stations.Station)
+	local character = self:character()
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid:MoveTo(station.pad)
 	end
-	local client = self.client
-	if not client then
-		return
-	end
-	task.spawn(function()
-		local model = Avatar.new(client)
-		if not model then
-			return
-		end
-		if self.client ~= client or not self.frame.Visible or self.model then
-			model:Destroy()
-			return
-		end
-		self.model = model
-		Avatar.place(model, STAND, FACING)
-		self.standCFrame = (model:FindFirstChild("HumanoidRootPart") :: BasePart).CFrame
-		model.Parent = Workspace
-		Avatar.dress(model, client, self.look, self:avatarOptions())
-		Avatar.idle(model)
-	end)
 end
 
--- Where the camera goes so the client fills the window on the left of the screen.
+function Makeover:openStation(station: Stations.Station)
+	self.station = station
+	self.spin = 0
+	self.stationOpenedAt = os.clock()
+	self:setTab(station.tab)
+	self.right.Visible = true
+	Theme.pop(self.right)
+	Sounds.play("Pop", 0.6)
+	local character = self:character()
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if humanoid and root and root:IsA("BasePart") then
+		humanoid.AutoRotate = false
+		humanoid:Move(Vector3.zero)
+		-- turn to face the camera
+		root.CFrame = CFrame.lookAt(root.Position, root.Position + station.facing)
+		self.standRotation = root.CFrame.Rotation
+		self.spinShown = 0
+	end
+	self:previewPose()
+end
+
+-- At the Pose Stage your pose keeps playing so you can see it; anywhere else it stops.
+function Makeover:previewPose()
+	if self.poseTrack then
+		self.poseTrack:Stop(0.3)
+		self.poseTrack = nil
+	end
+	local me = self:character()
+	if me and self.station and self.station.tab == "Show" and not Catalog.isNone(self.look.pose) then
+		local track = Avatar.pose(me, self.look.pose)
+		if track then
+			track.Looped = true
+			self.poseTrack = track
+		end
+	end
+end
+
+function Makeover:closeStation()
+	self.station = nil
+	self.spinning = false
+	self.right.Visible = false
+	if self.poseTrack then
+		self.poseTrack:Stop(0.3)
+		self.poseTrack = nil
+	end
+	local character = self:character()
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.AutoRotate = true
+	end
+end
+
+-- The part of the screen your avatar is framed in: between the guide and the station menu.
+function Makeover:stageRect(viewport: Vector2): (Vector2, Vector2)
+	local left = self.guide.AbsolutePosition.X + self.guide.AbsoluteSize.X
+	local right = if self.right.Visible then self.right.AbsolutePosition.X else viewport.X
+	local top, bottom = 64, viewport.Y
+	return Vector2.new(left, top), Vector2.new(math.max(right - left, 1), bottom - top)
+end
+
+-- Where the camera goes so your avatar fills the space next to the station menu.
 function Makeover:cameraTarget(camera: Camera): CFrame?
-	local model = self.model
-	local head = model and model:FindFirstChild("Head")
-	local root = model and model:FindFirstChild("HumanoidRootPart")
-	if not (head and root and head:IsA("BasePart") and root:IsA("BasePart")) then
+	local character = self:character()
+	local head = character and character:FindFirstChild("Head")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local station = self.station
+	if not (station and head and root and head:IsA("BasePart") and root:IsA("BasePart")) then
+		return nil
+	end
+	local viewport = camera.ViewportSize
+	if not viewport or viewport.X <= 0 then
 		return nil
 	end
 	local framing = FRAMING[self.tab] or FRAMING.Hair
-	-- aimed a little above the head, so it sits below the speech bubble at the top of the window
-	local focus = if framing.focus == "face"
-		then head.Position + Vector3.new(0, 0.55, 0)
-		elseif framing.focus == "hair" then head.Position + Vector3.new(0, 0.55, 0)
-		else Vector3.new(root.Position.X, STAND.Y + 3.4, root.Position.Z)
-	local holder = self.portraitHolder
-	local center = holder.AbsolutePosition + holder.AbsoluteSize / 2
-	local viewport = camera.ViewportSize
-	if not viewport or viewport.X <= 0 or holder.AbsoluteSize.Y <= 0 then
-		return nil
-	end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local feet = root.Position.Y - (if humanoid then humanoid.HipHeight + root.Size.Y / 2 else 3)
+	local focus = if framing.focus == "body"
+		then Vector3.new(root.Position.X, (feet + head.Position.Y + head.Size.Y) / 2 + 0.3, root.Position.Z)
+		else head.Position + Vector3.new(0, 0.45, 0)
+	local origin, size = self:stageRect(viewport)
+	local center = origin + size / 2
 	local tanV = math.tan(math.rad(camera.FieldOfView) / 2)
 	local tanH = tanV * viewport.X / viewport.Y
-	-- far enough back that the framing height fills most of the window
-	local distance = framing.height * viewport.Y / (2 * tanV * holder.AbsoluteSize.Y * 0.92)
-	local position = focus + FACING * distance
-	-- then turn the camera so the client sits in the window instead of the middle of the screen
+	-- far enough back that the framing height fills most of that space
+	local distance = framing.height * viewport.Y / (2 * tanV * math.min(size.Y, size.X * 1.3) * 0.9)
+	local position = focus + station.facing * distance
+	-- then turn the camera so you sit in that space instead of the middle of the screen
 	local ndcX = center.X / viewport.X * 2 - 1
 	local ndcY = 1 - center.Y / viewport.Y * 2
 	return CFrame.lookAt(position, focus) * CFrame.Angles(0, math.atan(ndcX * tanH), 0) * CFrame.Angles(-math.atan(ndcY * tanV), 0, 0)
-end
-
-local function setLocalTransparency(character: Model?, amount: number)
-	if character then
-		for _, d in character:GetDescendants() do
-			if d:IsA("BasePart") or d:IsA("Decal") then
-				d.LocalTransparencyModifier = amount
-			end
-		end
-	end
 end
 
 function Makeover:startStage()
 	local controlling = false
 	RunService:BindToRenderStep("GlowUpStage", Enum.RenderPriority.Camera.Value + 1, function(dt)
 		local camera = Workspace.CurrentCamera
-		local active = self.frame.Visible and self.model ~= nil and self.model.Parent ~= nil and self.standCFrame ~= nil
-		local show3D = active and self:is3D()
-		-- the left card turns into a window onto the salon
-		self.left.BackgroundTransparency = if show3D then 1 else 0
-		self.portraitHolder.BackgroundTransparency = if show3D then 1 else 0
-		self.spinHint.Visible = show3D and not self.spinning
-		if self.portraitRoot then
-			self.portraitRoot.Visible = not show3D
+		local character = self:character()
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		local here = if self.frame.Visible and root and root:IsA("BasePart") then Stations.at(root.Position) else nil
+		if here ~= self.station then
+			if self.station then
+				self:closeStation()
+			end
+			if here then
+				self:openStation(here)
+			end
 		end
-		self.bubbleLayer.Visible = not show3D and self.tab ~= "Nails"
+		self.spinHint.Visible = self.station ~= nil and not self.spinning and os.clock() - (self.stationOpenedAt or 0) < 4
 
-		local character = Players.LocalPlayer.Character
-		if not active then
+		if not self.station then
 			if controlling then
 				controlling = false
 				camera.CameraType = Enum.CameraType.Custom
-				setLocalTransparency(character, 0)
 			end
 			return
 		end
-		-- The stylist's own avatar steps out of the shot while the makeover screen is up
-		setLocalTransparency(character, 1)
-
-		-- a gentle sway, plus however far the player spun them
-		local sway = if show3D and not self.spinning then math.sin(os.clock() * 0.7) * 0.2 else 0
-		local root = self.model and self.model:FindFirstChild("HumanoidRootPart")
-		if root and root:IsA("BasePart") then
-			root.CFrame = (self.standCFrame :: CFrame) * CFrame.Angles(0, self.spin + sway, 0)
+		-- turned however far the player spun themselves (smoothly, so turning to show a cape glides)
+		self.spinShown = (self.spinShown or 0) + (self.spin - (self.spinShown or 0)) * (1 - math.exp(-dt * 6))
+		if root and root:IsA("BasePart") and self.standRotation then
+			root.CFrame = CFrame.new(root.Position) * self.standRotation * CFrame.Angles(0, self.spinShown, 0)
 		end
-		if self.pet and self.pet.Parent and self.model then
-			Pets.follow(self.pet, self.model, dt, -1)
-		end
-
 		local target = self:cameraTarget(camera)
 		if target then
 			camera.CameraType = Enum.CameraType.Scriptable
@@ -7194,9 +7809,10 @@ function Makeover:connectInput()
 	-- Drag across the 3D client to spin them around
 	UserInputService.InputBegan:Connect(function(input)
 		local isPress = input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch
-		if isPress and self.frame.Visible and self:is3D() and self.model and not self.ctx.isModalOpen() then
+		if isPress and self.frame.Visible and self:is3D() and not self.ctx.isModalOpen() then
 			local pos = screenPosition(input)
-			if self:isOverPortrait(pos) then
+			local origin, size = self:stageRect(Workspace.CurrentCamera.ViewportSize)
+			if pos.X >= origin.X and pos.X <= origin.X + size.X and pos.Y >= origin.Y then
 				self.spinning = true
 				self.spinFrom = pos.X
 			end
@@ -7291,7 +7907,7 @@ return Makeover
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="28">
+          <Item class="ModuleScript" referent="29">
             <Properties>
               <string name="Name">Results</string>
               <string name="Source"><![CDATA[-- Shows who won the fashion show, what the judges said, and the coins you earned.
@@ -7386,8 +8002,10 @@ function Results:show(results)
 	for _, row in results.rows do
 		local isMe = row.userId == Players.LocalPlayer.UserId
 		if isMe then
-			local comments = table.concat(row.comments, "  ", 1, math.min(#row.comments, 3))
-			self.mine.Text = string.format("%s: %s\n%s  +%d 💰\n%s", row.client.name, Theme.stars(row.stars), row.award or "", row.coins, comments)
+			-- the two most useful judge tips, short; stars only when they're good news
+			local comments = table.concat(row.comments, "  ", 1, math.min(#row.comments, 2))
+			local stars = if row.stars >= 3 then "  " .. Theme.stars(row.stars) else ""
+			self.mine.Text = string.format("%s:%s\n%s  +%d 💰\n%s", row.client.name, stars, row.award or "", row.coins, comments)
 			LookRenderer.render(self.minePortrait, row.client, row.look, { clean = 1, mood = if row.stars >= 4 then "grin" else "smile" })
 			self:celebrate(row, #results.rows)
 		end
@@ -7428,7 +8046,7 @@ function Results:show(results)
 			Size = UDim2.new(1, -136, 0, 30),
 			-- Everyone sees the award; stars only show when they're great (or it's your own look)
 			Text = (row.award or "") .. (if row.stars >= 4 or isMe then "  " .. Theme.stars(row.stars) else ""),
-			TextColor3 = C.gold,
+			TextColor3 = C.goldText,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			ZIndex = 43,
 			Parent = card,
@@ -7451,9 +8069,10 @@ function Results:celebrate(row, players: number)
 	elseif row.stars >= 3 then
 		title = "✨ Great job!"
 	else
-		title = "💪 Nice try!"
+		title = "💖 You walked the runway!"
 	end
-	Effects.splash(self.gui, title, Theme.stars(row.stars) .. "   +" .. row.coins .. " 💰", C.hotPink, 3)
+	local stars = if row.stars >= 3 then Theme.stars(row.stars) .. "   " else ""
+	Effects.splash(self.gui, title, stars .. (row.award or "") .. "   +" .. row.coins .. " 💰", C.hotPink, 3)
 	if row.stars >= 3.5 or (players >= 2 and row.rank == 1) then
 		Effects.confetti(self.gui, 60)
 	end
@@ -7467,7 +8086,7 @@ return Results
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="29">
+          <Item class="ModuleScript" referent="30">
             <Properties>
               <string name="Name">Shop</string>
               <string name="Source"><![CDATA[-- The shop: unlock looks with coins you earn, or get Robux extras.
@@ -7972,7 +8591,7 @@ return Shop
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="30">
+          <Item class="ModuleScript" referent="31">
             <Properties>
               <string name="Name">Showcase</string>
               <string name="Source"><![CDATA[-- The fashion show: points the camera at the runway, puts the look on the big screen,
@@ -8065,7 +8684,7 @@ function Showcase.new(gui: ScreenGui, ctx)
 	local cheers = new("Frame", {
 		Name = "Cheers",
 		Position = UDim2.new(0, 0, 0, 128),
-		Size = UDim2.new(1, 0, 0, 44),
+		Size = UDim2.new(1, 0, 0, 56),
 		BackgroundTransparency = 1,
 		ZIndex = 41,
 		Parent = self.panel,
@@ -8081,7 +8700,7 @@ function Showcase.new(gui: ScreenGui, ctx)
 		local b = Theme.button({
 			Text = emoji,
 			LayoutOrder = i,
-			Size = UDim2.new(0, 56, 1, 0),
+			Size = UDim2.new(0, 60, 1, 0),
 			Color = C.softPink,
 			ZIndex = 42,
 			MaxText = 34,
@@ -8284,7 +8903,13 @@ function Showcase:followWalker()
 	if not world then
 		return
 	end
+	-- the player walking the runway in their own avatar (or a stand-in model if they left)
 	local walker = nil
+	for _, player in Players:GetPlayers() do
+		if player.Character and player.Character:GetAttribute("Walking") then
+			walker = player.Character
+		end
+	end
 	for _, m in world:GetChildren() do
 		if m:IsA("Model") and m:GetAttribute("Walking") then
 			walker = m
@@ -8321,7 +8946,7 @@ function Showcase:vote(stars: number)
 	Remotes.Vote:FireServer(current.userId, stars)
 	self.prompt.Text = "Thanks for voting! 💖 Tap to cheer!"
 	if first then
-		self.ctx.toast("+2 💰 for voting!", C.gold)
+		self.ctx.toast("+2 💰 for voting!", C.green)
 	end
 end
 
@@ -8345,8 +8970,12 @@ function Showcase:show(payload)
 		self.prompt.Text = "How much do you love it?"
 		self.starRow.Visible = true
 	end
-	self.cheerRow.Position = UDim2.new(0, 0, 0, if mine then 68 else 128)
-	self.panel.Size = UDim2.new(0.5, 0, 0, if mine then 136 else 196)
+	-- on short (phone) screens the prompt line goes, so the card stays under ~40% of the height
+	local short = self.gui.AbsoluteSize.Y > 0 and self.gui.AbsoluteSize.Y < 500
+	self.prompt.Visible = not short
+	self.starRow.Position = UDim2.new(0, 0, 0, if short then 40 else 68)
+	self.cheerRow.Position = UDim2.new(0, 0, 0, if mine then (if short then 40 else 68) else (if short then 100 else 128))
+	self.panel.Size = UDim2.new(0.5, 0, 0, (if mine then 68 else 128) + 56 + 24 - (if short then 28 else 0))
 	-- Camera flashes from the photographers
 	task.spawn(function()
 		local current = payload
@@ -8374,7 +9003,7 @@ return Showcase
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="31">
+          <Item class="ModuleScript" referent="32">
             <Properties>
               <string name="Name">Sounds</string>
               <string name="Source"><![CDATA[-- Plays the sounds and music listed in Config.Sounds (empty ones are skipped).
@@ -8441,7 +9070,7 @@ return Sounds
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="32">
+          <Item class="ModuleScript" referent="33">
             <Properties>
               <string name="Name">Theme</string>
               <string name="Source"><![CDATA[-- Colors, fonts and little helpers for building the game's screens in code.
@@ -8454,17 +9083,20 @@ local rgb = Color3.fromRGB
 
 Theme.Font = Enum.Font.FredokaOne
 
+-- White text on pink, hotPink, purple and green, and dark text on everything light, all measure
+-- at least 4.5:1 contrast. Gold is a background for dark text only (goldText is gold you can read).
 Theme.Colors = {
-	pink = rgb(255, 120, 190),
-	hotPink = rgb(240, 60, 150),
+	pink = rgb(212, 47, 134),
+	hotPink = rgb(190, 20, 105),
 	softPink = rgb(255, 228, 242),
-	purple = rgb(150, 90, 220),
+	purple = rgb(106, 63, 181),
 	lavender = rgb(235, 225, 255),
 	white = rgb(255, 255, 255),
-	text = rgb(80, 40, 100),
-	textLight = rgb(150, 120, 170),
+	text = rgb(31, 18, 53),
+	textLight = rgb(110, 80, 130),
 	gold = rgb(255, 200, 60),
-	green = rgb(80, 200, 130),
+	goldText = rgb(138, 90, 0),
+	green = rgb(22, 120, 64),
 	red = rgb(240, 70, 90),
 	shadow = rgb(0, 0, 0),
 }
@@ -8527,7 +9159,7 @@ function Theme.padding(px: number): UIPadding
 end
 
 function Theme.maxText(size: number): UITextSizeConstraint
-	return Theme.new("UITextSizeConstraint", { MaxTextSize = size })
+	return Theme.new("UITextSizeConstraint", { MaxTextSize = size, MinTextSize = math.min(14, size) })
 end
 
 function Theme.gradient(a: Color3, b: Color3, rotation: number?): UIGradient
@@ -8602,7 +9234,7 @@ return Theme
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="33">
+  <Item class="Workspace" referent="34">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>

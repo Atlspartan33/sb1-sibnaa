@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local Avatar = require(ReplicatedStorage.Shared.Avatar)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local UI = script.Parent:WaitForChild("UI")
@@ -195,7 +196,16 @@ Remotes.Celebrate.OnClientEvent:Connect(function(info)
 		Effects.splash(gui, "💞 " .. info.name .. " is your BEST friend!", "Visit #" .. info.visits .. "  +" .. info.coins .. " 💰", Theme.Colors.hotPink, 3.5)
 		Effects.confetti(gui, 40)
 	elseif info.kind == "level" then
-		Effects.splash(gui, "⭐ Level " .. info.level .. "! ⭐", "You're a " .. info.title .. "!", Theme.Colors.purple, 3.5)
+		local unlocked = {}
+		for _, category in Catalog.Categories do
+			for _, it in category.items do
+				if it.level == info.level then
+					table.insert(unlocked, it.name)
+				end
+			end
+		end
+		local subtitle = if #unlocked > 0 then "You unlocked: " .. table.concat(unlocked, ", ") .. "! Try it on next round!" else "You're a " .. info.title .. "!"
+		Effects.splash(gui, "⭐ Level " .. info.level .. "! ⭐", subtitle, Theme.Colors.purple, 4.5)
 		Effects.confetti(gui, 60)
 	end
 end)
@@ -218,6 +228,40 @@ task.spawn(function()
 		results:show(snapshot.results)
 	end
 end)
+
+-- The server asks this screen to walk your character down the runway and to strike poses (your
+-- own device moves your character, so it has to happen here).
+local function watchCharacter(character: Model)
+	character:GetAttributeChangedSignal("WalkTarget"):Connect(function()
+		local target = character:GetAttribute("WalkTarget")
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			if typeof(target) == "Vector3" then
+				local speed = character:GetAttribute("RunwaySpeed")
+				humanoid.WalkSpeed = if type(speed) == "number" then speed else 10
+				humanoid:MoveTo(target)
+			else
+				humanoid.WalkSpeed = 16
+				local root = character:FindFirstChild("HumanoidRootPart")
+				if root and root:IsA("BasePart") then
+					-- face the crowd at the end of the runway
+					root.CFrame = CFrame.lookAt(root.Position, root.Position + Vector3.new(0, 0, 1))
+				end
+			end
+		end
+	end)
+	character:GetAttributeChangedSignal("Pose"):Connect(function()
+		local value = character:GetAttribute("Pose")
+		local poseId = type(value) == "string" and string.match(value, "^[^|]+")
+		if poseId then
+			Avatar.pose(character, poseId)
+		end
+	end)
+end
+Players.LocalPlayer.CharacterAdded:Connect(watchCharacter)
+if Players.LocalPlayer.Character then
+	watchCharacter(Players.LocalPlayer.Character)
+end
 
 -- Step onto the dance floor and you dance (everyone sees it); step off and you stop.
 local danceTrack: AnimationTrack? = nil

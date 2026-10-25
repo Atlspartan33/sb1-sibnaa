@@ -88,7 +88,7 @@ function Showcase.new(gui: ScreenGui, ctx)
 	local cheers = new("Frame", {
 		Name = "Cheers",
 		Position = UDim2.new(0, 0, 0, 128),
-		Size = UDim2.new(1, 0, 0, 44),
+		Size = UDim2.new(1, 0, 0, 56),
 		BackgroundTransparency = 1,
 		ZIndex = 41,
 		Parent = self.panel,
@@ -104,7 +104,7 @@ function Showcase.new(gui: ScreenGui, ctx)
 		local b = Theme.button({
 			Text = emoji,
 			LayoutOrder = i,
-			Size = UDim2.new(0, 56, 1, 0),
+			Size = UDim2.new(0, 60, 1, 0),
 			Color = C.softPink,
 			ZIndex = 42,
 			MaxText = 34,
@@ -350,7 +350,7 @@ function Showcase:vote(stars: number)
 	Remotes.Vote:FireServer(current.userId, stars)
 	self.prompt.Text = "Thanks for voting! 💖 Tap to cheer!"
 	if first then
-		self.ctx.toast("+2 💰 for voting!", C.gold)
+		self.ctx.toast("+2 💰 for voting!", C.green)
 	end
 end
 
@@ -374,8 +374,12 @@ function Showcase:show(payload)
 		self.prompt.Text = "How much do you love it?"
 		self.starRow.Visible = true
 	end
-	self.cheerRow.Position = UDim2.new(0, 0, 0, if mine then 68 else 128)
-	self.panel.Size = UDim2.new(0.5, 0, 0, if mine then 136 else 196)
+	-- on short (phone) screens the prompt line goes, so the card stays under ~40% of the height
+	local short = self.gui.AbsoluteSize.Y > 0 and self.gui.AbsoluteSize.Y < 500
+	self.prompt.Visible = not short
+	self.starRow.Position = UDim2.new(0, 0, 0, if short then 40 else 68)
+	self.cheerRow.Position = UDim2.new(0, 0, 0, if mine then (if short then 40 else 68) else (if short then 100 else 128))
+	self.panel.Size = UDim2.new(0.5, 0, 0, (if mine then 68 else 128) + 56 + 24 - (if short then 28 else 0))
 	-- Camera flashes from the photographers
 	task.spawn(function()
 		local current = payload

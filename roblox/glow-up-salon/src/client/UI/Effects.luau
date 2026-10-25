@@ -119,7 +119,7 @@ function Effects.showSplash(gui: GuiObject, title: string, subtitle: string?, co
 	Sounds.play("Pop")
 	local card = new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.45),
+		Position = UDim2.fromScale(0.32, 0.45),
 		Size = UDim2.fromScale(0.5, 0.34),
 		BackgroundColor3 = C.white,
 		ZIndex = 260,

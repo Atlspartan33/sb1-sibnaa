@@ -36,7 +36,7 @@ local SEND_INTERVAL = 0.25
 
 -- How much of your avatar fills the space next to the menu at each station (studs tall).
 local FRAMING = {
-	Face = { height = 2.9, focus = "face" },
+	Face = { height = 3.4, focus = "face" },
 	Hair = { height = 4, focus = "hair" },
 	Outfit = { height = 8.6, focus = "body" },
 	Costume = { height = 8.6, focus = "body" },
@@ -318,17 +318,23 @@ function Makeover:buildRight()
 		self.tabButtons[tab.id] = b
 	end
 
-	self.chips = new("Frame", {
-		Position = UDim2.fromScale(0, 0.09),
-		Size = UDim2.fromScale(1, 0.075),
+	-- Sub-categories: big enough for small fingers, and they scroll sideways if they don't fit
+	self.chips = new("ScrollingFrame", {
+		Position = UDim2.new(0, 0, 0.075, 6),
+		Size = UDim2.new(1, 0, 0, 56),
 		BackgroundTransparency = 1,
+		ScrollBarThickness = 0,
+		ScrollingDirection = Enum.ScrollingDirection.X,
+		AutomaticCanvasSize = Enum.AutomaticSize.X,
+		CanvasSize = UDim2.new(),
 		ZIndex = 12,
 		Parent = right,
 	}, {
 		new("UIListLayout", {
 			FillDirection = Enum.FillDirection.Horizontal,
-			HorizontalAlignment = Enum.HorizontalAlignment.Center,
-			Padding = UDim.new(0.012, 0),
+			HorizontalAlignment = Enum.HorizontalAlignment.Left,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			Padding = UDim.new(0, 6),
 		}),
 	})
 
@@ -501,6 +507,15 @@ function Makeover:buildGuide()
 		Parent = guide,
 	})
 	done.Activated:Connect(function()
+		if not self.done and self:stepsDoneCount() < 3 then
+			local t = os.clock()
+			if not self.confirmDoneAt or t - self.confirmDoneAt > 4 then
+				self.confirmDoneAt = t
+				self:say("There's still time to style! 💖 Tap again to go to the runway", 3.5)
+				return
+			end
+		end
+		self.confirmDoneAt = nil
 		self:setDone(not self.done)
 	end)
 	self.doneButton = done
@@ -660,14 +675,20 @@ function Makeover:assign(payload)
 end
 
 -- On short screens (phones), hide the checklist so the client's face can be bigger.
+-- On short screens (phones) the guide's buttons get a little shorter so it all fits.
 function Makeover:layoutForScreen()
+	if not self.guide then
+		return
+	end
 	local compact = self.frame.AbsoluteSize.Y > 0 and self.frame.AbsoluteSize.Y < 500
-	self.left.Checklist.Visible = not compact
-	self.portraitHolder.Size = UDim2.fromScale(1, if compact then 0.72 else 0.66)
-	self.heartsLabel.Position = UDim2.fromScale(0, if compact then 0.87 else 0.8)
-	self.heartsLabel.Size = UDim2.fromScale(0.49, if compact then 0.13 else 0.085)
-	self.wishLabel.Position = UDim2.fromScale(0.5, if compact then 0.88 else 0.805)
-	self.wishLabel.Size = UDim2.fromScale(0.5, if compact then 0.11 else 0.075)
+	local cell = if compact then 56 else 62
+	local grid = self.guide:FindFirstChildOfClass("Frame")
+	local layout = grid and grid:FindFirstChildOfClass("UIGridLayout")
+	if grid and layout then
+		layout.CellSize = UDim2.new(0.5, -4, 0, cell)
+		grid.Size = UDim2.new(1, 0, 0, cell * 3 + 12)
+	end
+	self.guide.Size = UDim2.new(0, 152, 0, 30 + cell * 3 + 12 + 6 + 60 + 12)
 end
 
 function Makeover:setVisible(visible: boolean)
@@ -718,8 +739,7 @@ end
 function Makeover:setDone(done: boolean, silent: boolean?)
 	self.done = done
 	self.waiting.Visible = done
-	self.doneButton.Text = if done then "Keep Styling ✏️" else "I'm Done! ✨"
-	self.doneButton.BackgroundColor3 = if done then C.purple else C.hotPink
+	self:styleDone()
 	if not silent then
 		Remotes.Done:FireServer(done)
 	end
@@ -866,6 +886,24 @@ function Makeover:stepsDone()
 	}
 end
 
+function Makeover:stepsDoneCount(): number
+	local n = 0
+	for _, ok in self:stepsDone() do
+		if ok then
+			n += 1
+		end
+	end
+	return n
+end
+
+-- "I'm Done!" stays quiet (lavender) until three stations are done, then turns hot pink.
+function Makeover:styleDone()
+	local ready = self.done or self:stepsDoneCount() >= 3
+	self.doneButton.Text = if self.done then "Keep Styling ✏️" else "I'm Done! ✨"
+	self.doneButton.BackgroundColor3 = if self.done then C.purple elseif ready then C.hotPink else C.lavender
+	self.doneButton.TextColor3 = if self.done or ready then C.white else C.text
+end
+
 function Makeover:refreshChecklist()
 	local done = self:stepsDone()
 	for step, chip in self.checks do
@@ -885,6 +923,7 @@ function Makeover:refreshChecklist()
 			break
 		end
 	end
+	self:styleDone()
 end
 
 function Makeover:setTab(tabId: string)
@@ -932,16 +971,17 @@ function Makeover:setTab(tabId: string)
 	end
 	self.chips.Visible = #categories > 1
 	-- Without sub-category chips, the grid moves up to use their space
-	self.grid.Position = UDim2.fromScale(0, if #categories > 1 then 0.18 else 0.09)
-	self.grid.Size = UDim2.fromScale(1, if #categories > 1 then 0.81 else 0.9)
+	self.grid.Position = UDim2.new(0, 0, 0.075, if #categories > 1 then 66 else 6)
+	self.grid.Size = UDim2.new(1, 0, 0.925, if #categories > 1 then -66 else -6)
 	for i, category in categories do
 		local active = self.subcategory[tabId] == category.key
 		local chip = Theme.button({
-			Text = category.label,
 			LayoutOrder = i,
-			Size = UDim2.fromScale(math.min(0.32, 1 / #categories - 0.015), 1),
+			Size = UDim2.new(0, 124, 0, 52),
 			Color = if active then C.purple else C.lavender,
 			TextColor3 = if active then C.white else C.text,
+			-- the chosen one is marked with a dot too, not just its color
+			Text = (if active then "● " else "") .. category.label,
 			ZIndex = 13,
 			MaxText = 22,
 			Parent = self.chips,
@@ -995,8 +1035,13 @@ function Makeover:renderGrid()
 		local unlocked = Catalog.isUnlocked(it, self.ctx.profile, eventId)
 
 		local card = new("TextButton", {
-			-- "Remove" first, then holiday items, then everything else
-			LayoutOrder = if Catalog.isNone(it.id) then 0 elseif it.event then order else order + 1000,
+			-- what you can wear that fits the theme first, then everything else you can wear,
+			-- then locked items, and "None" last
+			LayoutOrder = if Catalog.isNone(it.id)
+				then 9999
+				elseif not unlocked then order + 4000
+				elseif theme and Catalog.matchesTheme(it, theme) then order
+				else order + 2000,
 			Text = "",
 			BackgroundTransparency = 0,
 			BackgroundColor3 = if selected then C.softPink else C.white,
@@ -1021,9 +1066,13 @@ function Makeover:renderGrid()
 		if category.preview == "portrait" and not it.asset then
 			local previewLook = table.clone(self.look)
 			previewLook[key] = it.id
-			local body = key == "outfit" or key == "outfitPattern"
-			local zoom = if body then 1 elseif key == "hairStyle" or key == "accessory" then 1.1 else 1.45
-			LookRenderer.render(preview, self.client, previewLook, { headOnly = not body, clean = 1, mood = "smile", zoom = zoom })
+			if key == "outfit" or key == "outfitPattern" then
+				-- outfits show head to toe, so the whole dress or pattern is visible
+				LookRenderer.renderBody(preview, self.client, previewLook, { clean = 1, mood = "smile" })
+			else
+				local zoom = if key == "hairStyle" or key == "accessory" then 1.1 else 1.45
+				LookRenderer.render(preview, self.client, previewLook, { headOnly = true, clean = 1, mood = "smile", zoom = zoom })
+			end
 		elseif it.asset then
 			new("ImageLabel", {
 				Size = UDim2.fromScale(1, 1),
@@ -1045,13 +1094,13 @@ function Makeover:renderGrid()
 			}, { new("UIAspectRatioConstraint", { AspectRatio = 1 }), Theme.round(), Theme.stroke(C.white, 3) })
 			LookRenderer.paint(dot, it)
 		else
-			new("TextLabel", { Size = UDim2.fromScale(1, 1), Text = "🚫", ZIndex = 15, Parent = preview }, { Theme.maxText(48) })
+			new("TextLabel", { Size = UDim2.fromScale(1, 1), Text = "⚪", ZIndex = 15, Parent = preview }, { Theme.maxText(48) })
 		end
 
 		new("TextLabel", {
 			Position = UDim2.fromScale(0.04, 0.77),
 			Size = UDim2.fromScale(0.92, 0.2),
-			Text = if Catalog.isNone(it.id) then "Remove" else it.name,
+			Text = if Catalog.isNone(it.id) then "None" else it.name,
 			ZIndex = 15,
 			Parent = card,
 		}, { Theme.maxText(18) })
@@ -1103,8 +1152,8 @@ function Makeover:renderGrid()
 				Size = UDim2.fromScale(0.62, 0.18),
 				BackgroundTransparency = 0,
 				BackgroundColor3 = if it.pass then C.gold elseif it.level then C.green else C.purple,
-				TextColor3 = C.white,
-				Text = if it.pass == "VIP" then "👑 VIP" elseif it.pass then "👸 Pack" elseif it.level then "⭐ Lv " .. it.level else "💰 " .. it.price,
+				TextColor3 = if it.pass then C.text else C.white,
+				Text = "🔒 " .. (if it.pass == "VIP" then "VIP" elseif it.pass then "Pack" elseif it.level then "Lv " .. it.level else "💰" .. it.price),
 				ZIndex = 17,
 				Parent = card,
 			}, { Theme.round(), Theme.padding(2) })
@@ -1144,10 +1193,19 @@ function Makeover:choose(key: string, itemId: string)
 	Remotes.UpdateLook:FireServer(key, itemId)
 	self:renderPortrait()
 	self:refreshSelection(key)
-	local me = self:character()
-	if key == "pose" and me then
-		Avatar.pose(me, itemId) -- show it right away
+	if key == "pose" then
+		self:previewPose()
+	elseif key == "costumeBack" and not Catalog.isNone(itemId) then
+		-- wings and capes are on your back: turn around to show them off, then turn back
+		self.spin = math.pi
+		local picked = itemId
+		task.delay(2.2, function()
+			if self.look.costumeBack == picked then
+				self.spin = 0
+			end
+		end)
 	end
+	Theme.pop(self.heartsLabel)
 
 	local theme = self:theme()
 	local it = Catalog.byId[itemId]
@@ -1365,6 +1423,7 @@ end
 function Makeover:openStation(station: Stations.Station)
 	self.station = station
 	self.spin = 0
+	self.stationOpenedAt = os.clock()
 	self:setTab(station.tab)
 	self.right.Visible = true
 	Theme.pop(self.right)
@@ -1378,6 +1437,24 @@ function Makeover:openStation(station: Stations.Station)
 		-- turn to face the camera
 		root.CFrame = CFrame.lookAt(root.Position, root.Position + station.facing)
 		self.standRotation = root.CFrame.Rotation
+		self.spinShown = 0
+	end
+	self:previewPose()
+end
+
+-- At the Pose Stage your pose keeps playing so you can see it; anywhere else it stops.
+function Makeover:previewPose()
+	if self.poseTrack then
+		self.poseTrack:Stop(0.3)
+		self.poseTrack = nil
+	end
+	local me = self:character()
+	if me and self.station and self.station.tab == "Show" and not Catalog.isNone(self.look.pose) then
+		local track = Avatar.pose(me, self.look.pose)
+		if track then
+			track.Looped = true
+			self.poseTrack = track
+		end
 	end
 end
 
@@ -1385,6 +1462,10 @@ function Makeover:closeStation()
 	self.station = nil
 	self.spinning = false
 	self.right.Visible = false
+	if self.poseTrack then
+		self.poseTrack:Stop(0.3)
+		self.poseTrack = nil
+	end
 	local character = self:character()
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	if humanoid then
@@ -1447,7 +1528,7 @@ function Makeover:startStage()
 				self:openStation(here)
 			end
 		end
-		self.spinHint.Visible = self.station ~= nil and not self.spinning
+		self.spinHint.Visible = self.station ~= nil and not self.spinning and os.clock() - (self.stationOpenedAt or 0) < 4
 
 		if not self.station then
 			if controlling then
@@ -1456,9 +1537,10 @@ function Makeover:startStage()
 			end
 			return
 		end
-		-- turned however far the player spun themselves
+		-- turned however far the player spun themselves (smoothly, so turning to show a cape glides)
+		self.spinShown = (self.spinShown or 0) + (self.spin - (self.spinShown or 0)) * (1 - math.exp(-dt * 6))
 		if root and root:IsA("BasePart") and self.standRotation then
-			root.CFrame = CFrame.new(root.Position) * self.standRotation * CFrame.Angles(0, self.spin, 0)
+			root.CFrame = CFrame.new(root.Position) * self.standRotation * CFrame.Angles(0, self.spinShown, 0)
 		end
 		local target = self:cameraTarget(camera)
 		if target then

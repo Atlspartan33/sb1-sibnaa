@@ -756,7 +756,16 @@ function INST.GetFullName(self)
 	return table.concat(parts, ".")
 end
 function INST.GetAttribute(self, k) return D[self].attrs[k] end
-function INST.SetAttribute(self, k, v) D[self].attrs[k] = v end
+function INST.SetAttribute(self, k, v)
+	D[self].attrs[k] = v
+	local s = D[self].signals["Attr:" .. k]
+	if s then s:Fire() end
+end
+function INST.GetAttributeChangedSignal(self, k)
+	local d = D[self]
+	d.signals["Attr:" .. k] = d.signals["Attr:" .. k] or Signal("AttributeChanged")
+	return d.signals["Attr:" .. k]
+end
 function INST.GetPropertyChangedSignal(self, prop)
 	local key = "Changed:" .. prop
 	D[self].signals[key] = D[self].signals[key] or Signal(key)

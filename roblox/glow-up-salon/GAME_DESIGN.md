@@ -92,8 +92,10 @@
 ## Round loop (everyone in the server plays together)
 
 1. **Intermission (20s):** next theme, event banner, weekly goal and a 5-step how-to card. Players can open the Shop or Look Book.
-2. **Dressing room (5:00):** your own character stands by the styling chair, shown live in 3D (drag to spin). Tabs: 💇 Hair, 💄 Face (skin tone and makeup), 👗 Outfit, 🦸 Costume (hats, wings and capes, masks, tails, shoulder buddies), 🐶 Pet, 💃 Show (pose and effect). If everyone taps **I'm Done!**, the show starts early.
-3. **Fashion Show (~9s per look):** your look walks the runway with your pet trotting alongside and your effect around you, twirls, then strikes your pose. Other players vote with hearts (+2 coins for voting), and anyone can tap emoji cheers.
+2. **Dressing Hall (5:00):** everyone walks around in their own avatar. Six stations: 💇 Hair Chair, 💄 Makeup Vanity, 👗 Wardrobe, 🦸 Costume Closet (hats, wings and capes, masks, tails, shoulder buddies), 🐶 Pet Park, 💃 Pose Stage (pose and effect). Step on a glowing pad and its menu opens while the camera frames you; the look goes on your real character, so everyone sees everyone getting ready. A guide on the left shows what's done and walks you to the next station. **I'm Done!** stays quiet until three stations are done and asks once before ending early.
+   - **Body positivity:** you play in your own skin and body; there is no skin picker, and the game only adds things. A classic head carries the drawn makeup face during the round, and your normal look comes back after the show.
+3. **Fashion Show (~9s per look):** you walk the runway in your own avatar with your pet trotting alongside and your effect around you, then strike your pose. Everyone else sits in the audience; they vote with hearts (+2 coins for voting), and tapping a cheer makes their avatar cheer too.
+   - **Between rounds:** a dance floor (step on it and you dance), and your pet follows you around the hall.
 4. **Results (15s):** the top 3 stand on the podium. Each player gets a private card with their stars, coins and judge tips, plus a confetti pop-up.
 
 ## Scoring (out of 5 stars)

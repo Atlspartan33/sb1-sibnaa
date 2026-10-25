@@ -1,6 +1,6 @@
 # ✨ 5 Minute Glow Up Salon (Roblox)
 
-Tori's dress-up game. Every round has a theme (Superhero, Pirate, Under the Sea, Princess Ball...). You get 5 minutes to dress up **your own Roblox character**: hair, skin, makeup, an outfit, costume pieces from the avatar shop (wings, capes, masks, tails, hats, shoulder buddies), a pet to walk with you, and a runway pose and effect. Then everyone walks the runway, votes with hearts, and the judges pick the winners.
+Tori's dress-up game. Every round has a theme (Superhero, Pirate, Under the Sea, Princess Ball...). You get 5 minutes to walk around the **Dressing Hall** in **your own Roblox avatar** (your own skin and body) and style yourself at six stations: hair, makeup, an outfit, costume pieces from the avatar shop (wings, capes, masks, tails, hats, shoulder buddies), a pet to walk with you, and a runway pose and effect. Then everyone walks the runway, votes with hearts, and the judges pick the winners.
 
 - **How the game works and how it makes money:** [GAME_DESIGN.md](GAME_DESIGN.md)
 - **What it looks like:** [docs/face-preview.jpg](docs/face-preview.jpg) and the screenshots in [docs/screens](docs/screens)
@@ -99,6 +99,7 @@ All the code is in Studio under:
 | `ReplicatedStorage > Shared > Config` | Timer, coin rewards, Game Pass / product IDs |
 | `ReplicatedStorage > Shared > Catalog` | **Every hairstyle, skin tone, makeup, outfit, costume piece, pet, pose, effect and theme.** Add new ones here: name, color, price, tags. A costume piece is any avatar-shop accessory: add `asset = <its ID>` |
 | `ReplicatedStorage > Shared > Avatar` | Builds the 3D character: body, avatar-shop hair (recolored), the face, outfit, skirt, costume pieces, effects and poses |
+| `ReplicatedStorage > Shared > Stations` | Where the six Dressing Hall stations are and which menu each opens |
 | `ReplicatedStorage > Shared > Pets` | The pets (Bean the Boston terrier, kitty, bunny, dino, dragon, unicorn), built from shapes |
 | `ReplicatedStorage > Shared > Clients` | Your name and skin tone for each round (plus the old salon customers, kept for a future salon mode) |
 | `ReplicatedStorage > Shared > Events` | Holiday event dates (Halloween, Harvest Festival, Christmas) |

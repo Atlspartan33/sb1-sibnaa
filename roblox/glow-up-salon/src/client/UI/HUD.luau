@@ -15,6 +15,9 @@ local C = Theme.Colors
 local new = Theme.new
 
 local HUD = {}
+
+-- How to play, on the lobby card (phones get a row of icons instead)
+local STEPS_TEXT = "Walk to each station:\n💇 Hair   💄 Makeup   👗 Wardrobe\n🦸 Costume   🐶 Pet Park   💃 Pose Stage\nMatch the theme ⭐ then 📸 walk the runway!"
 HUD.__index = HUD
 
 local PHASE_LABELS = {
@@ -146,7 +149,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		-- Sits on the card's top edge, clear of the event bar.
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, 0, 0, -6),
-		Size = UDim2.new(0, 120, 0, 36),
+		Size = UDim2.new(0, 132, 0, 44),
 		Text = "📖 My Looks",
 		Color = C.purple,
 		ZIndex = 45,
@@ -158,7 +161,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		Size = UDim2.new(1, 0, 0, 30),
 		BackgroundTransparency = 0,
 		BackgroundColor3 = C.gold,
-		TextColor3 = C.white,
+		TextColor3 = C.text,
 		Text = "",
 		Visible = false,
 		LayoutOrder = 1,
@@ -186,7 +189,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		Size = UDim2.new(1, 0, 0, 104),
 		LayoutOrder = 4,
 		Name = "Steps",
-		Text = "1. 💇 Do your hair   2. 💄 Your face\n3. 👗 An outfit + 🦸 costume that fit the theme\n4. 🐶 Bring a pet   💃 Pick a pose\n5. 📸 Walk the runway - you only get 5 minutes!",
+		Text = STEPS_TEXT,
 		TextColor3 = C.text,
 		ZIndex = 41,
 		Parent = rows,
@@ -205,8 +208,11 @@ function HUD:setState(state)
 	self.lobby.Visible = showLobby
 	-- On short phone screens, skip the how-to steps so the card doesn't cover everything
 	local compact = self.lobby.Parent and (self.lobby.Parent :: GuiObject).AbsoluteSize.Y < 500
-	(self.lobby.Rows :: any).Steps.Visible = not compact
-	self.lobby.Size = UDim2.new(0.5, 0, 0, if compact then 150 else 262)
+	local steps = (self.lobby.Rows :: any).Steps
+	steps.Visible = true
+	steps.Text = if compact then "💇 → 💄 → 👗 → 🦸 → 🐶 → 💃 → 📸" else STEPS_TEXT
+	steps.Size = UDim2.new(1, 0, 0, if compact then 40 else 104)
+	self.lobby.Size = UDim2.new(0.5, 0, 0, if compact then 196 else 262)
 	-- No shopping while the 5-minute timer runs (items can still be unlocked from the menus)
 	self.shopButton.Visible = state.phase ~= "Makeover"
 	self.lobbyTheme.Text = "Next theme: " .. (theme and theme.name or "")

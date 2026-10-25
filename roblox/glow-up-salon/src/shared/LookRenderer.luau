@@ -179,9 +179,14 @@ local function drawHair(root: Frame, look, hairItem: Catalog.Item?, options: Opt
 		hair(0.28, 0.36, 0.05, 0.12, Z.hairFront, 0.5)
 		hair(0.72, 0.36, 0.05, 0.12, Z.hairFront, 0.5)
 	elseif style == "hair_puff" then
-		hair(0.5, 0.08, 0.32, 0.32, Z.hairBack, 0.5)
-		hair(0.5, 0.21, 0.48, 0.13, Z.hairFront, 0.5)
-		shape(root, 0.5, 0.17, 0.12, 0.03, TIE, Z.hairFront, 0.5)
+		-- a big round, fluffy puff on top (bumpy edges so it reads as hair, not a hat)
+		hair(0.5, 0.07, 0.38, 0.3, Z.hairBack, 0.5)
+		for i = 0, 5 do
+			local a = i / 6 * math.pi * 2
+			hair(0.5 + math.cos(a) * 0.16, 0.07 + math.sin(a) * 0.12, 0.13, 0.11, Z.hairBack, 0.5)
+		end
+		hair(0.5, 0.22, 0.48, 0.12, Z.hairFront, 0.5)
+		shape(root, 0.5, 0.165, 0.2, 0.025, TIE, Z.hairFront, 0.5)
 	elseif style == "hair_curls" then
 		hair(0.5, 0.4, 0.8, 0.8, Z.hairBack, 0.5)
 		for i = 0, 6 do

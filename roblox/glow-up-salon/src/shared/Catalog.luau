@@ -654,7 +654,7 @@ Catalog.Categories = {
 		tab = "Pet",
 		preview = "icon",
 		items = {
-			item({ id = "pet_none", name = "No Pet", icon = "🚫" }),
+			item({ id = "pet_none", name = "No Pet", icon = "⚪" }),
 			item({ id = "pet_bean", name = "Bean", icon = "🐶", tags = { "animal", "dark", "white" } }),
 			item({ id = "pet_kitty", name = "Kitty", icon = "🐱", tags = { "animal", "orange" } }),
 			item({ id = "pet_bunny", name = "Bunny", icon = "🐰", tags = { "animal", "white", "fairy" } }),
@@ -685,7 +685,7 @@ Catalog.Categories = {
 		tab = "Show",
 		preview = "icon",
 		items = {
-			item({ id = "fx_none", name = "None", icon = "🚫" }),
+			item({ id = "fx_none", name = "None", icon = "⚪" }),
 			item({ id = "fx_sparkles", name = "Sparkles", icon = "✨", tags = { "sparkle", "fairy", "princess" } }),
 			item({ id = "fx_hearts", name = "Hearts", icon = "💖", tags = { "pink", "princess" } }),
 			item({ id = "fx_bubbles", name = "Bubbles", icon = "💧", tags = { "ocean", "blue" } }),

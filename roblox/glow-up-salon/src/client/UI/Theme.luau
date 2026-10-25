@@ -8,17 +8,20 @@ local rgb = Color3.fromRGB
 
 Theme.Font = Enum.Font.FredokaOne
 
+-- White text on pink, hotPink, purple and green, and dark text on everything light, all measure
+-- at least 4.5:1 contrast. Gold is a background for dark text only (goldText is gold you can read).
 Theme.Colors = {
-	pink = rgb(255, 120, 190),
-	hotPink = rgb(240, 60, 150),
+	pink = rgb(212, 47, 134),
+	hotPink = rgb(190, 20, 105),
 	softPink = rgb(255, 228, 242),
-	purple = rgb(150, 90, 220),
+	purple = rgb(106, 63, 181),
 	lavender = rgb(235, 225, 255),
 	white = rgb(255, 255, 255),
-	text = rgb(80, 40, 100),
-	textLight = rgb(150, 120, 170),
+	text = rgb(31, 18, 53),
+	textLight = rgb(110, 80, 130),
 	gold = rgb(255, 200, 60),
-	green = rgb(80, 200, 130),
+	goldText = rgb(138, 90, 0),
+	green = rgb(22, 120, 64),
 	red = rgb(240, 70, 90),
 	shadow = rgb(0, 0, 0),
 }
@@ -81,7 +84,7 @@ function Theme.padding(px: number): UIPadding
 end
 
 function Theme.maxText(size: number): UITextSizeConstraint
-	return Theme.new("UITextSizeConstraint", { MaxTextSize = size })
+	return Theme.new("UITextSizeConstraint", { MaxTextSize = size, MinTextSize = math.min(14, size) })
 end
 
 function Theme.gradient(a: Color3, b: Color3, rotation: number?): UIGradient
