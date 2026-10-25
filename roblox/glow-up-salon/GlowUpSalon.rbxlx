@@ -8000,6 +8000,7 @@ local MAKEUP_KEYS = { "eyeshadow", "lashes", "blush", "lipstick" }
 local MAX_BUBBLES = 24
 local DEFAULT_HAIR = Catalog.defaultLook().hairStyle
 local CONFIRM_SECONDS = 8
+local NEXT_HEIGHT = 56 -- the Next / I'm Done button along the bottom of a station menu
 local SEND_INTERVAL = 0.25
 
 -- How much of your avatar fills the space next to the menu at each station (studs tall).
@@ -8325,6 +8326,26 @@ function Makeover:buildRight()
 
 	self:buildWashPanel(right)
 
+	self.nextButton = Theme.button({
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.fromScale(0.5, 1),
+		Size = UDim2.new(1, 0, 0, NEXT_HEIGHT),
+		Text = "Next →",
+		Color = C.lavender,
+		TextColor3 = C.text,
+		ZIndex = 14,
+		MaxText = 26,
+		Parent = right,
+	})
+	self.nextButton.Activated:Connect(function()
+		local target = self.nextTarget
+		if target == "Done" then
+			self.pressDone()
+		elseif target and Stations.byTab[target] then
+			self:walkTo(Stations.byTab[target])
+		end
+	end)
+
 	-- Messy hair has to be brushed before picking a style
 	self.brushHint = new("TextLabel", {
 		Position = UDim2.fromScale(0, 0.24),
@@ -8471,7 +8492,7 @@ function Makeover:buildGuide()
 		MaxText = 24,
 		Parent = guide,
 	})
-	done.Activated:Connect(function()
+	self.pressDone = function()
 		if not self.done and (self:stepsDoneCount() < 3 or UserInputService.TouchEnabled) then
 			local t = os.clock()
 			if not self.confirmDoneAt or t - self.confirmDoneAt > CONFIRM_SECONDS then
@@ -8492,6 +8513,9 @@ function Makeover:buildGuide()
 		end
 		self.confirmDoneAt = nil
 		self:setDone(not self.done)
+	end
+	done.Activated:Connect(function()
+		self.pressDone()
 	end)
 	self.doneButton = done
 	self.doneStroke = Theme.new("UIStroke", {
@@ -9021,6 +9045,38 @@ function Makeover:refreshChecklist()
 		end
 	end
 	self:styleDone()
+	self:refreshNext()
+end
+
+-- The station menu's bottom button: quiet until you've picked something here, then hot pink.
+-- It walks you to the next station you haven't done yet, or says I'm Done! when there's none.
+function Makeover:refreshNext()
+	if not self.nextButton then
+		return
+	end
+	local done = self:stepsDone()
+	local here = self.station and self.station.tab
+	local target = "Done"
+	for _, step in STEPS do
+		if step[1] ~= here and not done[step[1]] then
+			target = step[1]
+			break
+		end
+	end
+	local finishedHere = here ~= nil and done[here] == true
+	local wasReady = self.nextReady
+	self.nextTarget = target
+	self.nextReady = finishedHere
+	if target == "Done" then
+		self.nextButton.Text = if self.done then "Keep Styling ✏️" else "I'm Done! ✨"
+	else
+		self.nextButton.Text = "Next: " .. STEP_ICONS[target] .. " " .. STEP_NAMES[target] .. "  →"
+	end
+	self.nextButton.BackgroundColor3 = if finishedHere then C.hotPink else C.lavender
+	self.nextButton.TextColor3 = if finishedHere then C.white else C.text
+	if finishedHere and not wasReady and self.station then
+		Theme.pop(self.nextButton)
+	end
 end
 
 function Makeover:setTab(tabId: string)
@@ -9077,7 +9133,7 @@ function Makeover:setTab(tabId: string)
 	-- Without sub-category chips, the grid moves up to use their space
 	local below = if #categories > 1 then chipsHeight + 10 else 6
 	self.grid.Position = UDim2.new(0, 0, 0.075, below)
-	self.grid.Size = UDim2.new(1, 0, 0.925, -below)
+	self.grid.Size = UDim2.new(1, 0, 0.925, -below - NEXT_HEIGHT - 8)
 	for i, category in categories do
 		local active = self.subcategory[tabId] == category.key
 		local chip = Theme.button({
@@ -9602,6 +9658,8 @@ function Makeover:openStation(station: Stations.Station)
 	self:setTab(station.tab)
 	self:refreshTheme()
 	self:showBotTags(false)
+	self.nextReady = nil
+	self:refreshNext()
 	self.right.Visible = true
 	Theme.pop(self.right)
 	Sounds.play("Pop", 0.6)

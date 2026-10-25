@@ -50,8 +50,11 @@ E.runFor(0.5)
 H.click(H.card(tori, "Bubblegum"), "Bubblegum")
 H.check(H.findText(tori, "🛍️ Shop") == nil, "shop button hidden during the makeover")
 
+local nextButton = H.button(tori, "Next:")
+H.check(nextButton ~= nil and string.find(nextButton.Text, "Makeup", 1, true) ~= nil, "after picking a hairstyle, a Next button points to Makeup")
+
 print("== Face")
-H.click(H.tab(tori, "GoFace"), "walk to the Makeup Vanity")
+H.click(nextButton, "Next: Makeup")
 E.runFor(0.2)
 H.check(H.button(tori, "Skin") == nil, "no skin picker: you play in your own skin")
 H.click(H.button(tori, "Eyeshadow"), "Eyeshadow chip")
