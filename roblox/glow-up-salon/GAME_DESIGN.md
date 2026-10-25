@@ -91,14 +91,17 @@
 
 ## Round loop (everyone in the server plays together)
 
-1. **Intermission (20s):** next theme, event banner, weekly goal and a 5-step how-to card. Players can open the Shop or Look Book.
-2. **Dressing Hall (5:00):** everyone walks around in their own avatar. Six stations: 💇 Hair Chair, 💄 Makeup Vanity, 👗 Wardrobe, 🦸 Costume Closet (hats, wings and capes, masks, tails, shoulder buddies), 🐶 Pet Park, 💃 Pose Stage (pose and effect). Step on a glowing pad and its menu opens while the camera frames you; the look goes on your real character, so everyone sees everyone getting ready. A guide on the left shows what's done and walks you to the next station. **I'm Done!** stays quiet until three stations are done and asks once before ending early.
+1. **Intermission (20s) on the rooftop:** next theme, event banner, weekly goal and a how-to card. 12 glowing ⭐ stars bob around the rooftop: run into one for +2 coins. Players can open the Shop or Look Book.
+2. **Dressing Hall (5:00):** everyone walks around in their own avatar. Six stations: 💇 Hair Chair, 💄 Makeup Vanity, 👗 Wardrobe, 🦸 Costume Closet (hats, wings and capes, masks, tails, shoulder buddies), 🐶 Pet Park, 💃 Pose Stage (pose and effect). Step on a glowing pad and its menu opens while the camera frames you; the look goes on your real character, so everyone sees everyone getting ready. A guide on the left shows what's done (the next step is solid pink with 👉, and a bouncing "Walk here!" marker floats over it) and walks you there. **I'm Done!** stays quiet until three stations are done and asks once before ending early (always asks on touch screens).
+   - **Judge's Wishes:** each round the judge wishes for two theme things ("🎩 a pirate hat or clip", "💋 red lips"), always doable with free items. Shown along the bottom; +15 coins each.
+   - **Real Clothes:** layered dresses, suits and jackets from the avatar shop that wrap to any body (free starter closet, coin dream outfits, pack outfits).
+   - **Hurry-up:** once half the real players are done, everyone else gets 30 seconds, so nobody waits five minutes.
    - **Body positivity:** you play in your own skin and body; there is no skin picker, and the game only adds things. A classic head carries the drawn makeup face during the round, and your normal look comes back after the show.
-3. **Fashion Show (~9s per look):** you walk the runway in your own avatar with your pet trotting alongside and your effect around you, then strike your pose. Everyone else sits in the audience; they vote with hearts (+2 coins for voting), and tapping a cheer makes their avatar cheer too.
+3. **Fashion Show (~9s per look):** you walk the runway in your own avatar with your pet trotting alongside and your effect around you, then strike your pose. Everyone else sits in the audience; they vote with hearts (+2 coins for voting), and tapping a cheer makes their avatar cheer too. Cheers fill a **cheer meter**; filling it sets off fireworks over the runway and gives the walker +5 coins (your own cheers don't count; on your own walk you get pose buttons instead).
    - **Between rounds:** a dance floor under a disco ball (step on it and you dance), string lights and balloons, a photo booth (3-2-1, flash, your pose, a polaroid with your name and the theme), and your pet follows you around the hall.
-   - **Style Bots (solo play):** when there are fewer than 3 players, 🤖 bots fill in. They dance between rounds, walk to the stations and dress for the theme (better or worse depending on the bot), walk the runway, give every real look 4-5 hearts, and can land on the podium. They never earn coins. One lobby switch turns them off for the whole server.
+   - **Style Bots (solo play):** when there are fewer than 3 players, 🤖 bots fill in. They dance between rounds, walk to the stations and dress for the theme, walk the runway, cheer, and give every real look 4-5 hearts. They always place below the real kids and never earn coins. One lobby switch ("🤖 Robot friends") turns them off for the whole server.
    - **Runway walk:** everyone wears Roblox's Catwalk Glam walk during the round, twirls at the end of the runway, then strikes their pose.
-4. **Results (15s):** the top 3 stand on the podium. Each player gets a private card with their stars, coins and judge tips, plus a confetti pop-up.
+4. **Results (15s):** a drumroll, fireworks, and the top 3 stand on the podium. Each player gets a private card with their **ribbon** (🥉 Bronze at 3 stars, 🥈 Silver at 4, 🥇 Gold for 5 stars with every wish), stars, coins and judge tips. When you play alone the ribbon is the goal.
 
 ## Scoring (out of 5 stars)
 
@@ -116,9 +119,11 @@ Awards include 🎭 Best Costume, 🐶 Best Buddy and 🔥 Showstopper. The fina
 ## Coins
 
 - Start with 100. The gift calendar gives 30–80 coins a day.
-- Every show: 20 + 10 per star.
-- Placing (2+ players): 1st +50, 2nd +30, 3rd +15.
-- +2 for each look you vote on.
+- Every show: 20 + 10 per star, +15 per judge's wish.
+- Placing (2+ real players): 1st +50, 2nd +30, 3rd +15.
+- +2 for each look you vote on, +5 when the crowd goes wild for your walk, +2 per lobby star.
+- +20% when a Roblox friend is in the server.
+- Big goals: 13 Real Clothes dream outfits cost 350 to 1,000 coins (about 10+ hours of play for everything).
 
 About 170 items: 72 everyday items are free, 58 cost 30–150 coins, 21 come in Robux packs, and 35 are holiday items that come and go.
 
@@ -132,12 +137,16 @@ About 170 items: 72 everyday items are free, 58 cost 30–150 coins, 21 come in 
 
 | Type | Item | What it does | Suggested price |
 |---|---|---|---|
-| Game Pass | 👑 VIP Glam Kit | Rainbow & Galaxy hair, Royal Updo, Mermaid Waves, Galaxy Glitter, Starry Lashes, Golden Glam lips, Rainbow Chrome nails, Rhinestones, Royal Crown, Golden Gala & Galaxy gowns, holiday VIP gowns (Midnight Witch, Sugar Plum Fairy, Candy Cane hair), VIP badge on the runway | 199 R$ |
-| Game Pass | 👸 Princess Pack | Ice Ball Gown, Rose Gown, Princess Curls, Rose Gold hair, Princess Tiara, Pink Gems | 149 R$ |
+| Game Pass | 👑 VIP Glam Kit | Real Starlight Royal Gown and Rainbow Sequin Dress, Rainbow & Galaxy hair, Royal Updo, Mermaid Waves, Rainbow Wings, Galaxy Glitter, Starry Lashes, Golden Glam lips, Rhinestones, Royal Crown, Golden Gala & Galaxy gowns, Rainbow Trail | 199 R$ |
+| Game Pass | 👸 Princess Pack | Real Pastel Summer and Enchanted Rainbow gowns, Ice Ball Gown, Rose Gown, Princess Curls, Rose Gold hair, Princess Tiara, Pink Gems, Unicorn pet | 149 R$ |
+| Game Pass | 👗 Fashion Week Pack | 6 real outfits: Pink Ribbon, Pink Ruffle, Rainbow Heart, Snow Crystal, Pastel Dream, Designer Puffer | 99 R$ |
+| Game Pass | 🐢 Pet Palace | Winged Bunny, Glitter Kitty, Baby Pegasus, Bubble Turtle | 149 R$ |
 | Game Pass | 🪙 2x Coins | Double coins every show | 149 R$ |
-| Game Pass | 🌟 Runway Star | Confetti cannons + sparkles when your client walks | 99 R$ |
-| Game Pass | 🫧 Rainbow Bubbles | Washing makes rainbow bubbles (just for fun) | 49 R$ |
-| Dev Product | 💰 500 Coins | Coins | 49 R$ |
+| Game Pass | 🌟 Runway Star | Confetti cannons + sparkles when you walk | 99 R$ |
+| Dev Product | 💰 Coins | 500 / 1,500 / 4,000 coins | 49 / 99 / 199 R$ |
+
+- **Never a Robux prompt during a round.** Tapping a pack item mid-round says "ask a grown-up in the Shop after the show". Pack prompts only open from the lobby Shop.
+- **No "who paid" badges** on the vote card, so votes stay about the look.
 
 New packs are easy to add: give items `pass = "PackName"` in `Catalog` and add the pass ID to `Config.GamePasses`. Good next packs are Mermaid Lagoon, Winter Princess and Halloween Costumes. Private servers (free or cheap) are great for sleepovers.
 
@@ -145,7 +154,9 @@ New packs are easy to add: give items `pass = "PackName"` in `Catalog` and add t
 
 - Co-op "Best Friend Mode": two stylists on one client
 - Your own salon to decorate with coins
-- Real 3D hair and dresses (needs uploaded meshes). The paper-doll runway works well without them.
+- Shoes slot (layered shoes) and two hats at once for layering
+- Pet friendship levels (name tag, bow, a runway trick)
+- Ribbon Wall: a lobby wall with your best ribbon for each theme
 - Voice clips for the client ("Ewww!", "I LOVE it!") for kids who can't read yet
 - Photo mode: save the booth polaroid to a Look Book page
 - Client of the Day requests ("Make me look like a mermaid!")

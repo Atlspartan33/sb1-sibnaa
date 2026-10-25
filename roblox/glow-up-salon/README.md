@@ -43,19 +43,24 @@ On Roblox, nobody "downloads" a game. Once it's **public**, anyone can find it a
 
    **Passes** (one-time purchases that last forever):
 
-   | Name | Config key | Suggested price |
-   |---|---|---|
-   | VIP Glam Kit | `VIP` | 199 |
-   | Princess Pack | `Princess` | 149 |
-   | 2x Coins | `DoubleCoins` | 149 |
-   | Runway Star | `RunwayStar` | 99 |
-   | Rainbow Bubbles | `RainbowBubbles` | 49 |
+   | Name | Config key | Suggested price | What's in it |
+   |---|---|---|---|
+   | VIP Glam Kit | `VIP` | 199 | Starlight Royal Gown, Rainbow Sequin Dress, Royal Updo, Mermaid Waves, Rainbow Wings, crown, galaxy and rainbow hair, gold makeup |
+   | Princess Pack | `Princess` | 149 | Pastel Summer Gown, Enchanted Rainbow Gown, Princess Curls, Rose Gold hair, tiara, pink gems, Unicorn pet |
+   | Fashion Week Pack | `FashionWeek` | 99 | 6 real outfits: Pink Ribbon, Pink Ruffle, Rainbow Heart, Snow Crystal, Pastel Dream, Designer Puffer |
+   | Pet Palace | `PetPalace` | 149 | Winged Bunny, Glitter Kitty, Baby Pegasus, Bubble Turtle |
+   | 2x Coins | `DoubleCoins` | 149 | Double coins after every show |
+   | Runway Star | `RunwayStar` | 99 | Confetti cannons and sparkles on your runway walk |
 
    **Developer Products** (can be bought again and again):
 
    | Name | Config key | Suggested price |
    |---|---|---|
    | 500 Coins | `CoinsSmall` | 49 |
+   | 1,500 Coins | `CoinsMedium` | 99 |
+   | 4,000 Coins | `CoinsLarge` | 199 |
+
+   **Free players get plenty:** every theme and every Judge's Wish can be done with free items, the 11-piece free Real Clothes closet covers every theme, and 13 big dream outfits (350 to 1,000 coins) are earned by playing. Pack items show a 🔒 badge; tapping one mid-round only says "ask a grown-up in the Shop after the show", so there is never a Robux prompt during a round.
 
 2. Copy each item's **ID number** into `ReplicatedStorage > Shared > Config` (`Config.GamePasses` and `Config.DevProducts`).
 3. **File → Publish to Roblox** again.
