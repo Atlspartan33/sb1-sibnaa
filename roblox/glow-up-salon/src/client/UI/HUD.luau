@@ -18,7 +18,7 @@ local new = Theme.new
 local HUD = {}
 
 -- How to play, on the lobby card (phones get a row of icons instead)
-local STEPS_TEXT = "Walk to each station:\n💇 Hair   💄 Makeup   👗 Wardrobe\n🦸 Costume   🐶 Pet Park   💃 Pose Stage\nMatch the theme ⭐ then 📸 walk the runway!"
+local STEPS_TEXT = "Walk onto the glowing circles:\n💇 Hair   💄 Makeup   👗 Clothes\n🦸 Costume   🐶 Pet   💃 Pose\nMatch the theme ⭐ then 📸 walk the runway!"
 HUD.__index = HUD
 
 local PHASE_LABELS = {
@@ -150,7 +150,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		-- Sits on the card's top edge, clear of the event bar.
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, 0, 0, -6),
-		Size = UDim2.new(0, 132, 0, 44),
+		Size = UDim2.new(0, 150, 0, 56),
 		Text = "📖 My Looks",
 		Color = C.purple,
 		ZIndex = 45,
@@ -173,8 +173,8 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 	local bots = Theme.button({
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.new(0, 0, 0, -6),
-		Size = UDim2.new(0, 196, 0, 44),
-		Text = "🤖 Style Bots: ON",
+		Size = UDim2.new(0, 240, 0, 56),
+		Text = "🤖 Robot friends ✓",
 		Color = C.purple,
 		ZIndex = 45,
 		MaxText = 20,
@@ -182,7 +182,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 	})
 	bots.Activated:Connect(function()
 		local on = not (self.state and self.state.bots ~= false)
-		bots.Text = "🤖 Style Bots: " .. (if on then "ON" else "OFF") -- answer right away
+		bots.Text = "🤖 Robot friends " .. (if on then "✓" else "✗") -- answer right away
 		Remotes.SetBots:FireServer(on)
 	end)
 	self.botsButton = bots
@@ -216,10 +216,40 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 	return self
 end
 
+-- A short note across the top of the screen.
+function HUD:toast(text: string)
+	if self.toastLabel then
+		self.toastLabel:Destroy()
+	end
+	local label = new("TextLabel", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 70),
+		Size = UDim2.new(0, 420, 0, 48),
+		BackgroundTransparency = 0,
+		BackgroundColor3 = C.purple,
+		TextColor3 = C.white,
+		Text = text,
+		ZIndex = 60,
+		Parent = self.pill.Parent,
+	}, { Theme.round(), Theme.maxText(24), Theme.padding(6) })
+	self.toastLabel = label
+	Theme.pop(label)
+	task.delay(3, function()
+		if label.Parent then
+			label:Destroy()
+		end
+	end)
+end
+
 function HUD:setState(state)
+	local before = self.state
 	self.state = state
 	local botsOn = state.bots ~= false
-	self.botsButton.Text = "🤖 Style Bots: " .. (if botsOn then "ON" else "OFF")
+	self.botsButton.Text = "🤖 Robot friends " .. (if botsOn then "✓" else "✗")
+	-- everyone hears about it, since one tap changes it for the whole server
+	if before and before.bots ~= nil and (before.bots ~= false) ~= botsOn then
+		self:toast(if botsOn then "🤖 Robot friends are coming to play!" else "🤖 Robot friends went home. Bye bye!")
+	end
 	self.botsButton.BackgroundColor3 = if botsOn then C.purple else C.lavender
 	self.botsButton.TextColor3 = if botsOn then C.white else C.text
 	local theme = Catalog.themeById[state.themeId]
@@ -232,7 +262,7 @@ function HUD:setState(state)
 	local compact = self.lobby.Parent and (self.lobby.Parent :: GuiObject).AbsoluteSize.Y < 500
 	local steps = (self.lobby.Rows :: any).Steps
 	steps.Visible = true
-	steps.Text = if compact then "💇 → 💄 → 👗 → 🦸 → 🐶 → 💃 → 📸" else STEPS_TEXT
+	steps.Text = if compact then "Walk onto the glowing circles!\n💇 → 💄 → 👗 → 🦸 → 🐶 → 💃 → 📸" else STEPS_TEXT
 	steps.Size = UDim2.new(1, 0, 0, if compact then 40 else 104)
 	self.lobby.Size = UDim2.new(0.5, 0, 0, if compact then 196 else 262)
 	-- No shopping while the 5-minute timer runs (items can still be unlocked from the menus)
@@ -301,7 +331,7 @@ function HUD:update()
 		self.pillText.Text = label .. "  " .. Theme.formatTime(left)
 	end
 	local hurry = phase == "Makeover" and left <= 30
-	self.pillText.TextColor3 = if hurry then C.red else C.text
+	self.pillText.TextColor3 = if hurry then C.hotPink else C.text
 	if hurry then
 		local pulse = 1 + 0.04 * math.sin(os.clock() * 10)
 		self.pill.Size = UDim2.new(0.3 * pulse, 0, 0, 46)

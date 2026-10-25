@@ -49,7 +49,7 @@ for i, eventId in { "halloween", "thanksgiving", "christmas" } do
 	print("@@SHOT e" .. i .. "_" .. eventId .. "_outfits " .. W.dumpScreen(tori, 1280, 720))
 	E.SCREEN = { 1280, 720 }
 	H.click(H.button(tori, "I'm Done"), "done")
-	H.click(H.button(tori, "I'm Done"), "done (yes, really)")
+	H.click(H.button(tori, "Tap again"), "done (yes, really)")
 	E.runFor(5)
 end
 -- after events end, holiday items disappear unless unlocked

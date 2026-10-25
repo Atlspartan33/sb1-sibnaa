@@ -2,8 +2,9 @@
 -- robots (🤖 on their name tags, never passed off as real players). Between rounds they dance on
 -- the dance floor; during the makeover they walk from station to station and put their look
 -- together piece by piece; then they sit in the audience, walk the runway, strike a pose, and vote
--- (kindly) on real players' looks. Turn them on or off from the lobby card.
+-- (kindly) on real players' looks. They always place below the real kids. Turn them on or off from the lobby card.
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Avatar = require(ReplicatedStorage.Shared.Avatar)
@@ -129,7 +130,8 @@ local function newBot(index: number): Bot?
 	-- skin tones lean deep (most Style Bots are Black girls, like the players this was made for)
 	local skinIndex = rng:NextInteger(if rng:NextNumber() < 0.75 then 5 else 1, #Catalog.SkinTones)
 	local name = NAMES[(index - 1) % #NAMES + 1]
-	local client = Clients.forPlayer(name, skinIndex)
+	-- the robot rides along in the name, so the runway card, results and podium all show it's a bot
+	local client = Clients.forPlayer(name .. " 🤖", skinIndex)
 	local model = Avatar.new(client)
 	if not model then
 		return nil
@@ -310,6 +312,20 @@ function BotService.hangOut()
 	end
 end
 
+-- Is a real player standing on this station's pad?
+local function playerOn(station: Stations.Station): boolean
+	for _, player in Players:GetPlayers() do
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if root and root:IsA("BasePart") then
+			local d = Vector3.new(root.Position.X - station.pad.X, 0, root.Position.Z - station.pad.Z)
+			if d.Magnitude <= Stations.PAD_RADIUS + 1 then
+				return true
+			end
+		end
+	end
+	return false
+end
+
 -- The makeover: each bot starts fresh, then walks station to station building the look.
 function BotService.startMakeover(endsIn: number)
 	local theme = themeOf()
@@ -336,6 +352,15 @@ function BotService.startMakeover(endsIn: number)
 				end
 				local station = Stations.byTab[tab]
 				local offset = Vector3.new(rng:NextNumber(-2, 2), 0, rng:NextNumber(-2, 2))
+				-- a real kid is styling here: wait a bit, then style from beside the pad instead
+				local waited = 0
+				while playerOn(station) and waited < 8 do
+					task.wait(1)
+					waited += 1
+				end
+				if playerOn(station) then
+					offset = Vector3.new(if rng:NextNumber() < 0.5 then -6 else 6, 0, 2)
+				end
 				walkTo(bot, station.pad + offset, 12)
 				task.wait(rng:NextNumber(1.5, 3))
 				for _, key in STATION_KEYS[tab] do

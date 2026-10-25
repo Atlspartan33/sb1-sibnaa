@@ -597,7 +597,26 @@ local function scoreAll()
 			})
 		end
 	end
+	-- Style Bots are there to keep a kid company, not to beat her: every bot lands below the
+	-- lowest real player (half a star under, at least), so a kid playing alone always wins.
+	local lowestReal = math.huge
+	for _, row in rows do
+		if not row.bot then
+			lowestReal = math.min(lowestReal, row.score)
+		end
+	end
+	if lowestReal < math.huge then
+		for _, row in rows do
+			if row.bot and row.score > lowestReal - 0.5 then
+				row.score = math.max(0.5, lowestReal - 0.5 - rng:NextNumber(0, 0.4))
+				row.stars = Scoring.roundToHalf(row.score)
+			end
+		end
+	end
 	table.sort(rows, function(a, b)
+		if (a.bot == true) ~= (b.bot == true) then
+			return not a.bot
+		end
 		return a.score > b.score
 	end)
 

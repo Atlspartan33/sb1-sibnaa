@@ -473,9 +473,9 @@ local function buildAtmosphere(salon: Instance)
 	boothPad.Shape = Enum.PartType.Cylinder
 	boothPad.Transparency = 0.35
 	boothPad.CanCollide = false
-	local boothSign = part(folder, "BoothSign", Vector3.new(8, 2, 0.4), CFrame.lookAt(booth + Vector3.new(0, 10.8, -3), booth + Vector3.new(0, 10.8, 0)), rgb(255, 255, 255))
+	local boothSign = part(folder, "BoothSign", Vector3.new(8, 2, 0.4), CFrame.lookAt(booth + Vector3.new(0, 10.8, -3), booth + Vector3.new(0, 10.8, 0)), rgb(190, 20, 105))
 	boothSign.CanCollide = false
-	sign(boothSign, Enum.NormalId.Front, "📸 Photo Booth", PINK)
+	sign(boothSign, Enum.NormalId.Front, "📸 Photo Booth", rgb(255, 255, 255))
 	folder:SetAttribute("BoothCenter", booth)
 
 	-- Slow motion: the disco spots sweep around and the wall lights change color

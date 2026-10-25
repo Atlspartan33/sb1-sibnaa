@@ -113,7 +113,7 @@ H.click(H.button(tori, "I'm Done"), "Tori done")
 H.shot(tori, "12_waiting")
 H.click(H.button(mia, "I'm Done"), "Mia done")
 H.check(H.findText(mia, "still time to style") ~= nil, "Done asks once before ending early")
-H.click(H.button(mia, "I'm Done"), "Mia done (yes, really)")
+H.click(H.button(mia, "Tap again"), "Mia done (yes, really)")
 E.runFor(1.5)
 -- A cheater sends a NaN vote (should be ignored, not wipe anyone's coins)
 E.runAs(cm, function() remotesMia.Vote:FireServer(tori.UserId, 0 / 0); remotesMia.Vote:FireServer(tori.UserId, 99) end)
@@ -142,10 +142,10 @@ print("  level:", H.findText(tori, "⭐ Lv") and H.findText(tori, "⭐ Lv").Text
 
 print("== Style Bots switch")
 local waitedLobby = 0
-while not H.button(tori, "Style Bots: ON") and waitedLobby < 30 do E.runFor(1); waitedLobby += 1 end
-H.click(H.button(tori, "Style Bots: ON"), "turn Style Bots off")
+while not H.button(tori, "Robot friends ✓") and waitedLobby < 30 do E.runFor(1); waitedLobby += 1 end
+H.click(H.button(tori, "Robot friends ✓"), "turn Style Bots off")
 E.runFor(1)
-H.check(countBots() == 0 and H.button(tori, "Style Bots: OFF") ~= nil, "the lobby switch sends the Style Bots home")
+H.check(countBots() == 0 and H.button(tori, "Robot friends ✗") ~= nil, "the lobby switch sends the Style Bots home")
 print("== Shop (between rounds)")
 H.click(H.button(tori, "Shop"), "Shop")
 H.shot(tori, "10_shop_coins")

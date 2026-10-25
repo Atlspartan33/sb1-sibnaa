@@ -160,7 +160,11 @@ function Results:celebrate(row, players: number)
 		title = "💖 You walked the runway!"
 	end
 	local stars = if row.stars >= 3 then Theme.stars(row.stars) .. "   " else ""
-	Effects.splash(self.gui, title, stars .. (row.award or "") .. "   +" .. row.coins .. " 💰", C.hotPink, 3)
+	Effects.splash(self.gui, title, stars .. (row.award or "") .. "   +" .. row.coins .. " 💰", C.hotPink, 3, function(card)
+		card.AnchorPoint = Vector2.new(0.5, 0)
+		card.Position = UDim2.fromScale(0.5, 0.12)
+		card.Size = UDim2.fromScale(0.5, 0.22)
+	end)
 	if row.stars >= 3.5 or (players >= 2 and row.rank == 1) then
 		Effects.confetti(self.gui, 60)
 	end

@@ -160,7 +160,7 @@ Remotes.Celebrate.OnClientEvent:Connect(function(info)
 	if info.kind == "daily" then
 		local title = if info.item then "🎁 Day 7: " .. info.item .. "!" else "🎁 Day " .. info.day .. " Gift! +" .. info.coins .. " 💰"
 		-- The 7-day calendar row
-		Effects.splash(gui, title, " ", Theme.Colors.gold, 4, function(card)
+		Effects.splash(gui, title, " ", Theme.Colors.goldText, 4, function(card)
 			local row = Theme.new("Frame", {
 				Position = UDim2.fromScale(0, 0.62),
 				Size = UDim2.fromScale(1, 0.36),
@@ -303,8 +303,10 @@ end
 
 -- The photo booth: stand on the gold pad for a 3-2-1, a flash, your pose and a polaroid frame.
 local inBooth, snapping = false, false
+local BOOTH_PHASES = { Makeover = true, Intermission = true, Waiting = true }
 local function snapPhoto(center: Vector3)
 	snapping = true
+	local phase = state.phase
 	local character = Players.LocalPlayer.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	-- the photographer stands in front of the booth, so the picture is of their face, not the back of their head
@@ -313,6 +315,25 @@ local function snapPhoto(center: Vector3)
 	camera.CameraType = Enum.CameraType.Scriptable
 	local shot = CFrame.lookAt(lens, center + Vector3.new(0, 3.5, 0))
 	camera.CFrame = shot
+	local number: TextLabel? = nil
+	local photo: ScreenGui? = nil
+	local function finish()
+		if number then
+			number:Destroy()
+		end
+		if photo then
+			photo:Destroy()
+		end
+		gui.Enabled = true
+		if camera.CameraType == Enum.CameraType.Scriptable and camera.CFrame == shot then -- (unless the show took the camera meanwhile)
+			camera.CameraType = Enum.CameraType.Custom
+		end
+		snapping = false
+	end
+	-- the round moved on (the show is starting): stop right away
+	local function interrupted(): boolean
+		return state.phase ~= phase
+	end
 	local function faceCamera()
 		if root and root:IsA("BasePart") and root.Parent then
 			root.CFrame = CFrame.lookAt(root.Position, Vector3.new(lens.X, root.Position.Y, lens.Z))
@@ -321,7 +342,9 @@ local function snapPhoto(center: Vector3)
 	-- a big 3-2-1 off to the side (a card in the middle would cover the kid)
 	for _, n in { "3", "2", "1" } do
 		faceCamera()
-		local number = Theme.new("TextLabel", {
+		local outline = Theme.stroke(Theme.Colors.hotPink, 6)
+		outline.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+		local label = Theme.new("TextLabel", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.8, 0.45),
 			Size = UDim2.fromScale(0.2, 0.3),
@@ -329,49 +352,56 @@ local function snapPhoto(center: Vector3)
 			TextColor3 = Theme.Colors.white,
 			ZIndex = 260,
 			Parent = gui,
-		}, { Theme.stroke(Theme.Colors.hotPink, 6) })
-		number:FindFirstChildOfClass("UIStroke").ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
-		Theme.pop(number)
+		}, { outline })
+		number = label
+		Theme.pop(label)
 		Sounds.play("Pop", 0.5)
 		task.wait(0.8)
-		number:Destroy()
+		label:Destroy()
+		number = nil
+		if interrupted() then
+			finish()
+			return
+		end
 	end
 	faceCamera()
-	Effects.flash(gui)
-	Sounds.play("Camera")
 	if character then
 		local pose = makeover.look and makeover.look.pose
 		Avatar.pose(character, if pose and not Catalog.isNone(pose) then pose else "pose_cheer")
 	end
-	-- the picture: a white polaroid border around the screen, with a caption strip along the bottom
+	-- the picture: just you, in a white polaroid border with a caption strip (the game's buttons step aside)
 	local theme = Catalog.themeById[state.themeId]
+	photo = Instance.new("ScreenGui")
+	local frame = photo :: ScreenGui
+	frame.Name = "GlowUpPhoto"
+	frame.IgnoreGuiInset = true
+	frame.DisplayOrder = 20
+	frame.Parent = gui.Parent
+	gui.Enabled = false
+	Effects.flash(frame)
 	local polaroid = Theme.new("Frame", {
 		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
-		ZIndex = 255,
-		Parent = gui,
+		Parent = frame,
 	}, { Theme.stroke(Theme.Colors.white, 18) })
 	Theme.new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.fromScale(0.5, 1),
 		Size = UDim2.new(1, 0, 0, 76),
 		BackgroundColor3 = Theme.Colors.white,
-		ZIndex = 256,
 		Parent = polaroid,
 	}, {
 		Theme.new("TextLabel", {
 			Size = UDim2.fromScale(1, 1),
 			Text = "📸 " .. Players.LocalPlayer.DisplayName .. (if theme then "  •  " .. theme.name else ""),
 			TextColor3 = Theme.Colors.hotPink,
-			ZIndex = 257,
 		}, { Theme.padding(12), Theme.maxText(40) }),
 	})
-	task.wait(3)
-	polaroid:Destroy()
-	if camera.CameraType == Enum.CameraType.Scriptable and camera.CFrame == shot then -- (unless the show took the camera meanwhile)
-		camera.CameraType = Enum.CameraType.Custom
+	local started = os.clock()
+	while os.clock() - started < 3 and not interrupted() do
+		task.wait(0.1)
 	end
-	snapping = false
+	finish()
 end
 local function updateBooth()
 	local character = Players.LocalPlayer.Character
@@ -382,7 +412,9 @@ local function updateBooth()
 	if root and root:IsA("BasePart") and typeof(center) == "Vector3" then
 		on = Vector3.new(root.Position.X - center.X, 0, root.Position.Z - center.Z).Magnitude <= 2.5
 	end
-	if on and not inBooth and not snapping and (state.phase == "Makeover" or state.phase == "Intermission" or state.phase == "Waiting") then
+	-- (not in the last few seconds of a phase: the photo would run into the show)
+	local timeLeft = state.endsAt - workspace:GetServerTimeNow()
+	if on and not inBooth and not snapping and BOOTH_PHASES[state.phase] and (state.phase == "Waiting" or timeLeft > 8) then
 		task.spawn(snapPhoto, center :: Vector3)
 	end
 	inBooth = on

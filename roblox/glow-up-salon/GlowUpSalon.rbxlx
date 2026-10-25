@@ -39,6 +39,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local Config = require(ReplicatedStorage.Shared.Config)
 local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
 
 local Avatar = {}
@@ -159,6 +160,16 @@ function Avatar.preload()
 		end
 	end
 
+	pending += 1
+	task.spawn(function()
+		local loaded, model = pcall(InsertService.LoadAsset, InsertService, Config.Catwalk.Walk)
+		local anim = loaded and model and model:FindFirstChildWhichIsA("Animation", true)
+		if anim then
+			folder:SetAttribute("CatwalkWalk", anim.AnimationId)
+		end
+		pending -= 1
+	end)
+
 	local started = os.clock()
 	while pending > 0 and os.clock() - started < 20 do
 		task.wait(0.1)
@@ -265,6 +276,10 @@ function Avatar.prepareCharacter(character: Model): Color3?
 	local base = desc:Clone()
 	base.Head = 0
 	base.Face = 0
+	-- strut like a model for the round
+	base.WalkAnimation = Config.Catwalk.Walk
+	base.RunAnimation = Config.Catwalk.Run
+	base.IdleAnimation = Config.Catwalk.Idle
 	base.Shirt, base.Pants, base.GraphicTShirt = 0, 0, 0
 	base.HatAccessory, base.HairAccessory, base.FaceAccessory, base.NeckAccessory = "", "", "", ""
 	base.ShouldersAccessory, base.FrontAccessory, base.BackAccessory, base.WaistAccessory = "", "", "", ""
@@ -838,6 +853,25 @@ function Avatar.setTangle(model: Model, tangle: number)
 				t.Transparency = 1 - tangle
 			end
 		end
+	end
+end
+
+-- Gets a model out of its seat so it can walk again (a server-owned model also needs a nudge out of the Seated state).
+function Avatar.unseat(model: Model)
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return
+	end
+	local seat = humanoid.SeatPart
+	humanoid.Sit = false
+	if seat then
+		local weld = seat:FindFirstChild("SeatWeld")
+		if weld then
+			weld:Destroy()
+		end
+	end
+	if humanoid:GetState() == Enum.HumanoidStateType.Seated then
+		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 	end
 end
 
@@ -1939,6 +1973,8 @@ Config.INTERMISSION_SECONDS = 20
 Config.SHOWCASE_SECONDS_PER_LOOK = 9
 Config.RESULTS_SECONDS = 15
 Config.MIN_PLAYERS = 1
+-- Style Bots (pretend friends) fill the show up to this many contestants, if they're turned on
+Config.BOTS_FILL_TO = 3
 
 -- Coins
 Config.STARTING_COINS = 100
@@ -1981,13 +2017,13 @@ Config.CoinPackAmounts = {
 -- Add more in Studio: Toolbox -> Audio (or the Creator Store), right-click one ->
 -- "Copy Asset ID", and paste it here like "rbxassetid://1234567". Empty ones are skipped.
 Config.Sounds = {
-	Click = "", -- tapping a button or item
+	Click = "rbxassetid://122966251252708", -- tapping a button or item (a 0.1s soft UI tap)
 	Pop = "rbxassetid://4110925712", -- pop-ups and speech bubbles (the same gentle chime)
 	Scrub = "", -- rubbing with soap or brushing hair
 	Rinse = "rbxasset://sounds/impact_water.mp3", -- rinsing the bubbles (a water splash built into Roblox)
 	Sparkle = "rbxassetid://4110925712", -- a dirt spot comes off (Roblox tutorial "simple chime")
 	Cheer = "rbxassetid://3422389728", -- results, level up, daily gift (Roblox tutorial "retro jingle")
-	Camera = "", -- camera flash on the runway
+	Camera = "rbxassetid://17208312548", -- camera flash on the runway and in the photo booth (Roblox GUI camera shutter)
 	MakeoverMusic = "rbxassetid://1841461968", -- loops during the makeover (Roblox tutorial "upbeat" track)
 	RunwayMusic = "rbxassetid://1846248593", -- loops during the fashion show (Roblox tutorial "cheerful, celebratory" track)
 }
@@ -1995,7 +2031,15 @@ Config.Sounds = {
 -- Volume for each sound (0-1). Sounds not listed play at 0.6.
 Config.SoundVolumes = {
 	Rinse = 0.25,
+	Click = 0.35,
 } :: { [string]: number }
+
+-- A model's strut (Roblox's Catwalk Glam animation pack): everyone walks like this during a round.
+Config.Catwalk = {
+	Walk = 103190462987721,
+	Run = 75036746190467,
+	Idle = 101279640971758,
+}
 
 -- Particle pictures from Roblox's own particle tutorial
 Config.Textures = {
@@ -3126,6 +3170,7 @@ local EVENTS = {
 	"React", -- player -> server: cheer emoji during the fashion show
 	"Reaction", -- server -> all: someone cheered (emoji)
 	"Celebrate", -- server -> player: daily gift, level up
+	"SetBots", -- player -> server: turn the Style Bots (pretend friends) on or off
 }
 
 local FUNCTIONS = {
@@ -3448,7 +3493,7 @@ local rgb = Color3.fromRGB
 Stations.list = {
 	{ id = "hair", tab = "Hair", name = "Hair Chair", icon = "💇", pad = Vector3.new(-26, 0.2, 55), facing = Vector3.new(0, 0, -1), color = rgb(255, 120, 190) },
 	{ id = "face", tab = "Face", name = "Makeup Vanity", icon = "💄", pad = Vector3.new(-13, 0.2, 55), facing = Vector3.new(0, 0, -1), color = rgb(255, 90, 120) },
-	{ id = "outfit", tab = "Outfit", name = "Wardrobe", icon = "👗", pad = Vector3.new(0, 0.2, 55), facing = Vector3.new(0, 0, -1), color = rgb(90, 160, 255) },
+	{ id = "outfit", tab = "Outfit", name = "Clothes Rack", icon = "👗", pad = Vector3.new(0, 0.2, 55), facing = Vector3.new(0, 0, -1), color = rgb(90, 160, 255) },
 	{ id = "costume", tab = "Costume", name = "Costume Closet", icon = "🦸", pad = Vector3.new(13, 0.2, 55), facing = Vector3.new(0, 0, -1), color = rgb(150, 90, 220) },
 	{ id = "show", tab = "Show", name = "Pose Stage", icon = "💃", pad = Vector3.new(26, 0.2, 55), facing = Vector3.new(0, 0, -1), color = rgb(245, 200, 70) },
 	{ id = "pet", tab = "Pet", name = "Pet Park", icon = "🐶", pad = Vector3.new(24, 0.2, 39), facing = Vector3.new(-1, 0, 0), color = rgb(90, 200, 120) },
@@ -3487,6 +3532,458 @@ return Stations
         <string name="Name">Server</string>
       </Properties>
       <Item class="ModuleScript" referent="16">
+        <Properties>
+          <string name="Name">BotService</string>
+          <string name="Source"><![CDATA[-- Style Bots: pretend friends for when you play alone (or with just one friend). They're clearly
+-- robots (🤖 on their name tags, never passed off as real players). Between rounds they dance on
+-- the dance floor; during the makeover they walk from station to station and put their look
+-- together piece by piece; then they sit in the audience, walk the runway, strike a pose, and vote
+-- (kindly) on real players' looks. They always place below the real kids. Turn them on or off from the lobby card.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Avatar = require(ReplicatedStorage.Shared.Avatar)
+local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local Clients = require(ReplicatedStorage.Shared.Clients)
+local Config = require(ReplicatedStorage.Shared.Config)
+local Pets = require(ReplicatedStorage.Shared.Pets)
+local Stations = require(ReplicatedStorage.Shared.Stations)
+
+local BotService = {}
+
+export type Bot = {
+	bot: true,
+	userId: number, -- negative, so it never matches a real player
+	name: string,
+	client: Clients.Client,
+	look: { [string]: string },
+	clean: number,
+	rinsed: boolean,
+	votes: { [number]: number },
+	model: Model?,
+	pet: Model?,
+	skill: number, -- 0..1: how closely they follow the theme (so real players can win too)
+	walkTrack: AnimationTrack?,
+	danceTrack: AnimationTrack?,
+	busy: boolean, -- walking the runway or on the podium (the wander loop leaves them alone)
+}
+
+local NAMES = { "Kiki", "Zara", "Jojo", "Amani", "Coco", "Nala", "Rosie", "Imani", "Bibi", "Lulu" }
+local WALK_ANIMATION = "rbxassetid://507777826"
+local rng = Random.new()
+local bots: { Bot } = {}
+local world = nil
+local themeOf: () -> Catalog.Theme = nil :: any
+
+-- The keys a bot styles at each station, in the order they visit them.
+local STATION_KEYS = {
+	Hair = { "hairStyle", "hairColor" },
+	Face = { "eyeshadow", "lashes", "blush", "lipstick", "gems" },
+	Outfit = { "outfit", "outfitColor", "outfitPattern" },
+	Costume = { "accessory", "costumeBack", "costumeFace", "costumeWaist", "costumeShoulder" },
+	Pet = { "pet" },
+	Show = { "pose", "effect" },
+}
+-- How likely a bot is to bother with a key at all (so not every bot wears everything)
+local KEY_CHANCE = {
+	gems = 0.35, lashes = 0.6, outfitColor = 0.35, outfitPattern = 0.35,
+	costumeBack = 0.6, costumeFace = 0.35, costumeWaist = 0.3, costumeShoulder = 0.35, accessory = 0.55,
+	pet = 0.6, effect = 0.6,
+}
+
+-- A free (no coins, no pass, no level) item for this key, picking theme matches by skill.
+local function pickItem(key: string, theme: Catalog.Theme, skill: number): string?
+	local category = Catalog.categoryByKey[key]
+	if not category then
+		return nil
+	end
+	local matches, others = {}, {}
+	for _, it in category.items do
+		local free = not it.hidden and not it.gift and not it.pass and not it.level and it.price <= 0 and not it.event
+		if free and not Catalog.isNone(it.id) then
+			if Catalog.matchesTheme(it, theme) then
+				table.insert(matches, it.id)
+			else
+				table.insert(others, it.id)
+			end
+		end
+	end
+	local pool = if #matches > 0 and rng:NextNumber() < skill then matches else others
+	if #pool == 0 then
+		pool = matches
+	end
+	return if #pool > 0 then pool[rng:NextInteger(1, #pool)] else nil
+end
+
+local function dress(bot: Bot)
+	if bot.model and bot.model.Parent then
+		Avatar.dress(bot.model, bot.client, bot.look, { clean = 1, mood = "smile", brushed = true })
+	end
+	-- the pet trots after them
+	local petId = bot.look.pet
+	if not bot.pet or bot.pet:GetAttribute("PetId") ~= petId then
+		if bot.pet then
+			bot.pet:Destroy()
+			bot.pet = nil
+		end
+		local pet = Pets.build(petId)
+		if pet and bot.model then
+			pet:SetAttribute("PetId", petId)
+			pet.Name = bot.name .. "'s Pet"
+			pet:PivotTo(bot.model:GetPivot() * CFrame.new(2.6, -3, 0.6))
+			pet.Parent = world.folder
+			bot.pet = pet
+		end
+	end
+end
+
+local function nameTag(model: Model, text: string)
+	local head = model:FindFirstChild("Head")
+	if not (head and head:IsA("BasePart")) then
+		return
+	end
+	local tag = Instance.new("BillboardGui")
+	tag.Name = "NameTag"
+	tag.Size = UDim2.fromScale(6, 1)
+	tag.StudsOffset = Vector3.new(0, 3.2, 0)
+	tag.LightInfluence = 0
+	tag.MaxDistance = 120
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.Text = text
+	label.TextScaled = true
+	label.TextColor3 = Color3.fromRGB(106, 63, 181)
+	label.TextStrokeColor3 = Color3.new(1, 1, 1)
+	label.TextStrokeTransparency = 0
+	label.Parent = tag
+	tag.Parent = head
+end
+
+local function newBot(index: number): Bot?
+	-- skin tones lean deep (most Style Bots are Black girls, like the players this was made for)
+	local skinIndex = rng:NextInteger(if rng:NextNumber() < 0.75 then 5 else 1, #Catalog.SkinTones)
+	local name = NAMES[(index - 1) % #NAMES + 1]
+	-- the robot rides along in the name, so the runway card, results and podium all show it's a bot
+	local client = Clients.forPlayer(name .. " 🤖", skinIndex)
+	local model = Avatar.new(client)
+	if not model then
+		return nil
+	end
+	local bot: Bot = {
+		bot = true,
+		userId = -index,
+		name = name,
+		client = client,
+		look = Catalog.defaultLook(),
+		clean = 1,
+		rinsed = true,
+		votes = {},
+		model = model,
+		pet = nil,
+		skill = rng:NextNumber(0.45, 0.85),
+		walkTrack = nil,
+		danceTrack = nil,
+		busy = false,
+	}
+	model.Name = name .. " (Style Bot)"
+	-- start with their own hair, so they don't all look alike between rounds
+	bot.look.hairStyle = pickItem("hairStyle", themeOf(), 0) or bot.look.hairStyle
+	bot.look.hairColor = pickItem("hairColor", themeOf(), 0.3) or bot.look.hairColor
+	local spot = Stations.byTab.Show.pad + Vector3.new(rng:NextNumber(-20, -10), 0, rng:NextNumber(-12, -6))
+	Avatar.place(model, spot, Vector3.new(0, 0, -1))
+	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
+	root.Anchored = false
+	model.Parent = world.folder
+	pcall(function()
+		root:SetNetworkOwner(nil)
+	end)
+	nameTag(model, name .. " 🤖")
+	local humanoid = model:FindFirstChildOfClass("Humanoid") :: Humanoid
+	humanoid.WalkSpeed = 10
+	-- walk animation while moving, idle while standing
+	local animator = humanoid:FindFirstChildOfClass("Animator")
+	if animator then
+		-- the same catwalk strut the players have (or the plain walk until it has loaded)
+		local loadedId: string? = nil
+		local function walkTrack(): AnimationTrack?
+			local assets = Avatar.assets(0)
+			local strut = assets and assets:GetAttribute("CatwalkWalk")
+			local id = if type(strut) == "string" then strut else WALK_ANIMATION
+			if id ~= loadedId then
+				local anim = Instance.new("Animation")
+				anim.AnimationId = id
+				local ok, track = pcall(function()
+					return animator:LoadAnimation(anim)
+				end)
+				if ok and track then
+					if bot.walkTrack then
+						bot.walkTrack:Stop(0)
+					end
+					bot.walkTrack = track
+					loadedId = id
+				end
+			end
+			return bot.walkTrack
+		end
+		walkTrack()
+		humanoid.Running:Connect(function(speed)
+			local track = walkTrack()
+			if not track then
+				return
+			end
+			if speed > 0.5 and not track.IsPlaying then
+				track:Play(0.2)
+			elseif speed <= 0.5 and track.IsPlaying then
+				track:Stop(0.2)
+			end
+		end)
+	end
+	Avatar.idle(model)
+	dress(bot)
+	return bot
+end
+
+local function walkTo(bot: Bot, target: Vector3, timeout: number)
+	local model = bot.model
+	local humanoid = model and model:FindFirstChildOfClass("Humanoid")
+	local root = model and model:FindFirstChild("HumanoidRootPart")
+	if not (humanoid and root and root:IsA("BasePart")) then
+		return
+	end
+	if humanoid.SeatPart or humanoid:GetState() == Enum.HumanoidStateType.Seated then
+		Avatar.unseat(model)
+		task.wait(0.1)
+	end
+	humanoid:MoveTo(target)
+	local started = os.clock()
+	while os.clock() - started < timeout and model.Parent do
+		local here = Vector3.new(root.Position.X, 0, root.Position.Z)
+		if (here - Vector3.new(target.X, 0, target.Z)).Magnitude < 2 then
+			break
+		end
+		task.wait(0.2)
+	end
+end
+
+------------------------------------------------------------------------------
+
+function BotService.init(builtWorld, theme: () -> Catalog.Theme)
+	world = builtWorld
+	themeOf = theme
+end
+
+-- Makes sure there are `count` Style Bots (adds or removes some).
+function BotService.ensure(count: number)
+	while #bots > count do
+		BotService.remove(bots[#bots])
+	end
+	local index = 1
+	while #bots < count and index <= 20 do
+		local used = false
+		for _, b in bots do
+			if b.userId == -index then
+				used = true
+			end
+		end
+		if not used then
+			local bot = newBot(index)
+			if not bot then
+				break
+			end
+			table.insert(bots, bot)
+		end
+		index += 1
+	end
+end
+
+function BotService.remove(bot: Bot)
+	local i = table.find(bots, bot)
+	if i then
+		table.remove(bots, i)
+	end
+	if bot.pet then
+		bot.pet:Destroy()
+	end
+	if bot.model then
+		bot.model:Destroy()
+	end
+end
+
+function BotService.list(): { Bot }
+	return bots
+end
+
+function BotService.byUserId(userId: number): Bot?
+	for _, b in bots do
+		if b.userId == userId then
+			return b
+		end
+	end
+	return nil
+end
+
+-- Between rounds: everyone off to the dance floor.
+function BotService.hangOut()
+	local floor = world.folder:FindFirstChild("DanceFloor", true)
+	local center = floor and floor:GetAttribute("Center")
+	for i, bot in bots do
+		bot.busy = false
+		bot.votes = {}
+		task.spawn(function()
+			if typeof(center) == "Vector3" then
+				local a = i / math.max(#bots, 1) * math.pi * 2
+				walkTo(bot, center + Vector3.new(math.cos(a) * 3, 0, math.sin(a) * 3), 8)
+				if bot.model then
+					local track = Avatar.pose(bot.model, if i % 2 == 0 then "pose_dance2" else "pose_dance")
+					if track then
+						track.Looped = true
+						bot.danceTrack = track
+					end
+				end
+			end
+		end)
+	end
+end
+
+-- Is a real player standing on this station's pad?
+local function playerOn(station: Stations.Station): boolean
+	for _, player in Players:GetPlayers() do
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if root and root:IsA("BasePart") then
+			local d = Vector3.new(root.Position.X - station.pad.X, 0, root.Position.Z - station.pad.Z)
+			if d.Magnitude <= Stations.PAD_RADIUS + 1 then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+-- The makeover: each bot starts fresh, then walks station to station building the look.
+function BotService.startMakeover(endsIn: number)
+	local theme = themeOf()
+	for _, bot in bots do
+		if bot.danceTrack then
+			bot.danceTrack:Stop(0.3)
+			bot.danceTrack = nil
+		end
+		bot.look = Catalog.defaultLook()
+		bot.look.hairStyle = pickItem("hairStyle", theme, 0) or bot.look.hairStyle
+		bot.votes = {}
+		bot.busy = false
+		dress(bot)
+		task.spawn(function()
+			local order = { "Hair", "Face", "Outfit", "Costume", "Pet", "Show" }
+			-- not everyone goes in the same order
+			if rng:NextNumber() < 0.5 then
+				order = { "Outfit", "Hair", "Costume", "Face", "Show", "Pet" }
+			end
+			local perStation = math.max(4, (endsIn - 20) / #order)
+			for _, tab in order do
+				if not bot.model or not bot.model.Parent or bot.busy then
+					return
+				end
+				local station = Stations.byTab[tab]
+				local offset = Vector3.new(rng:NextNumber(-2, 2), 0, rng:NextNumber(-2, 2))
+				-- a real kid is styling here: wait a bit, then style from beside the pad instead
+				local waited = 0
+				while playerOn(station) and waited < 8 do
+					task.wait(1)
+					waited += 1
+				end
+				if playerOn(station) then
+					offset = Vector3.new(if rng:NextNumber() < 0.5 then -6 else 6, 0, 2)
+				end
+				walkTo(bot, station.pad + offset, 12)
+				task.wait(rng:NextNumber(1.5, 3))
+				for _, key in STATION_KEYS[tab] do
+					if rng:NextNumber() < (KEY_CHANCE[key] or 1) then
+						local id = pickItem(key, theme, bot.skill)
+						if id then
+							bot.look[key] = id
+							dress(bot)
+							task.wait(rng:NextNumber(0.6, 1.4))
+						end
+					end
+				end
+				if bot.model and not Catalog.isNone(bot.look.pose) and tab == "Show" then
+					Avatar.pose(bot.model, bot.look.pose)
+				end
+				task.wait(math.max(0, perStation - 6))
+			end
+		end)
+	end
+end
+
+-- The bot walks the runway, strikes a pose, and then waits at the end.
+function BotService.walkRunway(bot: Bot)
+	local model = bot.model
+	if not model then
+		return
+	end
+	bot.busy = true
+	local humanoid = model:FindFirstChildOfClass("Humanoid") :: Humanoid
+	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
+	Avatar.unseat(model)
+	task.wait(0.1)
+	Avatar.place(model, world.runwayStart, Vector3.new(0, 0, 1))
+	if bot.pet then
+		bot.pet:PivotTo(CFrame.new(world.runwayStart + Vector3.new(2.6, 0, 0)))
+	end
+	model:SetAttribute("Walking", true) -- the runway camera follows them
+	local walkTime = Config.SHOWCASE_SECONDS_PER_LOOK * 0.6
+	humanoid.WalkSpeed = (world.runwayEnd - world.runwayStart).Magnitude / walkTime
+	walkTo(bot, world.runwayEnd, walkTime + 1.5)
+	humanoid.WalkSpeed = 10
+	if root.Parent then
+		BotService.twirl(root)
+		Avatar.pose(model, if Catalog.isNone(bot.look.pose) then "pose_wave" else bot.look.pose)
+	end
+	task.delay(Config.SHOWCASE_SECONDS_PER_LOOK - walkTime - 0.5, function()
+		if model.Parent then
+			model:SetAttribute("Walking", nil)
+		end
+	end)
+end
+
+-- A twirl at the end of the runway (one full turn, ending face to the crowd).
+function BotService.twirl(root: BasePart)
+	local pos = root.Position
+	for i = 1, 16 do
+		root.CFrame = CFrame.new(pos) * CFrame.Angles(0, math.pi + i / 16 * math.pi * 2, 0)
+		task.wait(0.05)
+	end
+	root.CFrame = CFrame.lookAt(pos, pos + Vector3.new(0, 0, 1))
+end
+
+-- Bots are kind judges: every real look gets 4 or 5 hearts from them.
+function BotService.voteFor(entry)
+	for _, bot in bots do
+		task.delay(rng:NextNumber(1.5, 5), function()
+			if entry.votes then
+				entry.votes[bot.userId] = if rng:NextNumber() < 0.6 then 5 else 4
+			end
+		end)
+	end
+end
+
+-- Pets trot after their bots (called every frame with the others).
+function BotService.followPets(dt: number)
+	for _, bot in bots do
+		if bot.pet and bot.pet.Parent and bot.model then
+			Pets.follow(bot.pet, bot.model, dt)
+		end
+	end
+end
+
+return BotService
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="17">
         <Properties>
           <string name="Name">DataService</string>
           <string name="Source"><![CDATA[-- Saves each player's coins, unlocked items and Super Soaps between visits.
@@ -3826,7 +4323,7 @@ return DataService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="17">
+      <Item class="Script" referent="18">
         <Properties>
           <string name="Name">Main</string>
           <token name="RunContext">0</token>
@@ -3857,7 +4354,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="18">
+      <Item class="ModuleScript" referent="19">
         <Properties>
           <string name="Name">RoundService</string>
           <string name="Source"><![CDATA[-- Runs the game loop that everyone in the server plays together:
@@ -3878,6 +4375,7 @@ local Pets = require(ReplicatedStorage.Shared.Pets)
 local RunService = game:GetService("RunService")
 local Scoring = require(ReplicatedStorage.Shared.Scoring)
 
+local BotService = require(script.Parent.BotService)
 local DataService = require(script.Parent.DataService)
 local WorldBuilder = require(script.Parent.WorldBuilder)
 
@@ -3903,6 +4401,7 @@ local state = {
 	endsAt = 0,
 	themeId = Catalog.Themes[1].id,
 	eventId = nil :: string?,
+	bots = true, -- Style Bots fill in when there are only a few real players
 }
 local entries: { [number]: Entry } = {} -- by UserId
 local showcase = nil -- payload of the look currently on the runway
@@ -4232,7 +4731,7 @@ function strikePose(character: Model, poseId: string?)
 end
 
 -- Everyone not on the runway sits in the audience seats along it.
-local function seatAudience(except: Player?)
+local function seatAudience(except: Player?, exceptModel: Model?)
 	local seats = {}
 	for _, d in world.folder.Runway:GetChildren() do
 		if d:IsA("Seat") and d.Name == "AudienceSeat" and not d.Occupant then
@@ -4247,21 +4746,26 @@ local function seatAudience(except: Player?)
 			seat:Sit(humanoid)
 		end
 	end
-end
-
-local function unseat(character: Model)
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	if humanoid then
-		local seat = humanoid.SeatPart
-		humanoid.Sit = false
-		if seat then
-			local weld = seat:FindFirstChild("SeatWeld")
-			if weld then
-				weld:Destroy()
-			end
+	for _, bot in BotService.list() do
+		local humanoid = bot.model and bot.model:FindFirstChildOfClass("Humanoid")
+		if bot.model and bot.model ~= exceptModel and humanoid and not humanoid.SeatPart and #seats > 0 then
+			local seat = table.remove(seats, 1)
+			bot.busy = true
+			bot.model:PivotTo(seat.CFrame + Vector3.new(0, 3, 0))
+			seat:Sit(humanoid)
 		end
 	end
 end
+
+-- How many Style Bots this round needs.
+local function wantedBots(): number
+	if not state.bots then
+		return 0
+	end
+	return math.max(0, Config.BOTS_FILL_TO - #Players:GetPlayers())
+end
+
+local unseat = Avatar.unseat
 
 -- The player's own character walks the runway (their pet trots along), then strikes their pose.
 -- If they have no character (just left), a stand-in model walks instead.
@@ -4318,7 +4822,8 @@ local function walkRunway(entry: Entry)
 	while os.clock() - started < walkTime + 1.5 and (Vector3.new(root.Position.X, 0, root.Position.Z) - Vector3.new(world.runwayEnd.X, 0, world.runwayEnd.Z)).Magnitude > 1.5 do
 		task.wait(0.1)
 	end
-	character:SetAttribute("WalkTarget", nil)
+	character:SetAttribute("WalkTarget", nil) -- their screen faces them to the crowd and twirls
+	task.wait(0.9)
 	strikePose(character, entry.look.pose)
 	task.delay(Config.SHOWCASE_SECONDS_PER_LOOK - walkTime - 0.5, function()
 		if character.Parent then
@@ -4365,7 +4870,7 @@ local function onVote(player: Player, targetUserId: unknown, stars: unknown)
 	if player.UserId == targetUserId or type(stars) ~= "number" or not (stars >= 3 and stars <= 5) or stars % 1 ~= 0 then
 		return
 	end
-	local entry = entries[targetUserId :: number]
+	local entry: any = entries[targetUserId :: number] or BotService.byUserId(targetUserId :: number)
 	if not entry then
 		return
 	end
@@ -4402,6 +4907,30 @@ end
 local function scoreAll()
 	local rows = {}
 	local count = 0
+	for _, bot in BotService.list() do
+		count += 1
+		local judgeStars, comments = Scoring.judge(bot, theme())
+		local votes = {}
+		for _, v in bot.votes do
+			table.insert(votes, v)
+		end
+		local final = Scoring.final(judgeStars, votes)
+		table.insert(rows, {
+			userId = bot.userId,
+			bot = true,
+			stylist = bot.name .. " 🤖",
+			client = bot.client,
+			look = bot.look,
+			clean = 1,
+			judgeStars = judgeStars,
+			voteCount = #votes,
+			score = final,
+			stars = Scoring.roundToHalf(final),
+			comments = comments,
+			coins = 0,
+			spotless = true,
+		})
+	end
 	for userId, entry in entries do
 		if entry.player.Parent then
 			count += 1
@@ -4427,14 +4956,33 @@ local function scoreAll()
 			})
 		end
 	end
+	-- Style Bots are there to keep a kid company, not to beat her: every bot lands below the
+	-- lowest real player (half a star under, at least), so a kid playing alone always wins.
+	local lowestReal = math.huge
+	for _, row in rows do
+		if not row.bot then
+			lowestReal = math.min(lowestReal, row.score)
+		end
+	end
+	if lowestReal < math.huge then
+		for _, row in rows do
+			if row.bot and row.score > lowestReal - 0.5 then
+				row.score = math.max(0.5, lowestReal - 0.5 - rng:NextNumber(0, 0.4))
+				row.stars = Scoring.roundToHalf(row.score)
+			end
+		end
+	end
 	table.sort(rows, function(a, b)
+		if (a.bot == true) ~= (b.bot == true) then
+			return not a.bot
+		end
 		return a.score > b.score
 	end)
 
 	-- Everyone gets a different award (best scorers pick first)
 	local taken = {}
 	for _, row in rows do
-		local entry = entries[row.userId]
+		local entry: any = entries[row.userId] or BotService.byUserId(row.userId)
 		local scores = Scoring.awardScores(entry, theme())
 		local best, bestScore = nil, 0.2
 		for _, award in Scoring.AWARDS do
@@ -4451,6 +4999,9 @@ local function scoreAll()
 
 	for rank, row in rows do
 		row.rank = rank
+		if row.bot then
+			continue -- Style Bots don't earn coins or save anything
+		end
 		local player = entries[row.userId].player
 		local coins = Config.COINS_PARTICIPATION + math.floor(row.score * Config.COINS_PER_STAR)
 		if row.spotless then
@@ -4609,6 +5160,8 @@ local function runRound()
 		state.themeId = everyday[rng:NextInteger(1, #everyday)]
 	end
 	setState("Intermission", Config.INTERMISSION_SECONDS)
+	BotService.ensure(wantedBots())
+	BotService.hangOut()
 	task.wait(Config.INTERMISSION_SECONDS)
 
 	-- Makeover: 5 minutes!
@@ -4617,6 +5170,8 @@ local function runRound()
 	for _, player in Players:GetPlayers() do
 		task.spawn(assignClient, player)
 	end
+	BotService.ensure(wantedBots())
+	BotService.startMakeover(Config.MAKEOVER_SECONDS)
 	while now() < state.endsAt do
 		task.wait(0.5)
 		if allDone() then
@@ -4625,18 +5180,49 @@ local function runRound()
 	end
 
 	-- Fashion show
-	local order = {}
+	local order: { any } = {}
 	for _, entry in entries do
 		table.insert(order, entry)
 	end
+	for _, bot in BotService.list() do
+		table.insert(order, bot)
+	end
 	rng:Shuffle(order)
+	local function present(e): boolean
+		return if e.bot then e.model ~= nil and e.model.Parent ~= nil else e.player.Parent ~= nil
+	end
 	local index = 0
 	for _, entry in order do
-		if entry.player.Parent then
+		if entry.bot and present(entry) then
 			index += 1
 			local total = 0
 			for _, e in order do
-				if e.player.Parent then
+				if present(e) then
+					total += 1
+				end
+			end
+			showcase = {
+				userId = entry.userId,
+				stylist = entry.name .. " 🤖",
+				vip = false,
+				level = 1,
+				client = entry.client,
+				look = entry.look,
+				clean = 1,
+				index = index,
+				total = math.max(total, index),
+			}
+			setState("Showcase", Config.SHOWCASE_SECONDS_PER_LOOK)
+			Remotes.Showcase:FireAllClients(showcase)
+			seatAudience(nil, entry.model)
+			local started = os.clock()
+			BotService.walkRunway(entry)
+			task.wait(math.max(0, Config.SHOWCASE_SECONDS_PER_LOOK - (os.clock() - started)))
+		elseif not entry.bot and present(entry) then
+			index += 1
+			local total = 0
+			for _, e in order do
+				if present(e) then
 					total += 1
 				end
 			end
@@ -4654,6 +5240,7 @@ local function runRound()
 			setState("Showcase", Config.SHOWCASE_SECONDS_PER_LOOK)
 			Remotes.Showcase:FireAllClients(showcase)
 			seatAudience(entry.player)
+			BotService.voteFor(entry)
 			local started = os.clock()
 			walkRunway(entry)
 			task.wait(math.max(0, Config.SHOWCASE_SECONDS_PER_LOOK - (os.clock() - started)))
@@ -4670,6 +5257,17 @@ local function runRound()
 		setState("Results", Config.RESULTS_SECONDS)
 		-- The top 3 stand on the podium in their looks; everyone else gathers in front
 		for _, row in rows do
+			local bot = if row.bot then BotService.byUserId(row.userId) else nil
+			if bot and bot.model then
+				Avatar.unseat(bot.model)
+				bot.busy = true
+				local spot = world.podium[row.rank] or (world.podium[1] + Vector3.new((row.rank - 5) * 3, -world.podium[1].Y, 9))
+				Avatar.place(bot.model, spot, Vector3.new(0, 0, 1))
+				if row.rank == 1 then
+					Avatar.pose(bot.model, "pose_cheer")
+				end
+				continue
+			end
 			local entry = entries[row.userId]
 			local character = entry and entry.player.Character
 			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -4732,7 +5330,23 @@ function RoundService.init(builtWorld: WorldBuilder.World)
 			end
 		end)
 	end)
-	RunService.Heartbeat:Connect(followPets)
+	RunService.Heartbeat:Connect(function(dt)
+		followPets(dt)
+		BotService.followPets(dt)
+	end)
+	BotService.init(world, theme)
+	-- The lobby's Style Bots switch (one switch for the whole server)
+	Remotes.SetBots.OnServerEvent:Connect(function(_player, on: unknown)
+		if type(on) ~= "boolean" or on == state.bots then
+			return
+		end
+		state.bots = on
+		Remotes.State:FireAllClients(state)
+		if state.phase == "Intermission" or state.phase == "Waiting" then
+			BotService.ensure(wantedBots())
+			BotService.hangOut()
+		end
+	end)
 	Players.PlayerRemoving:Connect(function(player)
 		local entry = entries[player.UserId]
 		if entry and entry.pet then
@@ -4759,7 +5373,7 @@ return RoundService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="19">
+      <Item class="ModuleScript" referent="20">
         <Properties>
           <string name="Name">ShopService</string>
           <string name="Source"><![CDATA[-- Unlocking items with coins, plus Robux Game Passes and Developer Products.
@@ -4877,7 +5491,7 @@ return ShopService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="20">
+      <Item class="ModuleScript" referent="21">
         <Properties>
           <string name="Name">WorldBuilder</string>
           <string name="Source"><![CDATA[-- Builds the salon, runway, big screen, audience seats and winners' podium when the game starts.
@@ -4969,9 +5583,9 @@ local function setupLighting(look)
 	Lighting.ClockTime = look.clock
 	local bloom = Instance.new("BloomEffect")
 	bloom.Name = "GlowUp"
-	bloom.Intensity = 0.7
+	bloom.Intensity = 0.45
 	bloom.Size = 28
-	bloom.Threshold = 1.6
+	bloom.Threshold = 1.9
 	bloom.Parent = Lighting
 	local color = Instance.new("ColorCorrectionEffect")
 	color.Name = "GlowUp"
@@ -4985,8 +5599,8 @@ local function setupLighting(look)
 	atmosphere.Density = 0.28
 	atmosphere.Color = look.air
 	atmosphere.Decay = look.decay
-	atmosphere.Haze = 1.2
-	atmosphere.Glare = 0.4
+	atmosphere.Haze = 0.6
+	atmosphere.Glare = 0
 	atmosphere.Parent = Lighting
 end
 
@@ -5180,7 +5794,7 @@ local function buildStations(salon: Instance)
 		local beam = Instance.new("PointLight")
 		beam.Color = s.color
 		beam.Range = 10
-		beam.Brightness = 1.2
+		beam.Brightness = 0.7
 		beam.Parent = pad
 	end
 
@@ -5208,7 +5822,7 @@ local function buildStations(salon: Instance)
 	spot.Face = Enum.NormalId.Bottom
 	spot.Color = rgb(255, 240, 220)
 	spot.Range = 16
-	spot.Brightness = 3
+	spot.Brightness = 1.6
 	spot.Angle = 45
 	spot.Parent = light
 	local pet = Stations.byTab.Pet.pad
@@ -5250,6 +5864,132 @@ local function buildDanceFloor(salon: Instance)
 				t.Color = colors[(i + step) % #colors + 1]
 			end
 			task.wait(0.6)
+		end
+	end)
+end
+
+-- Life in the Dressing Hall: a disco ball over the dance floor, string lights, wall lights that
+-- drift through the colors, floating sparkles, balloon bunches, and a photo booth (Main.client
+-- does the 3-2-1 and the flash when you step on its pad).
+local function buildAtmosphere(salon: Instance)
+	local folder = Instance.new("Folder")
+	folder.Name = "Atmosphere"
+	folder.Parent = salon
+	local colors = { PINK, PURPLE, GOLD, rgb(90, 200, 255), rgb(120, 220, 140) }
+
+	-- Disco ball with spinning colored spots over the dance floor
+	local floor = salon:FindFirstChild("DanceFloor")
+	local center = floor and floor:GetAttribute("Center") or Vector3.new(-24, 0, 39)
+	local disco = part(folder, "DiscoBall", Vector3.new(2.6, 2.6, 2.6), CFrame.new(center + Vector3.new(0, 12, 0)), rgb(235, 235, 245), Enum.Material.Glass)
+	disco.Shape = Enum.PartType.Ball
+	disco.Reflectance = 0.6
+	disco.CanCollide = false
+	part(folder, "DiscoString", Vector3.new(0.1, 6, 0.1), CFrame.new(center + Vector3.new(0, 16, 0)), rgb(200, 200, 210)).CanCollide = false
+	local spots = {}
+	for i, c in { PINK, rgb(90, 200, 255), GOLD } do
+		local s = Instance.new("SpotLight")
+		s.Color = c
+		s.Range = 18
+		s.Brightness = 1.4
+		s.Angle = 35
+		s.Face = Enum.NormalId.Bottom
+		local holder = part(folder, "DiscoSpot" .. i, Vector3.new(0.2, 0.2, 0.2), disco.CFrame, c)
+		holder.Transparency = 1
+		holder.CanCollide = false
+		s.Parent = holder
+		table.insert(spots, holder)
+	end
+	local sparkle = Instance.new("ParticleEmitter")
+	sparkle.Texture = Config.Textures.Star
+	sparkle.Color = ColorSequence.new(rgb(255, 240, 255), rgb(255, 190, 230))
+	sparkle.Size = NumberSequence.new(0.35, 0)
+	sparkle.Lifetime = NumberRange.new(1.5, 2.5)
+	sparkle.Speed = NumberRange.new(2, 4)
+	sparkle.SpreadAngle = Vector2.new(180, 180)
+	sparkle.Rate = 6
+	sparkle.LightEmission = 0.7
+	sparkle.Parent = disco
+
+	-- String lights along the top of the back wall and over the entrance
+	for x = -34, 34, 2 do
+		local bulb = part(folder, "Bulb", Vector3.new(0.6, 0.6, 0.6), CFrame.new(x, 20.5 - math.abs(math.sin(x / 4)) * 0.8, 69.2), colors[(x // 2) % #colors + 1], Enum.Material.Neon)
+		bulb.Shape = Enum.PartType.Ball
+		bulb.CanCollide = false
+		bulb.CastShadow = false
+	end
+
+	-- Wall lights that drift slowly through the colors
+	local wallLights = {}
+	for _, x in { -30, -10, 10, 30 } do
+		local lamp = part(folder, "WallLamp", Vector3.new(1.4, 1.4, 0.4), CFrame.new(x, 13, 69.4), rgb(255, 255, 255), Enum.Material.Neon)
+		lamp.CanCollide = false
+		local l = Instance.new("PointLight")
+		l.Range = 22
+		l.Brightness = 0.7
+		l.Parent = lamp
+		table.insert(wallLights, { lamp = lamp, light = l })
+	end
+
+	-- Sparkles floating in the air of the hall
+	local air = part(folder, "HallSparkles", Vector3.new(60, 1, 30), CFrame.new(0, 16, 50), rgb(255, 255, 255))
+	air.Transparency = 1
+	air.CanCollide = false
+	local float = Instance.new("ParticleEmitter")
+	float.Texture = Config.Textures.Star
+	float.Color = ColorSequence.new(rgb(255, 220, 245), rgb(220, 200, 255))
+	float.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0.35), NumberSequenceKeypoint.new(1, 0) })
+	float.Lifetime = NumberRange.new(4, 7)
+	float.Speed = NumberRange.new(0.5, 1.5)
+	float.SpreadAngle = Vector2.new(180, 180)
+	float.Rate = 10
+	float.LightEmission = 0.6
+	float.Shape = Enum.ParticleEmitterShape.Box
+	float.Parent = air
+
+	-- Balloon bunches beside each station
+	for i, s in Stations.list do
+		local base = s.pad + Vector3.new(if i % 2 == 0 then 5.5 else -5.5, 0, 2)
+		for k = 0, 2 do
+			local c = colors[(i + k) % #colors + 1]
+			local pos = base + Vector3.new((k - 1) * 0.9, 7 + (k % 2) * 0.8, 0)
+			ball(folder, "Balloon", 1.6, pos, c).Reflectance = 0.15
+			part(folder, "BalloonString", Vector3.new(0.05, 6, 0.05), CFrame.new(pos - Vector3.new(0, 3.6, 0)), rgb(255, 255, 255)).CanCollide = false
+		end
+	end
+
+	-- Photo booth by the entrance, facing into the hall: a frame, a backdrop and a glowing pad to stand on
+	local booth = Vector3.new(8, 0.2, 36)
+	local back = part(folder, "BoothBackdrop", Vector3.new(9, 9, 0.4), CFrame.new(booth + Vector3.new(0, 4.5, -3.4)) * CFrame.Angles(0, math.pi, 0), rgb(255, 235, 245))
+	sign(back, Enum.NormalId.Front, "📸", PINK)
+	part(folder, "BoothFrameTop", Vector3.new(9.6, 0.6, 0.6), CFrame.new(booth + Vector3.new(0, 9.2, -3.2)), GOLD, Enum.Material.Neon).CanCollide = false
+	for _, x in { -4.8, 4.8 } do
+		part(folder, "BoothFrameSide", Vector3.new(0.6, 9, 0.6), CFrame.new(booth + Vector3.new(x, 4.5, -3.2)), GOLD, Enum.Material.Neon)
+	end
+	local boothPad = part(folder, "BoothPad", Vector3.new(0.3, 5, 5), CFrame.new(booth) * CFrame.Angles(0, 0, math.rad(90)), GOLD, Enum.Material.Neon)
+	boothPad.Shape = Enum.PartType.Cylinder
+	boothPad.Transparency = 0.35
+	boothPad.CanCollide = false
+	local boothSign = part(folder, "BoothSign", Vector3.new(8, 2, 0.4), CFrame.lookAt(booth + Vector3.new(0, 10.8, -3), booth + Vector3.new(0, 10.8, 0)), rgb(190, 20, 105))
+	boothSign.CanCollide = false
+	sign(boothSign, Enum.NormalId.Front, "📸 Photo Booth", rgb(255, 255, 255))
+	folder:SetAttribute("BoothCenter", booth)
+
+	-- Slow motion: the disco spots sweep around and the wall lights change color
+	task.spawn(function()
+		local t = 0
+		while folder.Parent do
+			t += 0.1
+			disco.CFrame = CFrame.new(disco.Position) * CFrame.Angles(0, t * 0.6, 0)
+			for i, holder in spots do
+				local a = t * 0.8 + i * 2.1
+				holder.CFrame = CFrame.lookAt(disco.Position, center + Vector3.new(math.cos(a) * 5, 0, math.sin(a) * 5))
+			end
+			for i, w in wallLights do
+				local c = Color3.fromHSV((t * 0.02 + i * 0.25) % 1, 0.45, 1)
+				w.lamp.Color = c
+				w.light.Color = c
+			end
+			task.wait(0.1)
 		end
 	end)
 end
@@ -5313,6 +6053,7 @@ function WorldBuilder.build(): World
 	sign(salonSign, Enum.NormalId.Front, "✨ 5 Minute Glow Up Salon ✨", PINK)
 	buildStations(salon)
 	buildDanceFloor(salon)
+	buildAtmosphere(salon)
 
 	-- Runway
 	local runway = Instance.new("Folder")
@@ -5329,7 +6070,7 @@ function WorldBuilder.build(): World
 		local light = Instance.new("PointLight")
 		light.Color = PINK
 		light.Range = 12
-		light.Brightness = 1.5
+		light.Brightness = 0.8
 		light.Parent = strip
 	end
 
@@ -5343,7 +6084,7 @@ function WorldBuilder.build(): World
 		spot.Face = Enum.NormalId.Bottom
 		spot.Angle = 60
 		spot.Range = 60
-		spot.Brightness = 3
+		spot.Brightness = 1.6
 		spot.Color = rgb(255, 230, 245)
 		spot.Parent = cap
 	end
@@ -5451,19 +6192,19 @@ return WorldBuilder
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="21">
+  <Item class="StarterPlayer" referent="22">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="22">
+    <Item class="StarterPlayerScripts" referent="23">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="Folder" referent="23">
+      <Item class="Folder" referent="24">
         <Properties>
           <string name="Name">Client</string>
         </Properties>
-        <Item class="LocalScript" referent="24">
+        <Item class="LocalScript" referent="25">
           <Properties>
             <string name="Name">Main</string>
             <string name="Source"><![CDATA[-- Starts the game on each player's screen and connects it to the server.
@@ -5628,7 +6369,7 @@ Remotes.Celebrate.OnClientEvent:Connect(function(info)
 	if info.kind == "daily" then
 		local title = if info.item then "🎁 Day 7: " .. info.item .. "!" else "🎁 Day " .. info.day .. " Gift! +" .. info.coins .. " 💰"
 		-- The 7-day calendar row
-		Effects.splash(gui, title, " ", Theme.Colors.gold, 4, function(card)
+		Effects.splash(gui, title, " ", Theme.Colors.goldText, 4, function(card)
 			local row = Theme.new("Frame", {
 				Position = UDim2.fromScale(0, 0.62),
 				Size = UDim2.fromScale(1, 0.36),
@@ -5712,8 +6453,15 @@ local function watchCharacter(character: Model)
 				humanoid.WalkSpeed = 16
 				local root = character:FindFirstChild("HumanoidRootPart")
 				if root and root:IsA("BasePart") then
-					-- face the crowd at the end of the runway
-					root.CFrame = CFrame.lookAt(root.Position, root.Position + Vector3.new(0, 0, 1))
+					-- a twirl at the end of the runway, ending face to the crowd
+					task.spawn(function()
+						local pos = root.Position
+						for i = 1, 16 do
+							root.CFrame = CFrame.new(pos) * CFrame.Angles(0, math.pi + i / 16 * math.pi * 2, 0)
+							task.wait(0.05)
+						end
+						root.CFrame = CFrame.lookAt(pos, pos + Vector3.new(0, 0, 1))
+					end)
 				end
 			end
 		end
@@ -5762,20 +6510,140 @@ local function updateDance()
 	end
 end
 
+-- The photo booth: stand on the gold pad for a 3-2-1, a flash, your pose and a polaroid frame.
+local inBooth, snapping = false, false
+local BOOTH_PHASES = { Makeover = true, Intermission = true, Waiting = true }
+local function snapPhoto(center: Vector3)
+	snapping = true
+	local phase = state.phase
+	local character = Players.LocalPlayer.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	-- the photographer stands in front of the booth, so the picture is of their face, not the back of their head
+	local camera = workspace.CurrentCamera
+	local lens = center + Vector3.new(0, 5, 9)
+	camera.CameraType = Enum.CameraType.Scriptable
+	local shot = CFrame.lookAt(lens, center + Vector3.new(0, 3.5, 0))
+	camera.CFrame = shot
+	local number: TextLabel? = nil
+	local photo: ScreenGui? = nil
+	local function finish()
+		if number then
+			number:Destroy()
+		end
+		if photo then
+			photo:Destroy()
+		end
+		gui.Enabled = true
+		if camera.CameraType == Enum.CameraType.Scriptable and camera.CFrame == shot then -- (unless the show took the camera meanwhile)
+			camera.CameraType = Enum.CameraType.Custom
+		end
+		snapping = false
+	end
+	-- the round moved on (the show is starting): stop right away
+	local function interrupted(): boolean
+		return state.phase ~= phase
+	end
+	local function faceCamera()
+		if root and root:IsA("BasePart") and root.Parent then
+			root.CFrame = CFrame.lookAt(root.Position, Vector3.new(lens.X, root.Position.Y, lens.Z))
+		end
+	end
+	-- a big 3-2-1 off to the side (a card in the middle would cover the kid)
+	for _, n in { "3", "2", "1" } do
+		faceCamera()
+		local outline = Theme.stroke(Theme.Colors.hotPink, 6)
+		outline.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+		local label = Theme.new("TextLabel", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.8, 0.45),
+			Size = UDim2.fromScale(0.2, 0.3),
+			Text = n,
+			TextColor3 = Theme.Colors.white,
+			ZIndex = 260,
+			Parent = gui,
+		}, { outline })
+		number = label
+		Theme.pop(label)
+		Sounds.play("Pop", 0.5)
+		task.wait(0.8)
+		label:Destroy()
+		number = nil
+		if interrupted() then
+			finish()
+			return
+		end
+	end
+	faceCamera()
+	if character then
+		local pose = makeover.look and makeover.look.pose
+		Avatar.pose(character, if pose and not Catalog.isNone(pose) then pose else "pose_cheer")
+	end
+	-- the picture: just you, in a white polaroid border with a caption strip (the game's buttons step aside)
+	local theme = Catalog.themeById[state.themeId]
+	photo = Instance.new("ScreenGui")
+	local frame = photo :: ScreenGui
+	frame.Name = "GlowUpPhoto"
+	frame.IgnoreGuiInset = true
+	frame.DisplayOrder = 20
+	frame.Parent = gui.Parent
+	gui.Enabled = false
+	Effects.flash(frame)
+	local polaroid = Theme.new("Frame", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Parent = frame,
+	}, { Theme.stroke(Theme.Colors.white, 18) })
+	Theme.new("Frame", {
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.fromScale(0.5, 1),
+		Size = UDim2.new(1, 0, 0, 76),
+		BackgroundColor3 = Theme.Colors.white,
+		Parent = polaroid,
+	}, {
+		Theme.new("TextLabel", {
+			Size = UDim2.fromScale(1, 1),
+			Text = "📸 " .. Players.LocalPlayer.DisplayName .. (if theme then "  •  " .. theme.name else ""),
+			TextColor3 = Theme.Colors.hotPink,
+		}, { Theme.padding(12), Theme.maxText(40) }),
+	})
+	local started = os.clock()
+	while os.clock() - started < 3 and not interrupted() do
+		task.wait(0.1)
+	end
+	finish()
+end
+local function updateBooth()
+	local character = Players.LocalPlayer.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local atmosphere = workspace:FindFirstChild("GlowUpWorld") and workspace.GlowUpWorld:FindFirstChild("Atmosphere", true)
+	local center = atmosphere and atmosphere:GetAttribute("BoothCenter")
+	local on = false
+	if root and root:IsA("BasePart") and typeof(center) == "Vector3" then
+		on = Vector3.new(root.Position.X - center.X, 0, root.Position.Z - center.Z).Magnitude <= 2.5
+	end
+	-- (not in the last few seconds of a phase: the photo would run into the show)
+	local timeLeft = state.endsAt - workspace:GetServerTimeNow()
+	if on and not inBooth and not snapping and BOOTH_PHASES[state.phase] and (state.phase == "Waiting" or timeLeft > 8) then
+		task.spawn(snapPhoto, center :: Vector3)
+	end
+	inBooth = on
+end
+
 RunService.RenderStepped:Connect(function()
 	hud:update()
 	showcase:updateWalkers()
 	showcase:followWalker()
 	updateDance()
+	updateBooth()
 end)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="Folder" referent="25">
+        <Item class="Folder" referent="26">
           <Properties>
             <string name="Name">UI</string>
           </Properties>
-          <Item class="ModuleScript" referent="26">
+          <Item class="ModuleScript" referent="27">
             <Properties>
               <string name="Name">Effects</string>
               <string name="Source"><![CDATA[-- Fun screen effects: confetti, floating emoji, camera flashes, sparkles and big pop-up cards.
@@ -5949,7 +6817,7 @@ return Effects
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="27">
+          <Item class="ModuleScript" referent="28">
             <Properties>
               <string name="Name">HUD</string>
               <string name="Source"><![CDATA[-- The always-on parts of the screen: round timer, coins, shop button, pop-up messages,
@@ -5963,6 +6831,7 @@ local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Events = require(ReplicatedStorage.Shared.Events)
 local Progress = require(ReplicatedStorage.Shared.Progress)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Theme = require(script.Parent.Theme)
 
 local C = Theme.Colors
@@ -5971,7 +6840,7 @@ local new = Theme.new
 local HUD = {}
 
 -- How to play, on the lobby card (phones get a row of icons instead)
-local STEPS_TEXT = "Walk to each station:\n💇 Hair   💄 Makeup   👗 Wardrobe\n🦸 Costume   🐶 Pet Park   💃 Pose Stage\nMatch the theme ⭐ then 📸 walk the runway!"
+local STEPS_TEXT = "Walk onto the glowing circles:\n💇 Hair   💄 Makeup   👗 Clothes\n🦸 Costume   🐶 Pet   💃 Pose\nMatch the theme ⭐ then 📸 walk the runway!"
 HUD.__index = HUD
 
 local PHASE_LABELS = {
@@ -6103,7 +6972,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		-- Sits on the card's top edge, clear of the event bar.
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, 0, 0, -6),
-		Size = UDim2.new(0, 132, 0, 44),
+		Size = UDim2.new(0, 150, 0, 56),
 		Text = "📖 My Looks",
 		Color = C.purple,
 		ZIndex = 45,
@@ -6122,6 +6991,23 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		ZIndex = 41,
 		Parent = rows,
 	}, { Theme.round(), Theme.maxText(22), Theme.padding(4) })
+	-- Style Bots (pretend friends who play along when you're alone): one switch for the server
+	local bots = Theme.button({
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 0, 0, -6),
+		Size = UDim2.new(0, 240, 0, 56),
+		Text = "🤖 Robot friends ✓",
+		Color = C.purple,
+		ZIndex = 45,
+		MaxText = 20,
+		Parent = self.lobby,
+	})
+	bots.Activated:Connect(function()
+		local on = not (self.state and self.state.bots ~= false)
+		bots.Text = "🤖 Robot friends " .. (if on then "✓" else "✗") -- answer right away
+		Remotes.SetBots:FireServer(on)
+	end)
+	self.botsButton = bots
 	self.lobbyWeekly = new("TextLabel", {
 		LayoutOrder = 3,
 		Size = UDim2.new(1, 0, 0, 28),
@@ -6152,8 +7038,42 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 	return self
 end
 
+-- A short note across the top of the screen.
+function HUD:toast(text: string)
+	if self.toastLabel then
+		self.toastLabel:Destroy()
+	end
+	local label = new("TextLabel", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 70),
+		Size = UDim2.new(0, 420, 0, 48),
+		BackgroundTransparency = 0,
+		BackgroundColor3 = C.purple,
+		TextColor3 = C.white,
+		Text = text,
+		ZIndex = 60,
+		Parent = self.pill.Parent,
+	}, { Theme.round(), Theme.maxText(24), Theme.padding(6) })
+	self.toastLabel = label
+	Theme.pop(label)
+	task.delay(3, function()
+		if label.Parent then
+			label:Destroy()
+		end
+	end)
+end
+
 function HUD:setState(state)
+	local before = self.state
 	self.state = state
+	local botsOn = state.bots ~= false
+	self.botsButton.Text = "🤖 Robot friends " .. (if botsOn then "✓" else "✗")
+	-- everyone hears about it, since one tap changes it for the whole server
+	if before and before.bots ~= nil and (before.bots ~= false) ~= botsOn then
+		self:toast(if botsOn then "🤖 Robot friends are coming to play!" else "🤖 Robot friends went home. Bye bye!")
+	end
+	self.botsButton.BackgroundColor3 = if botsOn then C.purple else C.lavender
+	self.botsButton.TextColor3 = if botsOn then C.white else C.text
 	local theme = Catalog.themeById[state.themeId]
 	local showLobby = state.phase == "Intermission" or state.phase == "Waiting"
 	if showLobby and not self.lobby.Visible then
@@ -6164,7 +7084,7 @@ function HUD:setState(state)
 	local compact = self.lobby.Parent and (self.lobby.Parent :: GuiObject).AbsoluteSize.Y < 500
 	local steps = (self.lobby.Rows :: any).Steps
 	steps.Visible = true
-	steps.Text = if compact then "💇 → 💄 → 👗 → 🦸 → 🐶 → 💃 → 📸" else STEPS_TEXT
+	steps.Text = if compact then "Walk onto the glowing circles!\n💇 → 💄 → 👗 → 🦸 → 🐶 → 💃 → 📸" else STEPS_TEXT
 	steps.Size = UDim2.new(1, 0, 0, if compact then 40 else 104)
 	self.lobby.Size = UDim2.new(0.5, 0, 0, if compact then 196 else 262)
 	-- No shopping while the 5-minute timer runs (items can still be unlocked from the menus)
@@ -6233,7 +7153,7 @@ function HUD:update()
 		self.pillText.Text = label .. "  " .. Theme.formatTime(left)
 	end
 	local hurry = phase == "Makeover" and left <= 30
-	self.pillText.TextColor3 = if hurry then C.red else C.text
+	self.pillText.TextColor3 = if hurry then C.hotPink else C.text
 	if hurry then
 		local pulse = 1 + 0.04 * math.sin(os.clock() * 10)
 		self.pill.Size = UDim2.new(0.3 * pulse, 0, 0, 46)
@@ -6246,7 +7166,7 @@ return HUD
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="28">
+          <Item class="ModuleScript" referent="29">
             <Properties>
               <string name="Name">Makeover</string>
               <string name="Source"><![CDATA[-- The Dressing Hall: walk your own avatar from station to station and style yourself for the
@@ -6280,9 +7200,13 @@ Makeover.__index = Makeover
 
 -- The stations in the order the guide suggests them
 local STEPS = { { "Hair", "💇" }, { "Face", "💄" }, { "Outfit", "👗" }, { "Costume", "🦸" }, { "Pet", "🐶" }, { "Show", "💃" } }
+-- what the guide calls each station (the same word is on the station's sign)
+local STEP_NAMES = { Hair = "Hair", Face = "Makeup", Outfit = "Clothes", Costume = "Costume", Pet = "Pet", Show = "Pose" }
 local COSTUME_KEYS = { "costumeBack", "costumeFace", "costumeWaist", "costumeShoulder", "accessory" }
 local MAKEUP_KEYS = { "eyeshadow", "lashes", "blush", "lipstick" }
 local MAX_BUBBLES = 24
+local DEFAULT_HAIR = Catalog.defaultLook().hairStyle
+local CONFIRM_SECONDS = 8
 local SEND_INTERVAL = 0.25
 
 -- How much of your avatar fills the space next to the menu at each station (studs tall).
@@ -6569,24 +7493,18 @@ function Makeover:buildRight()
 		self.tabButtons[tab.id] = b
 	end
 
-	-- Sub-categories: big enough for small fingers, and they scroll sideways if they don't fit
-	self.chips = new("ScrollingFrame", {
+	-- Sub-categories: big enough for small fingers, and they wrap onto a second row so none hide off the edge
+	self.chips = new("Frame", {
 		Position = UDim2.new(0, 0, 0.075, 6),
 		Size = UDim2.new(1, 0, 0, 56),
 		BackgroundTransparency = 1,
-		ScrollBarThickness = 0,
-		ScrollingDirection = Enum.ScrollingDirection.X,
-		AutomaticCanvasSize = Enum.AutomaticSize.X,
-		CanvasSize = UDim2.new(),
 		ZIndex = 12,
 		Parent = right,
-	}, {
-		new("UIListLayout", {
-			FillDirection = Enum.FillDirection.Horizontal,
-			HorizontalAlignment = Enum.HorizontalAlignment.Left,
-			VerticalAlignment = Enum.VerticalAlignment.Center,
-			Padding = UDim.new(0, 6),
-		}),
+	})
+	self.chipLayout = new("UIGridLayout", {
+		CellSize = UDim2.new(0.5, -3, 0, 56),
+		CellPadding = UDim2.fromOffset(6, 6),
+		Parent = self.chips,
 	})
 
 	self.grid = new("ScrollingFrame", {
@@ -6689,7 +7607,7 @@ function Makeover:buildGuide()
 	local guide = new("Frame", {
 		Name = "Guide",
 		Position = UDim2.new(0, 10, 0, 62),
-		Size = UDim2.new(0, 152, 0, 300),
+		Size = UDim2.new(0, 176, 0, 300),
 		BackgroundColor3 = C.white,
 		BackgroundTransparency = 0.08,
 		Active = true,
@@ -6701,6 +7619,9 @@ function Makeover:buildGuide()
 	self.heartsLabel.Position = UDim2.new(0, 0, 0, 0)
 	self.heartsLabel.Size = UDim2.new(1, 0, 0, 26)
 	self.heartsLabel.ZIndex = 12
+	self.heartsLabel.BackgroundTransparency = 0
+	self.heartsLabel.BackgroundColor3 = C.lavender
+	Theme.round().Parent = self.heartsLabel
 
 	local grid = new("Frame", {
 		Position = UDim2.new(0, 0, 0, 30),
@@ -6728,11 +7649,11 @@ function Makeover:buildGuide()
 			Name = "Label",
 			Position = UDim2.fromScale(0, 0.58),
 			Size = UDim2.fromScale(1, 0.4),
-			Text = step[1],
+			Text = STEP_NAMES[step[1]],
 			TextColor3 = C.text,
 			ZIndex = 14,
 			Parent = b,
-		}, { Theme.maxText(16) })
+		}, { Theme.maxText(19) })
 		self.tabStrokes[step[1]] = Theme.new("UIStroke", {
 			Color = C.gold,
 			Thickness = 4,
@@ -6758,11 +7679,21 @@ function Makeover:buildGuide()
 		Parent = guide,
 	})
 	done.Activated:Connect(function()
-		if not self.done and self:stepsDoneCount() < 3 then
+		if not self.done and (self:stepsDoneCount() < 3 or UserInputService.TouchEnabled) then
 			local t = os.clock()
-			if not self.confirmDoneAt or t - self.confirmDoneAt > 4 then
+			if not self.confirmDoneAt or t - self.confirmDoneAt > CONFIRM_SECONDS then
 				self.confirmDoneAt = t
-				self:say("There's still time to style! 💖 Tap again to go to the runway", 3.5)
+				self:styleDone()
+				Theme.pop(done)
+				if self:stepsDoneCount() < 3 then
+					self:say("There's still time to style! 💖", 3)
+				end
+				task.delay(CONFIRM_SECONDS, function()
+					if self.confirmDoneAt == t then
+						self.confirmDoneAt = nil
+						self:styleDone()
+					end
+				end)
 				return
 			end
 		end
@@ -6781,7 +7712,7 @@ function Makeover:buildGuide()
 	-- What you say pops up at the top of the hall
 	self.speech.Parent = self.frame
 	self.speech.AnchorPoint = Vector2.new(0, 0)
-	self.speech.Position = UDim2.new(0, 172, 0, 66)
+	self.speech.Position = UDim2.new(0, 196, 0, 66)
 	self.speech.Size = UDim2.new(0.3, 0, 0, 58)
 end
 
@@ -6870,13 +7801,50 @@ function Makeover:startAnimations()
 		end
 	end)
 
+	-- A big bouncing 👇 over the next station's pad, so a first-timer knows to walk there
+	local marker = new("Part", {
+		Name = "NextStationMarker",
+		Anchored = true,
+		CanCollide = false,
+		CanQuery = false,
+		CanTouch = false,
+		Transparency = 1,
+		Size = Vector3.new(1, 1, 1),
+		Parent = Workspace,
+	})
+	local billboard = new("BillboardGui", {
+		Size = UDim2.fromOffset(130, 130),
+		AlwaysOnTop = true,
+		LightInfluence = 0,
+		Enabled = false,
+		Parent = marker,
+	})
+	new("TextLabel", { Size = UDim2.fromScale(1, 0.68), Text = "👇", Parent = billboard }, { Theme.maxText(80) })
+	new("TextLabel", {
+		Position = UDim2.fromScale(0, 0.66),
+		Size = UDim2.fromScale(1, 0.32),
+		Text = "Walk here!",
+		TextColor3 = C.white,
+		BackgroundTransparency = 0,
+		BackgroundColor3 = C.hotPink,
+		Parent = billboard,
+	}, { Theme.round(), Theme.maxText(24), Theme.padding(2) })
+
 	RunService.RenderStepped:Connect(function()
+		local nextStation = if self.frame.Visible and not self.station and not self.done then Stations.byTab[self.nextStep or ""] else nil
+		billboard.Enabled = nextStation ~= nil
+		if nextStation then
+			marker.Position = nextStation.pad + Vector3.new(0, 7.5 + math.sin(os.clock() * 4) * 0.6, 0)
+		end
 		if not self.frame.Visible then
 			return
 		end
 		local glow = 0.15 + 0.35 * (0.5 + 0.5 * math.sin(os.clock() * 6))
 		for id, stroke in self.tabStrokes do
-			stroke.Transparency = if id == self.nextStep and id ~= self.tab then glow else 1
+			local isNext = id == self.nextStep and id ~= self.tab
+			stroke.Color = if isNext then C.gold else C.purple
+			stroke.Thickness = if isNext then 4 else 2
+			stroke.Transparency = if isNext then glow else 0
 		end
 		self.doneStroke.Transparency = if self.nextStep == "Done" and not self.done then glow else 1
 	end)
@@ -6899,6 +7867,8 @@ function Makeover:assign(payload)
 	self.wasClean = false
 	self.bestShown = false
 	self.hearts = 0
+	self.pickedHair = false
+	self.walkTarget = nil
 	self.tool = "soap"
 	self.tab = "Hair"
 	self.brushed = self.look.hairStyle ~= "hair_messy"
@@ -6939,7 +7909,7 @@ function Makeover:layoutForScreen()
 		layout.CellSize = UDim2.new(0.5, -4, 0, cell)
 		grid.Size = UDim2.new(1, 0, 0, cell * 3 + 12)
 	end
-	self.guide.Size = UDim2.new(0, 152, 0, 30 + cell * 3 + 12 + 6 + 60 + 12)
+	self.guide.Size = UDim2.new(0, 176, 0, 30 + cell * 3 + 12 + 6 + 60 + 12)
 end
 
 function Makeover:setVisible(visible: boolean)
@@ -6964,7 +7934,9 @@ end
 function Makeover:refreshTheme()
 	local theme = self:theme()
 	if theme then
-		self.themeBar.Text = "Theme: " .. theme.name .. "   ⭐ = matches!"
+		local station = self.station
+		self.themeBar.Text = (if station then station.icon .. " " .. station.name .. "  •  " else "")
+			.. "Theme: " .. theme.name .. "   ⭐ = matches!"
 		self.themeBar.BackgroundColor3 = theme.color:Lerp(C.white, 0.75)
 	end
 end
@@ -6993,6 +7965,12 @@ function Makeover:setDone(done: boolean, silent: boolean?)
 	self:styleDone()
 	if not silent then
 		Remotes.Done:FireServer(done)
+		if done then
+			-- ready for the runway! a burst of confetti and a cheer
+			Effects.confetti(self.frame, 40)
+			Sounds.play("Cheer", 0.6)
+			self:say("I'm runway ready! 💃", 2.5)
+		end
 	end
 end
 
@@ -7128,7 +8106,7 @@ function Makeover:stepsDone()
 		end
 	end
 	return {
-		Hair = not Catalog.isNone(self.look.hairStyle),
+		Hair = self.pickedHair == true or (not Catalog.isNone(self.look.hairStyle) and self.look.hairStyle ~= DEFAULT_HAIR),
 		Face = makeupCount >= 2,
 		Outfit = not Catalog.isNone(self.look.outfit),
 		Costume = costume,
@@ -7150,6 +8128,13 @@ end
 -- "I'm Done!" stays quiet (lavender) until three stations are done, then turns hot pink.
 function Makeover:styleDone()
 	local ready = self.done or self:stepsDoneCount() >= 3
+	local asking = not self.done and self.confirmDoneAt ~= nil
+	if asking then
+		self.doneButton.Text = "Sure? Tap again ✨"
+		self.doneButton.BackgroundColor3 = C.hotPink
+		self.doneButton.TextColor3 = C.white
+		return
+	end
 	self.doneButton.Text = if self.done then "Keep Styling ✏️" else "I'm Done! ✨"
 	self.doneButton.BackgroundColor3 = if self.done then C.purple elseif ready then C.hotPink else C.lavender
 	self.doneButton.TextColor3 = if self.done or ready then C.white else C.text
@@ -7157,21 +8142,21 @@ end
 
 function Makeover:refreshChecklist()
 	local done = self:stepsDone()
-	for step, chip in self.checks do
-		chip.BackgroundColor3 = if done[step] then C.green else C.lavender
-		chip.TextColor3 = if done[step] then C.white else C.text
-		-- a check mark too, so done isn't shown by color alone
-		local label = chip:FindFirstChild("Label")
-		if label and label:IsA("TextLabel") then
-			label.Text = step .. (if done[step] then " ✓" else "")
-			label.TextColor3 = if done[step] then C.white else C.text
-		end
-	end
 	self.nextStep = "Done"
 	for _, step in STEPS do
 		if not done[step[1]] then
 			self.nextStep = step[1]
 			break
+		end
+	end
+	for step, chip in self.checks do
+		local isNext = step == self.nextStep
+		chip.BackgroundColor3 = if done[step] then C.green elseif isNext then C.hotPink else C.lavender
+		-- a check mark (done) or a pointing finger (next) too, so it isn't shown by color alone
+		local label = chip:FindFirstChild("Label")
+		if label and label:IsA("TextLabel") then
+			label.Text = (if isNext then "👉" else "") .. STEP_NAMES[step] .. (if done[step] then " ✓" else "")
+			label.TextColor3 = if done[step] or isNext then C.white else C.text
 		end
 	end
 	self:styleDone()
@@ -7221,14 +8206,21 @@ function Makeover:setTab(tabId: string)
 		end
 	end
 	self.chips.Visible = #categories > 1
+	-- up to 3 chips fit on one row; more wrap onto a second row
+	local cols = if #categories <= 3 then math.max(#categories, 1) else math.ceil(#categories / 2)
+	local rows = math.ceil(#categories / cols)
+	local chipsHeight = rows * 56 + (rows - 1) * 6
+	self.chipLayout.CellSize = UDim2.new(1 / cols, -6 * (cols - 1) / cols, 0, 56)
+	self.chips.Size = UDim2.new(1, 0, 0, chipsHeight)
 	-- Without sub-category chips, the grid moves up to use their space
-	self.grid.Position = UDim2.new(0, 0, 0.075, if #categories > 1 then 66 else 6)
-	self.grid.Size = UDim2.new(1, 0, 0.925, if #categories > 1 then -66 else -6)
+	local below = if #categories > 1 then chipsHeight + 10 else 6
+	self.grid.Position = UDim2.new(0, 0, 0.075, below)
+	self.grid.Size = UDim2.new(1, 0, 0.925, -below)
 	for i, category in categories do
 		local active = self.subcategory[tabId] == category.key
 		local chip = Theme.button({
 			LayoutOrder = i,
-			Size = UDim2.new(0, 124, 0, 52),
+			Size = UDim2.new(0, 124, 0, 56),
 			Color = if active then C.purple else C.lavender,
 			TextColor3 = if active then C.white else C.text,
 			-- the chosen one is marked with a dot too, not just its color
@@ -7237,6 +8229,9 @@ function Makeover:setTab(tabId: string)
 			MaxText = 22,
 			Parent = self.chips,
 		})
+		if not active then
+			Theme.stroke(C.purple, 2).Parent = chip
+		end
 		chip.Activated:Connect(function()
 			self.subcategory[tabId] = category.key
 			self:setTab(tabId)
@@ -7441,6 +8436,9 @@ function Makeover:choose(key: string, itemId: string)
 	local before = self.hearts
 	local wishesBefore = self:wishesMet()
 	self.look[key] = itemId
+	if key == "hairStyle" or key == "hairColor" then
+		self.pickedHair = true
+	end
 	Remotes.UpdateLook:FireServer(key, itemId)
 	self:renderPortrait()
 	self:refreshSelection(key)
@@ -7662,13 +8660,75 @@ function Makeover:character(): Model?
 	return Players.LocalPlayer.Character
 end
 
--- The guide buttons walk you over to a station.
+-- The guide buttons walk you over to a station: off the pad you're on, along the aisle in front
+-- of the mirrors (so you don't stop at every pad on the way), then onto the one you picked.
+local AISLE_Z = 48
+
+-- Is the kid steering with the joystick or keys right now? (Then they're in charge, not the guide.)
+local controls = nil
+local function steering(): boolean
+	if controls == nil then
+		local ok, module = pcall(function()
+			local playerModule = Players.LocalPlayer:FindFirstChild("PlayerScripts")
+				and Players.LocalPlayer.PlayerScripts:FindFirstChild("PlayerModule")
+			return playerModule and require(playerModule :: any):GetControls()
+		end)
+		controls = if ok and module then module else false
+	end
+	if not controls then
+		return false
+	end
+	local ok, move = pcall(function()
+		return controls:GetMoveVector()
+	end)
+	return ok and typeof(move) == "Vector3" and move.Magnitude > 0.1
+end
+
 function Makeover:walkTo(station: Stations.Station)
 	local character = self:character()
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	if humanoid then
-		humanoid:MoveTo(station.pad)
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not (humanoid and root and root:IsA("BasePart")) then
+		return
 	end
+	if self.station == station then
+		return
+	end
+	if self.station then
+		self:closeStation()
+	end
+	self.walkTarget = station
+	local walkId = (self.walkId or 0) + 1
+	self.walkId = walkId
+	local from = root.Position
+	local points = {
+		Vector3.new(from.X, from.Y, AISLE_Z),
+		Vector3.new(station.pad.X, from.Y, AISLE_Z),
+		Vector3.new(station.pad.X, from.Y, station.pad.Z),
+	}
+	task.spawn(function()
+		for _, point in points do
+			if self.walkId ~= walkId or not root.Parent then
+				return
+			end
+			humanoid:MoveTo(point)
+			local started = os.clock()
+			while os.clock() - started < 6 and self.walkId == walkId and root.Parent do
+				if Vector3.new(root.Position.X - point.X, 0, root.Position.Z - point.Z).Magnitude < 1.5 then
+					break
+				end
+				if steering() then
+					self.walkId += 1
+					self.walkTarget = nil
+					return
+				end
+				task.wait(0.05)
+			end
+		end
+		if self.walkId == walkId then
+			self.walkTarget = nil
+		end
+	end)
 end
 
 function Makeover:openStation(station: Stations.Station)
@@ -7676,6 +8736,8 @@ function Makeover:openStation(station: Stations.Station)
 	self.spin = 0
 	self.stationOpenedAt = os.clock()
 	self:setTab(station.tab)
+	self:refreshTheme()
+	self:showBotTags(false)
 	self.right.Visible = true
 	Theme.pop(self.right)
 	Sounds.play("Pop", 0.6)
@@ -7709,7 +8771,25 @@ function Makeover:previewPose()
 	end
 end
 
+-- Style Bots' name tags float over the stations; hide them while the camera is framing you.
+function Makeover:showBotTags(show: boolean)
+	local world = Workspace:FindFirstChild("GlowUpWorld")
+	if not world then
+		return
+	end
+	for _, model in world:GetDescendants() do
+		if model:IsA("Model") and string.find(model.Name, "(Style Bot)", 1, true) then
+			local head = model:FindFirstChild("Head")
+			local tag = head and head:FindFirstChild("NameTag")
+			if tag and tag:IsA("BillboardGui") then
+				tag.Enabled = show
+			end
+		end
+	end
+end
+
 function Makeover:closeStation()
+	self:showBotTags(true)
 	self.station = nil
 	self.spinning = false
 	self.right.Visible = false
@@ -7771,6 +8851,14 @@ function Makeover:startStage()
 		local character = self:character()
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 		local here = if self.frame.Visible and root and root:IsA("BasePart") then Stations.at(root.Position) else nil
+		if self.walkTarget then
+			if here == self.walkTarget then
+				self.walkTarget = nil
+				self.walkId = (self.walkId or 0) + 1
+			else
+				here = nil -- just passing by
+			end
+		end
 		if here ~= self.station then
 			if self.station then
 				self:closeStation()
@@ -7907,7 +8995,7 @@ return Makeover
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="29">
+          <Item class="ModuleScript" referent="30">
             <Properties>
               <string name="Name">Results</string>
               <string name="Source"><![CDATA[-- Shows who won the fashion show, what the judges said, and the coins you earned.
@@ -8072,7 +9160,11 @@ function Results:celebrate(row, players: number)
 		title = "💖 You walked the runway!"
 	end
 	local stars = if row.stars >= 3 then Theme.stars(row.stars) .. "   " else ""
-	Effects.splash(self.gui, title, stars .. (row.award or "") .. "   +" .. row.coins .. " 💰", C.hotPink, 3)
+	Effects.splash(self.gui, title, stars .. (row.award or "") .. "   +" .. row.coins .. " 💰", C.hotPink, 3, function(card)
+		card.AnchorPoint = Vector2.new(0.5, 0)
+		card.Position = UDim2.fromScale(0.5, 0.12)
+		card.Size = UDim2.fromScale(0.5, 0.22)
+	end)
 	if row.stars >= 3.5 or (players >= 2 and row.rank == 1) then
 		Effects.confetti(self.gui, 60)
 	end
@@ -8086,7 +9178,7 @@ return Results
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="30">
+          <Item class="ModuleScript" referent="31">
             <Properties>
               <string name="Name">Shop</string>
               <string name="Source"><![CDATA[-- The shop: unlock looks with coins you earn, or get Robux extras.
@@ -8591,7 +9683,7 @@ return Shop
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="31">
+          <Item class="ModuleScript" referent="32">
             <Properties>
               <string name="Name">Showcase</string>
               <string name="Source"><![CDATA[-- The fashion show: points the camera at the runway, puts the look on the big screen,
@@ -8674,6 +9766,7 @@ function Showcase.new(gui: ScreenGui, ctx)
 			Parent = row,
 		})
 		b.LayoutOrder = i
+		b:SetAttribute("Label", choice[2] .. " " .. choice[3])
 		b.Activated:Connect(function()
 			self:vote(choice[1])
 		end)
@@ -8932,6 +10025,10 @@ function Showcase:showVote(stars: number)
 	for value, b in self.voteButtons do
 		b.BackgroundColor3 = if value == stars then C.hotPink else C.softPink
 		b.TextColor3 = if value == stars then C.white else C.hotPink
+		local label = b:GetAttribute("Label")
+		if type(label) == "string" then
+			b.Text = (if value == stars then "✓ " else "") .. label
+		end
 	end
 end
 
@@ -9003,7 +10100,7 @@ return Showcase
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="32">
+          <Item class="ModuleScript" referent="33">
             <Properties>
               <string name="Name">Sounds</string>
               <string name="Source"><![CDATA[-- Plays the sounds and music listed in Config.Sounds (empty ones are skipped).
@@ -9070,7 +10167,7 @@ return Sounds
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="33">
+          <Item class="ModuleScript" referent="34">
             <Properties>
               <string name="Name">Theme</string>
               <string name="Source"><![CDATA[-- Colors, fonts and little helpers for building the game's screens in code.
@@ -9234,7 +10331,7 @@ return Theme
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="34">
+  <Item class="Workspace" referent="35">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>

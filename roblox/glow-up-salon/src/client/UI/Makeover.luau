@@ -29,9 +29,13 @@ Makeover.__index = Makeover
 
 -- The stations in the order the guide suggests them
 local STEPS = { { "Hair", "💇" }, { "Face", "💄" }, { "Outfit", "👗" }, { "Costume", "🦸" }, { "Pet", "🐶" }, { "Show", "💃" } }
+-- what the guide calls each station (the same word is on the station's sign)
+local STEP_NAMES = { Hair = "Hair", Face = "Makeup", Outfit = "Clothes", Costume = "Costume", Pet = "Pet", Show = "Pose" }
 local COSTUME_KEYS = { "costumeBack", "costumeFace", "costumeWaist", "costumeShoulder", "accessory" }
 local MAKEUP_KEYS = { "eyeshadow", "lashes", "blush", "lipstick" }
 local MAX_BUBBLES = 24
+local DEFAULT_HAIR = Catalog.defaultLook().hairStyle
+local CONFIRM_SECONDS = 8
 local SEND_INTERVAL = 0.25
 
 -- How much of your avatar fills the space next to the menu at each station (studs tall).
@@ -318,24 +322,18 @@ function Makeover:buildRight()
 		self.tabButtons[tab.id] = b
 	end
 
-	-- Sub-categories: big enough for small fingers, and they scroll sideways if they don't fit
-	self.chips = new("ScrollingFrame", {
+	-- Sub-categories: big enough for small fingers, and they wrap onto a second row so none hide off the edge
+	self.chips = new("Frame", {
 		Position = UDim2.new(0, 0, 0.075, 6),
 		Size = UDim2.new(1, 0, 0, 56),
 		BackgroundTransparency = 1,
-		ScrollBarThickness = 0,
-		ScrollingDirection = Enum.ScrollingDirection.X,
-		AutomaticCanvasSize = Enum.AutomaticSize.X,
-		CanvasSize = UDim2.new(),
 		ZIndex = 12,
 		Parent = right,
-	}, {
-		new("UIListLayout", {
-			FillDirection = Enum.FillDirection.Horizontal,
-			HorizontalAlignment = Enum.HorizontalAlignment.Left,
-			VerticalAlignment = Enum.VerticalAlignment.Center,
-			Padding = UDim.new(0, 6),
-		}),
+	})
+	self.chipLayout = new("UIGridLayout", {
+		CellSize = UDim2.new(0.5, -3, 0, 56),
+		CellPadding = UDim2.fromOffset(6, 6),
+		Parent = self.chips,
 	})
 
 	self.grid = new("ScrollingFrame", {
@@ -438,7 +436,7 @@ function Makeover:buildGuide()
 	local guide = new("Frame", {
 		Name = "Guide",
 		Position = UDim2.new(0, 10, 0, 62),
-		Size = UDim2.new(0, 152, 0, 300),
+		Size = UDim2.new(0, 176, 0, 300),
 		BackgroundColor3 = C.white,
 		BackgroundTransparency = 0.08,
 		Active = true,
@@ -450,6 +448,9 @@ function Makeover:buildGuide()
 	self.heartsLabel.Position = UDim2.new(0, 0, 0, 0)
 	self.heartsLabel.Size = UDim2.new(1, 0, 0, 26)
 	self.heartsLabel.ZIndex = 12
+	self.heartsLabel.BackgroundTransparency = 0
+	self.heartsLabel.BackgroundColor3 = C.lavender
+	Theme.round().Parent = self.heartsLabel
 
 	local grid = new("Frame", {
 		Position = UDim2.new(0, 0, 0, 30),
@@ -477,11 +478,11 @@ function Makeover:buildGuide()
 			Name = "Label",
 			Position = UDim2.fromScale(0, 0.58),
 			Size = UDim2.fromScale(1, 0.4),
-			Text = step[1],
+			Text = STEP_NAMES[step[1]],
 			TextColor3 = C.text,
 			ZIndex = 14,
 			Parent = b,
-		}, { Theme.maxText(16) })
+		}, { Theme.maxText(19) })
 		self.tabStrokes[step[1]] = Theme.new("UIStroke", {
 			Color = C.gold,
 			Thickness = 4,
@@ -507,11 +508,21 @@ function Makeover:buildGuide()
 		Parent = guide,
 	})
 	done.Activated:Connect(function()
-		if not self.done and self:stepsDoneCount() < 3 then
+		if not self.done and (self:stepsDoneCount() < 3 or UserInputService.TouchEnabled) then
 			local t = os.clock()
-			if not self.confirmDoneAt or t - self.confirmDoneAt > 4 then
+			if not self.confirmDoneAt or t - self.confirmDoneAt > CONFIRM_SECONDS then
 				self.confirmDoneAt = t
-				self:say("There's still time to style! 💖 Tap again to go to the runway", 3.5)
+				self:styleDone()
+				Theme.pop(done)
+				if self:stepsDoneCount() < 3 then
+					self:say("There's still time to style! 💖", 3)
+				end
+				task.delay(CONFIRM_SECONDS, function()
+					if self.confirmDoneAt == t then
+						self.confirmDoneAt = nil
+						self:styleDone()
+					end
+				end)
 				return
 			end
 		end
@@ -530,7 +541,7 @@ function Makeover:buildGuide()
 	-- What you say pops up at the top of the hall
 	self.speech.Parent = self.frame
 	self.speech.AnchorPoint = Vector2.new(0, 0)
-	self.speech.Position = UDim2.new(0, 172, 0, 66)
+	self.speech.Position = UDim2.new(0, 196, 0, 66)
 	self.speech.Size = UDim2.new(0.3, 0, 0, 58)
 end
 
@@ -619,13 +630,50 @@ function Makeover:startAnimations()
 		end
 	end)
 
+	-- A big bouncing 👇 over the next station's pad, so a first-timer knows to walk there
+	local marker = new("Part", {
+		Name = "NextStationMarker",
+		Anchored = true,
+		CanCollide = false,
+		CanQuery = false,
+		CanTouch = false,
+		Transparency = 1,
+		Size = Vector3.new(1, 1, 1),
+		Parent = Workspace,
+	})
+	local billboard = new("BillboardGui", {
+		Size = UDim2.fromOffset(130, 130),
+		AlwaysOnTop = true,
+		LightInfluence = 0,
+		Enabled = false,
+		Parent = marker,
+	})
+	new("TextLabel", { Size = UDim2.fromScale(1, 0.68), Text = "👇", Parent = billboard }, { Theme.maxText(80) })
+	new("TextLabel", {
+		Position = UDim2.fromScale(0, 0.66),
+		Size = UDim2.fromScale(1, 0.32),
+		Text = "Walk here!",
+		TextColor3 = C.white,
+		BackgroundTransparency = 0,
+		BackgroundColor3 = C.hotPink,
+		Parent = billboard,
+	}, { Theme.round(), Theme.maxText(24), Theme.padding(2) })
+
 	RunService.RenderStepped:Connect(function()
+		local nextStation = if self.frame.Visible and not self.station and not self.done then Stations.byTab[self.nextStep or ""] else nil
+		billboard.Enabled = nextStation ~= nil
+		if nextStation then
+			marker.Position = nextStation.pad + Vector3.new(0, 7.5 + math.sin(os.clock() * 4) * 0.6, 0)
+		end
 		if not self.frame.Visible then
 			return
 		end
 		local glow = 0.15 + 0.35 * (0.5 + 0.5 * math.sin(os.clock() * 6))
 		for id, stroke in self.tabStrokes do
-			stroke.Transparency = if id == self.nextStep and id ~= self.tab then glow else 1
+			local isNext = id == self.nextStep and id ~= self.tab
+			stroke.Color = if isNext then C.gold else C.purple
+			stroke.Thickness = if isNext then 4 else 2
+			stroke.Transparency = if isNext then glow else 0
 		end
 		self.doneStroke.Transparency = if self.nextStep == "Done" and not self.done then glow else 1
 	end)
@@ -648,6 +696,8 @@ function Makeover:assign(payload)
 	self.wasClean = false
 	self.bestShown = false
 	self.hearts = 0
+	self.pickedHair = false
+	self.walkTarget = nil
 	self.tool = "soap"
 	self.tab = "Hair"
 	self.brushed = self.look.hairStyle ~= "hair_messy"
@@ -688,7 +738,7 @@ function Makeover:layoutForScreen()
 		layout.CellSize = UDim2.new(0.5, -4, 0, cell)
 		grid.Size = UDim2.new(1, 0, 0, cell * 3 + 12)
 	end
-	self.guide.Size = UDim2.new(0, 152, 0, 30 + cell * 3 + 12 + 6 + 60 + 12)
+	self.guide.Size = UDim2.new(0, 176, 0, 30 + cell * 3 + 12 + 6 + 60 + 12)
 end
 
 function Makeover:setVisible(visible: boolean)
@@ -713,7 +763,9 @@ end
 function Makeover:refreshTheme()
 	local theme = self:theme()
 	if theme then
-		self.themeBar.Text = "Theme: " .. theme.name .. "   ⭐ = matches!"
+		local station = self.station
+		self.themeBar.Text = (if station then station.icon .. " " .. station.name .. "  •  " else "")
+			.. "Theme: " .. theme.name .. "   ⭐ = matches!"
 		self.themeBar.BackgroundColor3 = theme.color:Lerp(C.white, 0.75)
 	end
 end
@@ -883,7 +935,7 @@ function Makeover:stepsDone()
 		end
 	end
 	return {
-		Hair = not Catalog.isNone(self.look.hairStyle),
+		Hair = self.pickedHair == true or (not Catalog.isNone(self.look.hairStyle) and self.look.hairStyle ~= DEFAULT_HAIR),
 		Face = makeupCount >= 2,
 		Outfit = not Catalog.isNone(self.look.outfit),
 		Costume = costume,
@@ -905,6 +957,13 @@ end
 -- "I'm Done!" stays quiet (lavender) until three stations are done, then turns hot pink.
 function Makeover:styleDone()
 	local ready = self.done or self:stepsDoneCount() >= 3
+	local asking = not self.done and self.confirmDoneAt ~= nil
+	if asking then
+		self.doneButton.Text = "Sure? Tap again ✨"
+		self.doneButton.BackgroundColor3 = C.hotPink
+		self.doneButton.TextColor3 = C.white
+		return
+	end
 	self.doneButton.Text = if self.done then "Keep Styling ✏️" else "I'm Done! ✨"
 	self.doneButton.BackgroundColor3 = if self.done then C.purple elseif ready then C.hotPink else C.lavender
 	self.doneButton.TextColor3 = if self.done or ready then C.white else C.text
@@ -912,21 +971,21 @@ end
 
 function Makeover:refreshChecklist()
 	local done = self:stepsDone()
-	for step, chip in self.checks do
-		chip.BackgroundColor3 = if done[step] then C.green else C.lavender
-		chip.TextColor3 = if done[step] then C.white else C.text
-		-- a check mark too, so done isn't shown by color alone
-		local label = chip:FindFirstChild("Label")
-		if label and label:IsA("TextLabel") then
-			label.Text = step .. (if done[step] then " ✓" else "")
-			label.TextColor3 = if done[step] then C.white else C.text
-		end
-	end
 	self.nextStep = "Done"
 	for _, step in STEPS do
 		if not done[step[1]] then
 			self.nextStep = step[1]
 			break
+		end
+	end
+	for step, chip in self.checks do
+		local isNext = step == self.nextStep
+		chip.BackgroundColor3 = if done[step] then C.green elseif isNext then C.hotPink else C.lavender
+		-- a check mark (done) or a pointing finger (next) too, so it isn't shown by color alone
+		local label = chip:FindFirstChild("Label")
+		if label and label:IsA("TextLabel") then
+			label.Text = (if isNext then "👉" else "") .. STEP_NAMES[step] .. (if done[step] then " ✓" else "")
+			label.TextColor3 = if done[step] or isNext then C.white else C.text
 		end
 	end
 	self:styleDone()
@@ -976,14 +1035,21 @@ function Makeover:setTab(tabId: string)
 		end
 	end
 	self.chips.Visible = #categories > 1
+	-- up to 3 chips fit on one row; more wrap onto a second row
+	local cols = if #categories <= 3 then math.max(#categories, 1) else math.ceil(#categories / 2)
+	local rows = math.ceil(#categories / cols)
+	local chipsHeight = rows * 56 + (rows - 1) * 6
+	self.chipLayout.CellSize = UDim2.new(1 / cols, -6 * (cols - 1) / cols, 0, 56)
+	self.chips.Size = UDim2.new(1, 0, 0, chipsHeight)
 	-- Without sub-category chips, the grid moves up to use their space
-	self.grid.Position = UDim2.new(0, 0, 0.075, if #categories > 1 then 66 else 6)
-	self.grid.Size = UDim2.new(1, 0, 0.925, if #categories > 1 then -66 else -6)
+	local below = if #categories > 1 then chipsHeight + 10 else 6
+	self.grid.Position = UDim2.new(0, 0, 0.075, below)
+	self.grid.Size = UDim2.new(1, 0, 0.925, -below)
 	for i, category in categories do
 		local active = self.subcategory[tabId] == category.key
 		local chip = Theme.button({
 			LayoutOrder = i,
-			Size = UDim2.new(0, 124, 0, 52),
+			Size = UDim2.new(0, 124, 0, 56),
 			Color = if active then C.purple else C.lavender,
 			TextColor3 = if active then C.white else C.text,
 			-- the chosen one is marked with a dot too, not just its color
@@ -992,6 +1058,9 @@ function Makeover:setTab(tabId: string)
 			MaxText = 22,
 			Parent = self.chips,
 		})
+		if not active then
+			Theme.stroke(C.purple, 2).Parent = chip
+		end
 		chip.Activated:Connect(function()
 			self.subcategory[tabId] = category.key
 			self:setTab(tabId)
@@ -1196,6 +1265,9 @@ function Makeover:choose(key: string, itemId: string)
 	local before = self.hearts
 	local wishesBefore = self:wishesMet()
 	self.look[key] = itemId
+	if key == "hairStyle" or key == "hairColor" then
+		self.pickedHair = true
+	end
 	Remotes.UpdateLook:FireServer(key, itemId)
 	self:renderPortrait()
 	self:refreshSelection(key)
@@ -1417,13 +1489,75 @@ function Makeover:character(): Model?
 	return Players.LocalPlayer.Character
 end
 
--- The guide buttons walk you over to a station.
+-- The guide buttons walk you over to a station: off the pad you're on, along the aisle in front
+-- of the mirrors (so you don't stop at every pad on the way), then onto the one you picked.
+local AISLE_Z = 48
+
+-- Is the kid steering with the joystick or keys right now? (Then they're in charge, not the guide.)
+local controls = nil
+local function steering(): boolean
+	if controls == nil then
+		local ok, module = pcall(function()
+			local playerModule = Players.LocalPlayer:FindFirstChild("PlayerScripts")
+				and Players.LocalPlayer.PlayerScripts:FindFirstChild("PlayerModule")
+			return playerModule and require(playerModule :: any):GetControls()
+		end)
+		controls = if ok and module then module else false
+	end
+	if not controls then
+		return false
+	end
+	local ok, move = pcall(function()
+		return controls:GetMoveVector()
+	end)
+	return ok and typeof(move) == "Vector3" and move.Magnitude > 0.1
+end
+
 function Makeover:walkTo(station: Stations.Station)
 	local character = self:character()
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	if humanoid then
-		humanoid:MoveTo(station.pad)
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not (humanoid and root and root:IsA("BasePart")) then
+		return
 	end
+	if self.station == station then
+		return
+	end
+	if self.station then
+		self:closeStation()
+	end
+	self.walkTarget = station
+	local walkId = (self.walkId or 0) + 1
+	self.walkId = walkId
+	local from = root.Position
+	local points = {
+		Vector3.new(from.X, from.Y, AISLE_Z),
+		Vector3.new(station.pad.X, from.Y, AISLE_Z),
+		Vector3.new(station.pad.X, from.Y, station.pad.Z),
+	}
+	task.spawn(function()
+		for _, point in points do
+			if self.walkId ~= walkId or not root.Parent then
+				return
+			end
+			humanoid:MoveTo(point)
+			local started = os.clock()
+			while os.clock() - started < 6 and self.walkId == walkId and root.Parent do
+				if Vector3.new(root.Position.X - point.X, 0, root.Position.Z - point.Z).Magnitude < 1.5 then
+					break
+				end
+				if steering() then
+					self.walkId += 1
+					self.walkTarget = nil
+					return
+				end
+				task.wait(0.05)
+			end
+		end
+		if self.walkId == walkId then
+			self.walkTarget = nil
+		end
+	end)
 end
 
 function Makeover:openStation(station: Stations.Station)
@@ -1431,6 +1565,8 @@ function Makeover:openStation(station: Stations.Station)
 	self.spin = 0
 	self.stationOpenedAt = os.clock()
 	self:setTab(station.tab)
+	self:refreshTheme()
+	self:showBotTags(false)
 	self.right.Visible = true
 	Theme.pop(self.right)
 	Sounds.play("Pop", 0.6)
@@ -1464,7 +1600,25 @@ function Makeover:previewPose()
 	end
 end
 
+-- Style Bots' name tags float over the stations; hide them while the camera is framing you.
+function Makeover:showBotTags(show: boolean)
+	local world = Workspace:FindFirstChild("GlowUpWorld")
+	if not world then
+		return
+	end
+	for _, model in world:GetDescendants() do
+		if model:IsA("Model") and string.find(model.Name, "(Style Bot)", 1, true) then
+			local head = model:FindFirstChild("Head")
+			local tag = head and head:FindFirstChild("NameTag")
+			if tag and tag:IsA("BillboardGui") then
+				tag.Enabled = show
+			end
+		end
+	end
+end
+
 function Makeover:closeStation()
+	self:showBotTags(true)
 	self.station = nil
 	self.spinning = false
 	self.right.Visible = false
@@ -1526,6 +1680,14 @@ function Makeover:startStage()
 		local character = self:character()
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 		local here = if self.frame.Visible and root and root:IsA("BasePart") then Stations.at(root.Position) else nil
+		if self.walkTarget then
+			if here == self.walkTarget then
+				self.walkTarget = nil
+				self.walkId = (self.walkId or 0) + 1
+			else
+				here = nil -- just passing by
+			end
+		end
 		if here ~= self.station then
 			if self.station then
 				self:closeStation()

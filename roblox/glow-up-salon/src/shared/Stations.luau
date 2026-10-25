@@ -20,7 +20,7 @@ local rgb = Color3.fromRGB
 Stations.list = {
 	{ id = "hair", tab = "Hair", name = "Hair Chair", icon = "💇", pad = Vector3.new(-26, 0.2, 55), facing = Vector3.new(0, 0, -1), color = rgb(255, 120, 190) },
 	{ id = "face", tab = "Face", name = "Makeup Vanity", icon = "💄", pad = Vector3.new(-13, 0.2, 55), facing = Vector3.new(0, 0, -1), color = rgb(255, 90, 120) },
-	{ id = "outfit", tab = "Outfit", name = "Wardrobe", icon = "👗", pad = Vector3.new(0, 0.2, 55), facing = Vector3.new(0, 0, -1), color = rgb(90, 160, 255) },
+	{ id = "outfit", tab = "Outfit", name = "Clothes Rack", icon = "👗", pad = Vector3.new(0, 0.2, 55), facing = Vector3.new(0, 0, -1), color = rgb(90, 160, 255) },
 	{ id = "costume", tab = "Costume", name = "Costume Closet", icon = "🦸", pad = Vector3.new(13, 0.2, 55), facing = Vector3.new(0, 0, -1), color = rgb(150, 90, 220) },
 	{ id = "show", tab = "Show", name = "Pose Stage", icon = "💃", pad = Vector3.new(26, 0.2, 55), facing = Vector3.new(0, 0, -1), color = rgb(245, 200, 70) },
 	{ id = "pet", tab = "Pet", name = "Pet Park", icon = "🐶", pad = Vector3.new(24, 0.2, 39), facing = Vector3.new(-1, 0, 0), color = rgb(90, 200, 120) },

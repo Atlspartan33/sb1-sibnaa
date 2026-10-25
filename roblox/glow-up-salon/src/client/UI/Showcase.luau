@@ -78,6 +78,7 @@ function Showcase.new(gui: ScreenGui, ctx)
 			Parent = row,
 		})
 		b.LayoutOrder = i
+		b:SetAttribute("Label", choice[2] .. " " .. choice[3])
 		b.Activated:Connect(function()
 			self:vote(choice[1])
 		end)
@@ -336,6 +337,10 @@ function Showcase:showVote(stars: number)
 	for value, b in self.voteButtons do
 		b.BackgroundColor3 = if value == stars then C.hotPink else C.softPink
 		b.TextColor3 = if value == stars then C.white else C.hotPink
+		local label = b:GetAttribute("Label")
+		if type(label) == "string" then
+			b.Text = (if value == stars then "✓ " else "") .. label
+		end
 	end
 end
 
