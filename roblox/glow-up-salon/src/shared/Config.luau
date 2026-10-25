@@ -8,6 +8,8 @@ Config.INTERMISSION_SECONDS = 20
 Config.SHOWCASE_SECONDS_PER_LOOK = 9
 Config.RESULTS_SECONDS = 15
 Config.MIN_PLAYERS = 1
+-- Style Bots (pretend friends) fill the show up to this many contestants, if they're turned on
+Config.BOTS_FILL_TO = 3
 
 -- Coins
 Config.STARTING_COINS = 100

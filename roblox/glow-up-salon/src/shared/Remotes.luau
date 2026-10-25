@@ -18,6 +18,7 @@ local EVENTS = {
 	"React", -- player -> server: cheer emoji during the fashion show
 	"Reaction", -- server -> all: someone cheered (emoji)
 	"Celebrate", -- server -> player: daily gift, level up
+	"SetBots", -- player -> server: turn the Style Bots (pretend friends) on or off
 }
 
 local FUNCTIONS = {

@@ -9,6 +9,7 @@ local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Events = require(ReplicatedStorage.Shared.Events)
 local Progress = require(ReplicatedStorage.Shared.Progress)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Theme = require(script.Parent.Theme)
 
 local C = Theme.Colors
@@ -168,6 +169,23 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		ZIndex = 41,
 		Parent = rows,
 	}, { Theme.round(), Theme.maxText(22), Theme.padding(4) })
+	-- Style Bots (pretend friends who play along when you're alone): one switch for the server
+	local bots = Theme.button({
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 0, 0, -6),
+		Size = UDim2.new(0, 196, 0, 44),
+		Text = "🤖 Style Bots: ON",
+		Color = C.purple,
+		ZIndex = 45,
+		MaxText = 20,
+		Parent = self.lobby,
+	})
+	bots.Activated:Connect(function()
+		local on = not (self.state and self.state.bots ~= false)
+		bots.Text = "🤖 Style Bots: " .. (if on then "ON" else "OFF") -- answer right away
+		Remotes.SetBots:FireServer(on)
+	end)
+	self.botsButton = bots
 	self.lobbyWeekly = new("TextLabel", {
 		LayoutOrder = 3,
 		Size = UDim2.new(1, 0, 0, 28),
@@ -200,6 +218,10 @@ end
 
 function HUD:setState(state)
 	self.state = state
+	local botsOn = state.bots ~= false
+	self.botsButton.Text = "🤖 Style Bots: " .. (if botsOn then "ON" else "OFF")
+	self.botsButton.BackgroundColor3 = if botsOn then C.purple else C.lavender
+	self.botsButton.TextColor3 = if botsOn then C.white else C.text
 	local theme = Catalog.themeById[state.themeId]
 	local showLobby = state.phase == "Intermission" or state.phase == "Waiting"
 	if showLobby and not self.lobby.Visible then

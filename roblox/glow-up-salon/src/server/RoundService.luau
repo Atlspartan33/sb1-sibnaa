@@ -16,6 +16,7 @@ local Pets = require(ReplicatedStorage.Shared.Pets)
 local RunService = game:GetService("RunService")
 local Scoring = require(ReplicatedStorage.Shared.Scoring)
 
+local BotService = require(script.Parent.BotService)
 local DataService = require(script.Parent.DataService)
 local WorldBuilder = require(script.Parent.WorldBuilder)
 
@@ -41,6 +42,7 @@ local state = {
 	endsAt = 0,
 	themeId = Catalog.Themes[1].id,
 	eventId = nil :: string?,
+	bots = true, -- Style Bots fill in when there are only a few real players
 }
 local entries: { [number]: Entry } = {} -- by UserId
 local showcase = nil -- payload of the look currently on the runway
@@ -370,7 +372,7 @@ function strikePose(character: Model, poseId: string?)
 end
 
 -- Everyone not on the runway sits in the audience seats along it.
-local function seatAudience(except: Player?)
+local function seatAudience(except: Player?, exceptModel: Model?)
 	local seats = {}
 	for _, d in world.folder.Runway:GetChildren() do
 		if d:IsA("Seat") and d.Name == "AudienceSeat" and not d.Occupant then
@@ -385,6 +387,23 @@ local function seatAudience(except: Player?)
 			seat:Sit(humanoid)
 		end
 	end
+	for _, bot in BotService.list() do
+		local humanoid = bot.model and bot.model:FindFirstChildOfClass("Humanoid")
+		if bot.model and bot.model ~= exceptModel and humanoid and not humanoid.SeatPart and #seats > 0 then
+			local seat = table.remove(seats, 1)
+			bot.busy = true
+			bot.model:PivotTo(seat.CFrame + Vector3.new(0, 3, 0))
+			seat:Sit(humanoid)
+		end
+	end
+end
+
+-- How many Style Bots this round needs.
+local function wantedBots(): number
+	if not state.bots then
+		return 0
+	end
+	return math.max(0, Config.BOTS_FILL_TO - #Players:GetPlayers())
 end
 
 local function unseat(character: Model)
@@ -503,7 +522,7 @@ local function onVote(player: Player, targetUserId: unknown, stars: unknown)
 	if player.UserId == targetUserId or type(stars) ~= "number" or not (stars >= 3 and stars <= 5) or stars % 1 ~= 0 then
 		return
 	end
-	local entry = entries[targetUserId :: number]
+	local entry: any = entries[targetUserId :: number] or BotService.byUserId(targetUserId :: number)
 	if not entry then
 		return
 	end
@@ -540,6 +559,30 @@ end
 local function scoreAll()
 	local rows = {}
 	local count = 0
+	for _, bot in BotService.list() do
+		count += 1
+		local judgeStars, comments = Scoring.judge(bot, theme())
+		local votes = {}
+		for _, v in bot.votes do
+			table.insert(votes, v)
+		end
+		local final = Scoring.final(judgeStars, votes)
+		table.insert(rows, {
+			userId = bot.userId,
+			bot = true,
+			stylist = bot.name .. " 🤖",
+			client = bot.client,
+			look = bot.look,
+			clean = 1,
+			judgeStars = judgeStars,
+			voteCount = #votes,
+			score = final,
+			stars = Scoring.roundToHalf(final),
+			comments = comments,
+			coins = 0,
+			spotless = true,
+		})
+	end
 	for userId, entry in entries do
 		if entry.player.Parent then
 			count += 1
@@ -572,7 +615,7 @@ local function scoreAll()
 	-- Everyone gets a different award (best scorers pick first)
 	local taken = {}
 	for _, row in rows do
-		local entry = entries[row.userId]
+		local entry: any = entries[row.userId] or BotService.byUserId(row.userId)
 		local scores = Scoring.awardScores(entry, theme())
 		local best, bestScore = nil, 0.2
 		for _, award in Scoring.AWARDS do
@@ -589,6 +632,9 @@ local function scoreAll()
 
 	for rank, row in rows do
 		row.rank = rank
+		if row.bot then
+			continue -- Style Bots don't earn coins or save anything
+		end
 		local player = entries[row.userId].player
 		local coins = Config.COINS_PARTICIPATION + math.floor(row.score * Config.COINS_PER_STAR)
 		if row.spotless then
@@ -747,6 +793,8 @@ local function runRound()
 		state.themeId = everyday[rng:NextInteger(1, #everyday)]
 	end
 	setState("Intermission", Config.INTERMISSION_SECONDS)
+	BotService.ensure(wantedBots())
+	BotService.hangOut()
 	task.wait(Config.INTERMISSION_SECONDS)
 
 	-- Makeover: 5 minutes!
@@ -755,6 +803,8 @@ local function runRound()
 	for _, player in Players:GetPlayers() do
 		task.spawn(assignClient, player)
 	end
+	BotService.ensure(wantedBots())
+	BotService.startMakeover(Config.MAKEOVER_SECONDS)
 	while now() < state.endsAt do
 		task.wait(0.5)
 		if allDone() then
@@ -763,18 +813,49 @@ local function runRound()
 	end
 
 	-- Fashion show
-	local order = {}
+	local order: { any } = {}
 	for _, entry in entries do
 		table.insert(order, entry)
 	end
+	for _, bot in BotService.list() do
+		table.insert(order, bot)
+	end
 	rng:Shuffle(order)
+	local function present(e): boolean
+		return if e.bot then e.model ~= nil and e.model.Parent ~= nil else e.player.Parent ~= nil
+	end
 	local index = 0
 	for _, entry in order do
-		if entry.player.Parent then
+		if entry.bot and present(entry) then
 			index += 1
 			local total = 0
 			for _, e in order do
-				if e.player.Parent then
+				if present(e) then
+					total += 1
+				end
+			end
+			showcase = {
+				userId = entry.userId,
+				stylist = entry.name .. " 🤖",
+				vip = false,
+				level = 1,
+				client = entry.client,
+				look = entry.look,
+				clean = 1,
+				index = index,
+				total = math.max(total, index),
+			}
+			setState("Showcase", Config.SHOWCASE_SECONDS_PER_LOOK)
+			Remotes.Showcase:FireAllClients(showcase)
+			seatAudience(nil, entry.model)
+			local started = os.clock()
+			BotService.walkRunway(entry)
+			task.wait(math.max(0, Config.SHOWCASE_SECONDS_PER_LOOK - (os.clock() - started)))
+		elseif not entry.bot and present(entry) then
+			index += 1
+			local total = 0
+			for _, e in order do
+				if present(e) then
 					total += 1
 				end
 			end
@@ -792,6 +873,7 @@ local function runRound()
 			setState("Showcase", Config.SHOWCASE_SECONDS_PER_LOOK)
 			Remotes.Showcase:FireAllClients(showcase)
 			seatAudience(entry.player)
+			BotService.voteFor(entry)
 			local started = os.clock()
 			walkRunway(entry)
 			task.wait(math.max(0, Config.SHOWCASE_SECONDS_PER_LOOK - (os.clock() - started)))
@@ -808,6 +890,20 @@ local function runRound()
 		setState("Results", Config.RESULTS_SECONDS)
 		-- The top 3 stand on the podium in their looks; everyone else gathers in front
 		for _, row in rows do
+			local bot = if row.bot then BotService.byUserId(row.userId) else nil
+			if bot and bot.model then
+				local humanoid = bot.model:FindFirstChildOfClass("Humanoid")
+				if humanoid and humanoid.SeatPart then
+					humanoid.Sit = false
+				end
+				bot.busy = true
+				local spot = world.podium[row.rank] or (world.podium[1] + Vector3.new((row.rank - 5) * 3, -world.podium[1].Y, 9))
+				Avatar.place(bot.model, spot, Vector3.new(0, 0, 1))
+				if row.rank == 1 then
+					Avatar.pose(bot.model, "pose_cheer")
+				end
+				continue
+			end
 			local entry = entries[row.userId]
 			local character = entry and entry.player.Character
 			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -870,7 +966,23 @@ function RoundService.init(builtWorld: WorldBuilder.World)
 			end
 		end)
 	end)
-	RunService.Heartbeat:Connect(followPets)
+	RunService.Heartbeat:Connect(function(dt)
+		followPets(dt)
+		BotService.followPets(dt)
+	end)
+	BotService.init(world, theme)
+	-- The lobby's Style Bots switch (one switch for the whole server)
+	Remotes.SetBots.OnServerEvent:Connect(function(_player, on: unknown)
+		if type(on) ~= "boolean" or on == state.bots then
+			return
+		end
+		state.bots = on
+		Remotes.State:FireAllClients(state)
+		if state.phase == "Intermission" or state.phase == "Waiting" then
+			BotService.ensure(wantedBots())
+			BotService.hangOut()
+		end
+	end)
 	Players.PlayerRemoving:Connect(function(player)
 		local entry = entries[player.UserId]
 		if entry and entry.pet then

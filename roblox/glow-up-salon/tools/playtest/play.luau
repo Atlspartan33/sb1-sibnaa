@@ -28,6 +28,14 @@ H.check(H.card(tori, "Cute Bob") == nil, "no menu until you walk to a station")
 H.click(H.tab(tori, "GoHair"), "walk to the Hair Chair")
 E.runFor(0.2)
 H.check(H.card(tori, "Cute Bob") ~= nil, "the Hair Chair opens the hair menu")
+local function countBots()
+	local n = 0
+	for _, d in W.game:GetService("Workspace").GlowUpWorld:GetChildren() do
+		if string.find(d.Name, "(Style Bot)", 1, true) then n += 1 end
+	end
+	return n
+end
+H.check(countBots() == 1, "one Style Bot joins two players")
 H.shot(tori, "02_dressing_room")
 H.shot(tori, "02_dressing_phone", 844, 390)
 H.shot(tori, "02_dressing_tablet", 1024, 768)
@@ -115,7 +123,7 @@ E.runFor(0.3)
 H.shot(mia, "13_showcase_vote")
 H.shot(tori, "13_showcase_own")
 H.shot(mia, "13_showcase_phone", 844, 390)
-for i = 1, 2 do
+for i = 1, 3 do -- Tori, Mia and one Style Bot walk
 	local heart = H.button(mia, "WOW")
 	if heart then H.click(heart, "💖💖💖 vote") end
 	E.runFor(9)
@@ -132,6 +140,12 @@ E.runFor(5)
 H.check(H.findText(tori, "⭐ Lv") ~= nil, "level pill shows progress")
 print("  level:", H.findText(tori, "⭐ Lv") and H.findText(tori, "⭐ Lv").Text)
 
+print("== Style Bots switch")
+local waitedLobby = 0
+while not H.button(tori, "Style Bots: ON") and waitedLobby < 30 do E.runFor(1); waitedLobby += 1 end
+H.click(H.button(tori, "Style Bots: ON"), "turn Style Bots off")
+E.runFor(1)
+H.check(countBots() == 0 and H.button(tori, "Style Bots: OFF") ~= nil, "the lobby switch sends the Style Bots home")
 print("== Shop (between rounds)")
 H.click(H.button(tori, "Shop"), "Shop")
 H.shot(tori, "10_shop_coins")
@@ -171,6 +185,8 @@ H.shot(tori, "15_lookbook")
 H.click(H.button(tori, "✕"), "close shop")
 
 E.runFor(30)
+local waitedRound2 = 0
+while not H.shown(H.ui(tori).Makeover) and waitedRound2 < 60 do E.runFor(1); waitedRound2 += 1 end
 print("== Round 2: leave/rejoin")
 H.check(H.shown(H.ui(tori).Makeover), "round 2 dressing room visible")
 local coinsBefore = H.findText(tori, "💰 ").Text
