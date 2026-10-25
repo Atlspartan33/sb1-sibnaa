@@ -31,6 +31,10 @@ Makeover.__index = Makeover
 local STEPS = { { "Hair", "💇" }, { "Face", "💄" }, { "Outfit", "👗" }, { "Costume", "🦸" }, { "Pet", "🐶" }, { "Show", "💃" } }
 -- what the guide calls each station (the same word is on the station's sign)
 local STEP_NAMES = { Hair = "Hair", Face = "Makeup", Outfit = "Clothes", Costume = "Costume", Pet = "Pet", Show = "Pose" }
+local STEP_ICONS = {}
+for _, step in STEPS do
+	STEP_ICONS[step[1]] = step[2]
+end
 local COSTUME_KEYS = { "costumeBack", "costumeFace", "costumeWaist", "costumeShoulder", "accessory" }
 local MAKEUP_KEYS = { "eyeshadow", "lashes", "blush", "lipstick" }
 local MAX_BUBBLES = 24
@@ -744,8 +748,8 @@ function Makeover:layoutForScreen()
 	local grid = self.guide:FindFirstChildOfClass("Frame")
 	local layout = grid and grid:FindFirstChildOfClass("UIGridLayout")
 	if compact then
-		-- a strip along the top: six station buttons and Done in one row, nothing near the thumbstick
-		local cell, gap, doneWidth = 52, 4, 96
+		-- a strip along the top: six station icons and Done in one row, nothing near the thumbstick
+		local cell, gap, doneWidth = 46, 4, 84
 		local gridWidth = cell * 6 + gap * 5
 		if grid and layout then
 			layout.CellSize = UDim2.fromOffset(cell, cell)
@@ -758,9 +762,10 @@ function Makeover:layoutForScreen()
 		self.doneButton.Size = UDim2.new(0, doneWidth, 0, cell)
 		self.guide.Position = UDim2.new(0, 10, 0, 56)
 		self.guide.Size = UDim2.new(0, gridWidth + 6 + doneWidth + 12, 0, cell + 12)
-		self.right.Position = UDim2.new(0.52, 0, 0, 128)
-		self.right.Size = UDim2.new(0.465, 0, 1, -136)
-		self.speech.Position = UDim2.new(0, 10, 0, 128)
+		-- the station menu takes the full height on the right, beside the strip
+		self.right.Position = UDim2.new(0, gridWidth + doneWidth + 34, 0, 56)
+		self.right.Size = UDim2.new(1, -(gridWidth + doneWidth + 42), 1, -62)
+		self.speech.Position = UDim2.new(0, 10, 0, 56 + cell + 18)
 		self.wishLabel.Position = UDim2.new(0, 10, 1, -10)
 		self.wishLabel.Size = UDim2.new(0.5, -20, 0, 40)
 	else
@@ -778,9 +783,13 @@ function Makeover:layoutForScreen()
 		self.guide.Size = UDim2.new(0, 176, 0, 30 + cell * 3 + 12 + 6 + 60 + 12)
 		self.right.Position = UDim2.new(0.52, 0, 0, 62)
 		self.right.Size = UDim2.new(0.465, 0, 1, -70)
+		self.speech.Size = UDim2.new(0.3, 0, 0, 58)
 		self.speech.Position = UDim2.new(0, 196, 0, 66)
 		self.wishLabel.Position = UDim2.new(0, 196, 1, -12)
 		self.wishLabel.Size = UDim2.new(0.5, -206, 0, 50)
+	end
+	if self.look then
+		self:refreshChecklist() -- (icons only, or icons and names)
 	end
 end
 
@@ -1035,6 +1044,15 @@ function Makeover:refreshChecklist()
 	for step, chip in self.checks do
 		local isNext = step == self.nextStep
 		chip.BackgroundColor3 = if done[step] then C.green elseif isNext then C.hotPink else C.lavender
+		local icon = chip:FindFirstChild("Icon")
+		if icon and icon:IsA("TextLabel") then
+			icon.Size = if self.compact then UDim2.fromScale(1, 1) else UDim2.fromScale(1, 0.6)
+			icon.Text = STEP_ICONS[step] .. (if self.compact and done[step] then "✓" else "")
+		end
+		local name = chip:FindFirstChild("Label")
+		if name and name:IsA("TextLabel") then
+			name.Visible = not self.compact
+		end
 		-- a check mark (done) or a pointing finger (next) too, so it isn't shown by color alone
 		local label = chip:FindFirstChild("Label")
 		if label and label:IsA("TextLabel") then
@@ -1092,8 +1110,9 @@ function Makeover:setTab(tabId: string)
 	-- up to 3 chips fit on one row; more wrap onto a second row
 	local cols = if #categories <= 3 then math.max(#categories, 1) else math.ceil(#categories / 2)
 	local rows = math.ceil(#categories / cols)
-	local chipsHeight = rows * 56 + (rows - 1) * 6
-	self.chipLayout.CellSize = UDim2.new(1 / cols, -6 * (cols - 1) / cols, 0, 56)
+	local chipHeight = if self.compact then 44 else 56
+	local chipsHeight = rows * chipHeight + (rows - 1) * 6
+	self.chipLayout.CellSize = UDim2.new(1 / cols, -6 * (cols - 1) / cols, 0, chipHeight)
 	self.chips.Size = UDim2.new(1, 0, 0, chipsHeight)
 	-- Without sub-category chips, the grid moves up to use their space
 	local below = if #categories > 1 then chipsHeight + 10 else 6
