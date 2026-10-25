@@ -58,14 +58,14 @@ function Effects.floatEmoji(gui: GuiObject, emoji: string)
 	local x = 0.1 + math.random() * 0.8
 	local label = new("TextLabel", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(x, 0, 1, -40),
+		Position = UDim2.new(x, 0, 0.6, 0),
 		Size = UDim2.fromOffset(56, 56),
 		Text = emoji,
-		ZIndex = 250,
+		ZIndex = 30, -- (behind the cards, so they never cover a title or a button)
 		Parent = gui,
 	})
 	TweenService:Create(label, TweenInfo.new(2.2, Enum.EasingStyle.Sine), {
-		Position = UDim2.new(x + (math.random() - 0.5) * 0.1, 0, 0.35, 0),
+		Position = UDim2.new(x + (math.random() - 0.5) * 0.1, 0, 0.15, 0),
 		Rotation = math.random(-25, 25),
 	}):Play()
 	fadeAndDestroy(label, 1.4, 0.8)

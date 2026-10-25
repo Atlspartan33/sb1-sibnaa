@@ -62,6 +62,7 @@ local function now(): number
 end
 
 local function setState(phase: string, seconds: number)
+	state.seq = (state.seq or 0) + 1
 	state.phase = phase
 	state.endsAt = now() + seconds
 	Remotes.State:FireAllClients(state)
@@ -548,11 +549,11 @@ local function cheer(emoji: string, fromUserId: number?)
 	local walk = showcase
 	if state.phase == "Showcase" and walk and not walk.wild and fromUserId ~= walk.userId then
 		walk.cheers = (walk.cheers or 0) + 1
-		if walk.cheers >= Config.CHEER_GOAL then
+		if walk.cheers >= (walk.goal or Config.CHEER_GOAL) then
 			walk.wild = true
 			crowdGoesWild(walk)
 		end
-		Remotes.Reaction:FireAllClients(emoji, walk.cheers, Config.CHEER_GOAL)
+		Remotes.Reaction:FireAllClients(emoji, walk.cheers, walk.goal or Config.CHEER_GOAL)
 	else
 		Remotes.Reaction:FireAllClients(emoji)
 	end
@@ -561,6 +562,8 @@ end
 -- Style Bots in the audience cheer a few times during each walk (not their own).
 local BOT_CHEERS = { "😍", "👏", "🔥", "✨", "💖" }
 local function botsCheer(walk)
+	local watching = #Players:GetPlayers() + #BotService.list() - 1
+	walk.goal = math.clamp(3 * watching, 4, Config.CHEER_GOAL)
 	for _, bot in BotService.list() do
 		if bot.userId ~= walk.userId then
 			for _ = 1, rng:NextInteger(2, 4) do
@@ -1026,7 +1029,11 @@ local function runRound()
 				unseat(character)
 				local spot = world.podium[row.rank] or (world.podium[1] + Vector3.new((row.rank - 5) * 3, -world.podium[1].Y, 9))
 				local pos = spot + Vector3.new(0, humanoid.HipHeight + root.Size.Y / 2 + 0.1, 0)
-				character:PivotTo(CFrame.lookAt(pos, pos + Vector3.new(0, 0, 1)))
+				local place = CFrame.lookAt(pos, pos + Vector3.new(0, 0, 1))
+				character:PivotTo(place)
+				-- their own device moves them (it owns the character); a fresh value each time
+				character:SetAttribute("PlaceAt", nil)
+				character:SetAttribute("PlaceAt", place)
 				if row.rank == 1 then
 					strikePose(character, "pose_cheer")
 				end

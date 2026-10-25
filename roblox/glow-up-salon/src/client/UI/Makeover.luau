@@ -482,7 +482,7 @@ function Makeover:buildGuide()
 			TextColor3 = C.text,
 			ZIndex = 14,
 			Parent = b,
-		}, { Theme.maxText(19) })
+		}, { new("UITextSizeConstraint", { MaxTextSize = 19, MinTextSize = 16 }) })
 		self.tabStrokes[step[1]] = Theme.new("UIStroke", {
 			Color = C.gold,
 			Thickness = 4,
@@ -740,14 +740,48 @@ function Makeover:layoutForScreen()
 		return
 	end
 	local compact = self.frame.AbsoluteSize.Y > 0 and self.frame.AbsoluteSize.Y < 500
-	local cell = if compact then 56 else 62
+	self.compact = compact
 	local grid = self.guide:FindFirstChildOfClass("Frame")
 	local layout = grid and grid:FindFirstChildOfClass("UIGridLayout")
-	if grid and layout then
-		layout.CellSize = UDim2.new(0.5, -4, 0, cell)
-		grid.Size = UDim2.new(1, 0, 0, cell * 3 + 12)
+	if compact then
+		-- a strip along the top: six station buttons and Done in one row, nothing near the thumbstick
+		local cell, gap, doneWidth = 52, 4, 96
+		local gridWidth = cell * 6 + gap * 5
+		if grid and layout then
+			layout.CellSize = UDim2.fromOffset(cell, cell)
+			layout.CellPadding = UDim2.fromOffset(gap, gap)
+			grid.Position = UDim2.new(0, 0, 0, 0)
+			grid.Size = UDim2.new(0, gridWidth, 0, cell)
+		end
+		self.heartsLabel.Visible = false
+		self.doneButton.Position = UDim2.new(0, gridWidth + 6, 0, 0)
+		self.doneButton.Size = UDim2.new(0, doneWidth, 0, cell)
+		self.guide.Position = UDim2.new(0, 10, 0, 56)
+		self.guide.Size = UDim2.new(0, gridWidth + 6 + doneWidth + 12, 0, cell + 12)
+		self.right.Position = UDim2.new(0.52, 0, 0, 128)
+		self.right.Size = UDim2.new(0.465, 0, 1, -136)
+		self.speech.Position = UDim2.new(0, 10, 0, 128)
+		self.wishLabel.Position = UDim2.new(0, 10, 1, -10)
+		self.wishLabel.Size = UDim2.new(0.5, -20, 0, 40)
+	else
+		local cell = 62
+		if grid and layout then
+			layout.CellSize = UDim2.new(0.5, -4, 0, cell)
+			layout.CellPadding = UDim2.fromOffset(6, 6)
+			grid.Position = UDim2.new(0, 0, 0, 30)
+			grid.Size = UDim2.new(1, 0, 0, cell * 3 + 12)
+		end
+		self.heartsLabel.Visible = true
+		self.doneButton.Position = UDim2.new(0, 0, 1, -60)
+		self.doneButton.Size = UDim2.new(1, 0, 0, 60)
+		self.guide.Position = UDim2.new(0, 10, 0, 62)
+		self.guide.Size = UDim2.new(0, 176, 0, 30 + cell * 3 + 12 + 6 + 60 + 12)
+		self.right.Position = UDim2.new(0.52, 0, 0, 62)
+		self.right.Size = UDim2.new(0.465, 0, 1, -70)
+		self.speech.Position = UDim2.new(0, 196, 0, 66)
+		self.wishLabel.Position = UDim2.new(0, 196, 1, -12)
+		self.wishLabel.Size = UDim2.new(0.5, -206, 0, 50)
 	end
-	self.guide.Size = UDim2.new(0, 176, 0, 30 + cell * 3 + 12 + 6 + 60 + 12)
 end
 
 function Makeover:setVisible(visible: boolean)
@@ -766,6 +800,17 @@ function Makeover:setVisible(visible: boolean)
 	if self.frame.Visible and not wasVisible then
 		self:refreshTheme()
 		self:setTab(self.tab)
+		local character = self:character()
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		local camera = Workspace.CurrentCamera
+		if root and root:IsA("BasePart") and camera then
+			local hall = Vector3.new(0, 3, 55)
+			local flat = Vector3.new(hall.X - root.Position.X, 0, hall.Z - root.Position.Z)
+			if flat.Magnitude > 1 then
+				local dir = flat.Unit
+				camera.CFrame = CFrame.lookAt(root.Position - dir * 14 + Vector3.new(0, 7, 0), root.Position + dir * 12)
+			end
+		end
 	end
 end
 
@@ -1571,6 +1616,8 @@ end
 
 function Makeover:openStation(station: Stations.Station)
 	self.station = station
+	-- the jump button sat on top of the item cards and ate taps: touch controls rest while you style
+	GuiService.TouchControlsEnabled = false
 	self.spin = 0
 	self.stationOpenedAt = os.clock()
 	self:setTab(station.tab)
@@ -1627,6 +1674,7 @@ function Makeover:showBotTags(show: boolean)
 end
 
 function Makeover:closeStation()
+	GuiService.TouchControlsEnabled = true
 	self:showBotTags(true)
 	self.station = nil
 	self.spinning = false
@@ -1644,9 +1692,11 @@ end
 
 -- The part of the screen your avatar is framed in: between the guide and the station menu.
 function Makeover:stageRect(viewport: Vector2): (Vector2, Vector2)
-	local left = self.guide.AbsolutePosition.X + self.guide.AbsoluteSize.X
+	-- (on phones the guide is a strip along the top, so the space starts below it instead)
+	local left = if self.compact then 0 else self.guide.AbsolutePosition.X + self.guide.AbsoluteSize.X
 	local right = if self.right.Visible then self.right.AbsolutePosition.X else viewport.X
-	local top, bottom = 64, viewport.Y
+	local top = if self.compact then self.guide.AbsolutePosition.Y + self.guide.AbsoluteSize.Y else 64
+	local bottom = viewport.Y
 	return Vector2.new(left, top), Vector2.new(math.max(right - left, 1), bottom - top)
 end
 

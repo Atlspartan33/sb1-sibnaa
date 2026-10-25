@@ -400,7 +400,13 @@ function BotService.startMakeover(endsIn: number)
 				end
 				-- the rest of this station's time, checking in so the show can call them away
 				local rest = os.clock() + math.max(0, perStation - 6)
+				local aside = false
 				while os.clock() < rest and alive() do
+					-- a kid walked up to this station: make room
+					if not aside and playerOn(station) then
+						aside = true
+						walkTo(bot, station.pad + Vector3.new(if rng:NextNumber() < 0.5 then -6 else 6, 0, 2), 4)
+					end
 					task.wait(0.5)
 				end
 			end

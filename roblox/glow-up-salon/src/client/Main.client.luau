@@ -86,6 +86,10 @@ local function setCharacterControls(enabled: boolean)
 end
 
 local function applyState(newState)
+	-- an older state (the Hello reply can land after a newer update) never overwrites a newer one
+	if type(newState.seq) == "number" and type(state.seq) == "number" and newState.seq < state.seq then
+		return
+	end
 	local oldPhase = state.phase
 	state = newState
 	hud:setState(state)
@@ -264,6 +268,18 @@ local function watchCharacter(character: Model)
 				end
 			end
 		end
+	end)
+	-- The server asks us to stand somewhere (the podium): get up from the seat and go there
+	character:GetAttributeChangedSignal("PlaceAt"):Connect(function()
+		local place = character:GetAttribute("PlaceAt")
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if typeof(place) ~= "CFrame" or not humanoid then
+			return
+		end
+		humanoid.Sit = false
+		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+		task.wait(0.05)
+		character:PivotTo(place)
 	end)
 	character:GetAttributeChangedSignal("Pose"):Connect(function()
 		local value = character:GetAttribute("Pose")

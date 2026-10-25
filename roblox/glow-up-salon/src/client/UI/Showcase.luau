@@ -177,6 +177,7 @@ function Showcase.new(gui: ScreenGui, ctx)
 		})
 		b.Activated:Connect(function()
 			Remotes.React:FireServer(emoji)
+			Effects.floatEmoji(self.gui, emoji) -- right away, even if the server skips a too-fast tap
 		end)
 	end
 	self.gui = gui
@@ -418,6 +419,10 @@ function Showcase:vote(stars: number)
 	self:showVote(stars)
 	Remotes.Vote:FireServer(current.userId, stars)
 	self.prompt.Text = "Thanks for voting! 💖 Tap to cheer!"
+	if self.short then
+		self.starRow.Visible = false
+		self.cheerRow.Visible = true
+	end
 	if first then
 		self.ctx.toast("+2 💰 for voting!", C.green)
 	end
@@ -453,7 +458,15 @@ function Showcase:show(payload)
 	self.cheerRow.Visible = not mine
 	self.poseRow.Visible = mine
 	self.poseRow.Position = UDim2.new(0, 0, 0, if short then 40 else 68)
-	self.panel.Size = UDim2.new(0.5, 0, 0, (if mine then 68 else 128) + 56 + 24 - (if short then 28 else 0))
+	self.short = short
+	if short and not mine then
+		-- phones: one row at a time (vote first, then cheers) so the walker stays in view
+		self.cheerRow.Position = UDim2.new(0, 0, 0, 40)
+		self.cheerRow.Visible = false
+	end
+	self.panel.Size = if short
+		then UDim2.new(0.5, 0, 0, 40 + 56 + 24)
+		else UDim2.new(0.5, 0, 0, (if mine then 68 else 128) + 56 + 24)
 	-- Camera flashes from the photographers
 	task.spawn(function()
 		local current = payload

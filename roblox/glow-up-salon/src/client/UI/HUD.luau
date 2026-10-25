@@ -18,7 +18,7 @@ local new = Theme.new
 local HUD = {}
 
 -- How to play, on the lobby card (phones get a row of icons instead)
-local STEPS_TEXT = "Walk onto the glowing circles:\n💇 Hair   💄 Makeup   👗 Clothes\n🦸 Costume   🐶 Pet   💃 Pose\nMatch the theme ⭐ then 📸 walk the runway!"
+local STEPS_TEXT = "⭐ Grab the glowing stars while you wait!\nThen walk onto the glowing circles:\n💇 Hair   💄 Makeup   👗 Clothes\n🦸 Costume   🐶 Pet   💃 Pose\nMatch the theme ⭐ then 📸 walk the runway!"
 HUD.__index = HUD
 
 local PHASE_LABELS = {
@@ -73,7 +73,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 	local shop = Theme.button({
 		Text = "🛍️ Shop",
 		LayoutOrder = 2,
-		Size = UDim2.new(0, 98, 1, 0),
+		Size = UDim2.new(0, 110, 0, 48),
 		Color = C.purple,
 		ZIndex = 50,
 		Parent = right,
@@ -158,6 +158,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		Parent = self.lobby,
 	})
 	book.Activated:Connect(onLookBook)
+	self.lookBookButton = book
 	self.lobbyEvent = new("TextLabel", {
 		Size = UDim2.new(1, 0, 0, 30),
 		BackgroundTransparency = 0,
@@ -246,11 +247,16 @@ function HUD:setState(state)
 	local compact = self.lobby.Parent and (self.lobby.Parent :: GuiObject).AbsoluteSize.Y < 500
 	local steps = (self.lobby.Rows :: any).Steps
 	steps.Visible = true
-	steps.Text = if compact then "Walk onto the glowing circles!\n💇 → 💄 → 👗 → 🦸 → 🐶 → 💃 → 📸" else STEPS_TEXT
+	steps.Text = if compact then "⭐ Grab the glowing stars!\nNext: 💇 → 💄 → 👗 → 🦸 → 🐶 → 💃 → 📸" else STEPS_TEXT
 	steps.Size = UDim2.new(1, 0, 0, if compact then 40 else 104)
-	self.lobby.Size = UDim2.new(0.5, 0, 0, if compact then 196 else 262)
+	-- the card sits in a lower corner so your avatar stays in view in the middle
+	self.lobby.AnchorPoint = if compact then Vector2.new(1, 1) else Vector2.new(0, 1)
+	self.lobby.Position = if compact then UDim2.new(1, -10, 1, -10) else UDim2.new(0, 16, 1, -16)
+	self.lobby.Size = UDim2.new(if compact then 0.46 else 0.42, 0, 0, if compact then 170 else 262)
+	self.botsButton.Size = UDim2.new(0, if compact then 176 else 240, 0, if compact then 48 else 56)
+	self.lookBookButton.Size = UDim2.new(0, if compact then 128 else 150, 0, if compact then 48 else 56)
 	-- No shopping while the 5-minute timer runs (items can still be unlocked from the menus)
-	self.shopButton.Visible = state.phase ~= "Makeover"
+	self.shopButton.Visible = state.phase == "Intermission" or state.phase == "Waiting"
 	self.lobbyTheme.Text = "Next theme: " .. (theme and theme.name or "")
 	local event = state.eventId and Events.byId[state.eventId]
 	self.lobbyEvent.Visible = event ~= nil

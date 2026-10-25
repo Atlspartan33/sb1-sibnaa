@@ -96,7 +96,10 @@ local function setupLighting(look)
 	color.Saturation = 0.15
 	color.Brightness = 0.03
 	color.Contrast = 0.05
-	color.TintColor = look.tint
+	-- only a whisper of the event tint, so skin keeps its real color under the lights
+	color.TintColor = look.tint:Lerp(rgb(255, 255, 255), 0.6)
+	Lighting.Ambient = rgb(120, 110, 125)
+	Lighting.OutdoorAmbient = rgb(150, 140, 155)
 	color.Parent = Lighting
 	local atmosphere = Instance.new("Atmosphere")
 	atmosphere.Name = "GlowUp"
