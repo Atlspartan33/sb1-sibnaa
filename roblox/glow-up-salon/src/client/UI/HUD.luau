@@ -222,8 +222,8 @@ function HUD:toast(text: string)
 		self.toastLabel:Destroy()
 	end
 	local label = new("TextLabel", {
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 70),
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -24),
 		Size = UDim2.new(0, 420, 0, 48),
 		BackgroundTransparency = 0,
 		BackgroundColor3 = C.purple,

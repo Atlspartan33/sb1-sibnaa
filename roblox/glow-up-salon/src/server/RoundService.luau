@@ -18,6 +18,7 @@ local Scoring = require(ReplicatedStorage.Shared.Scoring)
 
 local BotService = require(script.Parent.BotService)
 local DataService = require(script.Parent.DataService)
+local StarHunt = require(script.Parent.StarHunt)
 local WorldBuilder = require(script.Parent.WorldBuilder)
 
 local RoundService = {}
@@ -522,6 +523,48 @@ local function onVote(player: Player, targetUserId: unknown, stars: unknown)
 	end
 end
 
+-- The crowd went wild for this walk: fireworks over the runway, and coins if it's a real player.
+local function crowdGoesWild(walk)
+	WorldBuilder.fireworks()
+	local player = Players:GetPlayerByUserId(walk.userId)
+	if player then
+		DataService.addCoins(player, Config.COINS_CROWD_FAVORITE)
+		Remotes.Notify:FireClient(player, "🎆 The crowd went WILD for you! +" .. Config.COINS_CROWD_FAVORITE .. " 💰")
+	end
+end
+
+-- One cheer from the audience (a player or a Style Bot). Each walk has a cheer meter; filling it
+-- sets off the fireworks.
+local function cheer(emoji: string)
+	local walk = showcase
+	if state.phase == "Showcase" and walk and not walk.wild then
+		walk.cheers = (walk.cheers or 0) + 1
+		if walk.cheers >= Config.CHEER_GOAL then
+			walk.wild = true
+			crowdGoesWild(walk)
+		end
+		Remotes.Reaction:FireAllClients(emoji, walk.cheers, Config.CHEER_GOAL)
+	else
+		Remotes.Reaction:FireAllClients(emoji)
+	end
+end
+
+-- Style Bots in the audience cheer a few times during each walk (not their own).
+local BOT_CHEERS = { "😍", "👏", "🔥", "✨", "💖" }
+local function botsCheer(walk)
+	for _, bot in BotService.list() do
+		if bot.userId ~= walk.userId then
+			for _ = 1, rng:NextInteger(2, 4) do
+				task.delay(rng:NextNumber(1, Config.SHOWCASE_SECONDS_PER_LOOK - 1), function()
+					if showcase == walk then
+						cheer(BOT_CHEERS[rng:NextInteger(1, #BOT_CHEERS)])
+					end
+				end)
+			end
+		end
+	end
+end
+
 local function onReact(player: Player, emoji: unknown)
 	if state.phase ~= "Showcase" and state.phase ~= "Results" then
 		return
@@ -534,7 +577,7 @@ local function onReact(player: Player, emoji: unknown)
 		return
 	end
 	lastReaction[player] = t
-	Remotes.Reaction:FireAllClients(emoji)
+	cheer(emoji)
 	-- the cheering player's avatar cheers in the audience too (at most every few seconds)
 	if player.Character and (not lastCheer[player] or t - lastCheer[player] > 2.5) then
 		lastCheer[player] = t
@@ -801,11 +844,13 @@ local function runRound()
 		state.themeId = everyday[rng:NextInteger(1, #everyday)]
 	end
 	setState("Intermission", Config.INTERMISSION_SECONDS)
+	StarHunt.spawn(world.folder)
 	BotService.ensure(wantedBots())
 	BotService.hangOut()
 	task.wait(Config.INTERMISSION_SECONDS)
 
 	-- Makeover: 5 minutes!
+	StarHunt.clear()
 	setState("Makeover", Config.MAKEOVER_SECONDS)
 	-- getting each avatar ready takes a moment, so everyone is set up side by side
 	for _, player in Players:GetPlayers() do
@@ -855,6 +900,7 @@ local function runRound()
 			}
 			setState("Showcase", Config.SHOWCASE_SECONDS_PER_LOOK)
 			Remotes.Showcase:FireAllClients(showcase)
+			botsCheer(showcase)
 			seatAudience(nil, entry.model)
 			local started = os.clock()
 			BotService.walkRunway(entry)
@@ -880,6 +926,7 @@ local function runRound()
 			}
 			setState("Showcase", Config.SHOWCASE_SECONDS_PER_LOOK)
 			Remotes.Showcase:FireAllClients(showcase)
+			botsCheer(showcase)
 			seatAudience(entry.player)
 			BotService.voteFor(entry)
 			local started = os.clock()

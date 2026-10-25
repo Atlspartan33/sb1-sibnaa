@@ -152,8 +152,16 @@ Remotes.Profile.OnClientEvent:Connect(function(profile)
 	shop:refreshProfile(lookbookChanged)
 end)
 
-Remotes.Reaction.OnClientEvent:Connect(function(emoji)
-	showcase:reaction(emoji)
+Remotes.Reaction.OnClientEvent:Connect(function(emoji, cheers, goal)
+	showcase:reaction(emoji, cheers, goal)
+end)
+
+-- You grabbed one of the lobby stars
+Remotes.Collected.OnClientEvent:Connect(function(coins)
+	Sounds.play("Sparkle", 0.8)
+	Effects.floatEmoji(gui, "⭐")
+	Effects.floatEmoji(gui, "💰")
+	hud:toast("⭐ You found a star! +" .. tostring(coins) .. " 💰")
 end)
 
 Remotes.Celebrate.OnClientEvent:Connect(function(info)

@@ -16,9 +16,10 @@ local EVENTS = {
 	"Profile", -- server -> player: coins, unlocked items, passes
 	"Notify", -- server -> player: a little message
 	"React", -- player -> server: cheer emoji during the fashion show
-	"Reaction", -- server -> all: someone cheered (emoji)
+	"Reaction", -- server -> all: someone cheered (emoji, cheers so far, cheer goal)
 	"Celebrate", -- server -> player: daily gift, level up
 	"SetBots", -- player -> server: turn the Style Bots (pretend friends) on or off
+	"Collected", -- server -> player: you grabbed a lobby star (coins)
 }
 
 local FUNCTIONS = {

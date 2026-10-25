@@ -17,6 +17,10 @@ Config.COINS_PARTICIPATION = 20
 Config.COINS_PER_STAR = 10
 Config.COINS_SPOTLESS_BONUS = 10
 Config.COINS_PER_VOTE = 2
+Config.HUNT_STARS = 12 -- stars to chase around the rooftop in the lobby
+Config.COINS_PER_STAR = 2
+Config.CHEER_GOAL = 12 -- cheers for one walk that set off the fireworks
+Config.COINS_CROWD_FAVORITE = 5 -- for the walker when the crowd goes wild
 Config.COINS_PER_WISH = 10 -- each of the client's wishes you make come true
 Config.COINS_PLACEMENT = { 50, 30, 15 } -- 1st, 2nd, 3rd (only when 2+ stylists played)
 -- Daily gift calendar: coins on days 1-6, a special accessory on day 7 (missing a day just pauses it)

@@ -189,6 +189,99 @@ local DECOR_SPOTS = {
 
 local built = nil
 
+-- The salon is a rooftop party: the building's edge drops away to a glowing city, glass railings
+-- run round the roof, string lights hang over the plaza, and a red carpet leads from the Dressing
+-- Hall to the runway.
+local function buildRooftop(parent: Instance)
+	local roof = Instance.new("Folder")
+	roof.Name = "Rooftop"
+	roof.Parent = parent
+	local minX, maxX, minZ, maxZ = -80, 80, -80, 110
+	local midZ = (minZ + maxZ) / 2
+
+	-- the building under the roof (so the floor doesn't end in thin air)
+	local facade = rgb(64, 44, 92)
+	part(roof, "RoofEdge", Vector3.new(maxX - minX + 2, 80, 2), CFrame.new(0, -41, minZ - 1), facade)
+	part(roof, "RoofEdge", Vector3.new(maxX - minX + 2, 80, 2), CFrame.new(0, -41, maxZ + 1), facade)
+	part(roof, "RoofEdge", Vector3.new(2, 80, maxZ - minZ + 2), CFrame.new(minX - 1, -41, midZ), facade)
+	part(roof, "RoofEdge", Vector3.new(2, 80, maxZ - minZ + 2), CFrame.new(maxX + 1, -41, midZ), facade)
+
+	-- glass railings with a glowing gold top rail
+	local function railing(a: Vector3, b: Vector3)
+		local cf = CFrame.lookAt((a + b) / 2, b)
+		local length = (b - a).Magnitude
+		local glass = part(roof, "RailGlass", Vector3.new(0.3, 3.4, length), cf + Vector3.new(0, 1.7, 0), rgb(200, 230, 255), Enum.Material.Glass)
+		glass.Transparency = 0.6
+		local rail = part(roof, "RailTop", Vector3.new(0.5, 0.4, length), cf + Vector3.new(0, 3.5, 0), GOLD, Enum.Material.Neon)
+		rail.CastShadow = false
+	end
+	local inset = 0.5
+	railing(Vector3.new(minX + inset, 0, minZ + inset), Vector3.new(maxX - inset, 0, minZ + inset))
+	railing(Vector3.new(minX + inset, 0, maxZ - inset), Vector3.new(maxX - inset, 0, maxZ - inset))
+	railing(Vector3.new(minX + inset, 0, minZ + inset), Vector3.new(minX + inset, 0, maxZ - inset))
+	railing(Vector3.new(maxX - inset, 0, minZ + inset), Vector3.new(maxX - inset, 0, maxZ - inset))
+
+	-- the city at night: towers all around, with rows of lit windows
+	local rng = Random.new(7) -- the same city every time
+	local windowColors = { rgb(255, 214, 140), rgb(255, 150, 205), rgb(150, 220, 255), rgb(205, 170, 255) }
+	for i = 1, 44 do
+		local a = (i / 44) * math.pi * 2 + rng:NextNumber(-0.04, 0.04)
+		local distance = rng:NextNumber(135, 185)
+		local x, z = math.cos(a) * distance, midZ + math.sin(a) * distance * 1.1
+		local w, d = rng:NextNumber(14, 26), rng:NextNumber(14, 26)
+		local top = rng:NextNumber(-30, 55)
+		local bottom = -140
+		local tone = rng:NextInteger(0, 18)
+		part(roof, "Tower", Vector3.new(w, top - bottom, d), CFrame.new(x, (top + bottom) / 2, z), rgb(30 + tone, 24 + tone, 58 + tone))
+		local glow = windowColors[rng:NextInteger(1, #windowColors)]
+		for y = top - 5, math.max(top - 48, -70), -6 do
+			if rng:NextNumber() < 0.7 then
+				local band = part(roof, "Windows", Vector3.new(w + 0.2, 0.9, d + 0.2), CFrame.new(x, y, z), glow, Enum.Material.Neon)
+				band.CastShadow = false
+				band.Transparency = 0.3
+			end
+		end
+		if top > 35 then
+			-- a little red light on the tallest roofs
+			ball(roof, "BeaconLight", 1.4, Vector3.new(x, top + 1, z), rgb(255, 70, 90), Enum.Material.Neon)
+		end
+	end
+
+	-- string lights over the plaza between the Dressing Hall and the runway
+	local bulbColors = { rgb(255, 230, 150), PINK, rgb(140, 220, 255), GOLD }
+	for i, z in { 24, 12, 0 } do
+		for _, x in { -46, 46 } do
+			part(roof, "LightPole", Vector3.new(0.7, 19, 0.7), CFrame.new(x, 9.5, z), rgb(60, 48, 84), Enum.Material.Metal)
+			ball(roof, "PoleCap", 1.2, Vector3.new(x, 19.2, z), GOLD, Enum.Material.Neon)
+		end
+		for k = 0, 30 do
+			local t = k / 30
+			local bulb = ball(roof, "Bulb", 0.55, Vector3.new(-46 + 92 * t, 18 - math.sin(t * math.pi) * 3.5, z), bulbColors[(k + i) % #bulbColors + 1], Enum.Material.Neon)
+			bulb.CanCollide = false
+			bulb.CastShadow = false
+		end
+	end
+
+	-- a red carpet out of the Dressing Hall, with gold posts and velvet ropes (it ends behind the
+	-- show camera so the posts never get in the runway shot)
+	part(roof, "RedCarpet", Vector3.new(6, 0.12, 15), CFrame.new(0, 0.06, 22.5), rgb(196, 28, 78), Enum.Material.Fabric)
+	for _, x in { -3.8, 3.8 } do
+		local last: Vector3? = nil
+		for z = 28, 16, -6 do
+			local post = Vector3.new(x, 0, z)
+			local pole = part(roof, "Stanchion", Vector3.new(0.35, 3, 0.35), CFrame.new(post + Vector3.new(0, 1.5, 0)), GOLD, Enum.Material.Metal)
+			pole.CanCollide = false
+			ball(roof, "StanchionTop", 0.7, post + Vector3.new(0, 3.1, 0), GOLD, Enum.Material.Metal).CanCollide = false
+			if last then
+				local a, b = last + Vector3.new(0, 2.2, 0), post + Vector3.new(0, 2.2, 0)
+				local rope = part(roof, "VelvetRope", Vector3.new(0.25, 0.25, (b - a).Magnitude), CFrame.lookAt((a + b) / 2, b), rgb(140, 0, 45), Enum.Material.Fabric)
+				rope.CanCollide = false
+			end
+			last = post
+		end
+	end
+end
+
 -- Swaps in the decorations and lighting for a holiday event (or nil for everyday).
 function WorldBuilder.setDecor(eventId: string?)
 	if not built then
@@ -224,7 +317,8 @@ function WorldBuilder.setDecor(eventId: string?)
 			floater(decor, if i % 3 == 0 then "👻" else "🦇", Vector3.new(-16 + (i % 5) * 8, 16 + (i % 3) * 3, -50 + i * 6), 3)
 		end
 		for i = 1, 6 do
-			floater(decor, "🦇", Vector3.new(-20 + i * 6, 14 + (i % 2) * 3, 50), 2.5)
+			local side = if i % 2 == 0 then 1 else -1
+			floater(decor, "🦇", Vector3.new(side * (24 + i * 2), 13 + (i % 3) * 2.5, 52), 2.5)
 		end
 	elseif eventId == "thanksgiving" then
 		for i, spot in DECOR_SPOTS do
@@ -335,8 +429,12 @@ local function buildStations(salon: Instance)
 	for _, z in { -6, 6 } do
 		part(folder, "Fence", Vector3.new(14, 1.4, 0.3), CFrame.new(pet + Vector3.new(2, 0.7, z)), rgb(255, 255, 255), Enum.Material.Wood)
 	end
-	part(folder, "DogHouse", Vector3.new(3, 3, 3), CFrame.new(pet + Vector3.new(7, 1.5, 0)), rgb(255, 160, 80), Enum.Material.Wood)
-	part(folder, "DogRoof", Vector3.new(3.6, 1.2, 3.6), CFrame.new(pet + Vector3.new(7, 3.6, 0)), rgb(200, 60, 80), Enum.Material.Wood)
+	local house = pet + Vector3.new(7, 0, 0)
+	part(folder, "DogHouse", Vector3.new(3.4, 2.8, 3.4), CFrame.new(house + Vector3.new(0, 1.4, 0)), rgb(255, 176, 96), Enum.Material.WoodPlanks)
+	part(folder, "DogDoor", Vector3.new(0.12, 1.8, 1.4), CFrame.new(house + Vector3.new(-1.72, 0.95, 0)), rgb(70, 36, 40))
+	-- a beam turned on its edge makes the pitched roof (the lower half hides inside the walls)
+	part(folder, "DogRoof", Vector3.new(4, 2.7, 2.7), CFrame.new(house + Vector3.new(0, 2.8, 0)) * CFrame.Angles(math.rad(45), 0, 0), rgb(214, 60, 96), Enum.Material.WoodPlanks)
+	ball(folder, "DogBowl", 0.9, pet + Vector3.new(4.6, 0.2, 2.2), rgb(90, 160, 255))
 end
 
 -- Somewhere to hang out between rounds: step on the floor and you dance (see Main.client)
@@ -359,6 +457,25 @@ local function buildDanceFloor(salon: Instance)
 	sign(board, Enum.NormalId.Front, "🕺 Dance Floor 💃", PURPLE)
 	floor:SetAttribute("Center", center)
 	floor:SetAttribute("Radius", 6)
+	local marker = part(floor, "DanceHere", Vector3.new(0.5, 0.5, 0.5), CFrame.new(center + Vector3.new(0, 5.5, 0)), PINK)
+	marker.Transparency = 1
+	marker.CanCollide = false
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.fromOffset(150, 54)
+	billboard.LightInfluence = 0
+	billboard.MaxDistance = 90
+	billboard.Parent = marker
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundColor3 = rgb(190, 20, 105)
+	label.TextColor3 = rgb(255, 255, 255)
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.Text = "💃 Dance here!"
+	label.Parent = billboard
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.5, 0)
+	corner.Parent = label
 	-- the tiles twinkle through the colors
 	task.spawn(function()
 		local step = 0
@@ -384,11 +501,16 @@ local function buildAtmosphere(salon: Instance)
 	-- Disco ball with spinning colored spots over the dance floor
 	local floor = salon:FindFirstChild("DanceFloor")
 	local center = floor and floor:GetAttribute("Center") or Vector3.new(-24, 0, 39)
-	local disco = part(folder, "DiscoBall", Vector3.new(2.6, 2.6, 2.6), CFrame.new(center + Vector3.new(0, 12, 0)), rgb(235, 235, 245), Enum.Material.Glass)
+	local disco = part(folder, "DiscoBall", Vector3.new(3.4, 3.4, 3.4), CFrame.new(center + Vector3.new(0, 12, 0)), rgb(232, 232, 245), Enum.Material.Foil)
 	disco.Shape = Enum.PartType.Ball
-	disco.Reflectance = 0.6
+	disco.Reflectance = 0.45
+	local shine = Instance.new("PointLight")
+	shine.Range = 8
+	shine.Brightness = 0.8
+	shine.Color = rgb(255, 240, 255)
+	shine.Parent = disco
 	disco.CanCollide = false
-	part(folder, "DiscoString", Vector3.new(0.1, 6, 0.1), CFrame.new(center + Vector3.new(0, 16, 0)), rgb(200, 200, 210)).CanCollide = false
+	part(folder, "DiscoString", Vector3.new(0.1, 6, 0.1), CFrame.new(center + Vector3.new(0, 16.6, 0)), rgb(200, 200, 210)).CanCollide = false
 	local spots = {}
 	for i, c in { PINK, rgb(90, 200, 255), GOLD } do
 		local s = Instance.new("SpotLight")
@@ -498,6 +620,52 @@ local function buildAtmosphere(salon: Instance)
 	end)
 end
 
+-- Fireworks over the runway when the crowd goes wild for a walk.
+function WorldBuilder.fireworks()
+	if not built then
+		return
+	end
+	local colors = { PINK, GOLD, rgb(120, 220, 255), rgb(190, 130, 255), rgb(140, 255, 170) }
+	local rng = Random.new()
+	for i = 1, 7 do
+		task.delay((i - 1) * 0.28, function()
+			if not built then
+				return
+			end
+			local burst = part(built.folder, "Firework", Vector3.new(1, 1, 1), CFrame.new(rng:NextNumber(-16, 16), rng:NextNumber(13, 21), rng:NextNumber(-46, -20)), Color3.new(1, 1, 1))
+			burst.Transparency = 1
+			burst.CanCollide = false
+			burst.CanQuery = false
+			burst.CanTouch = false
+			local color = colors[rng:NextInteger(1, #colors)]
+			local sparks = Instance.new("ParticleEmitter")
+			sparks.Texture = Config.Textures.Star
+			sparks.Color = ColorSequence.new(color, rgb(255, 255, 255))
+			sparks.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.8), NumberSequenceKeypoint.new(1, 0) })
+			sparks.Lifetime = NumberRange.new(1.2, 1.8)
+			sparks.Speed = NumberRange.new(16, 24)
+			sparks.SpreadAngle = Vector2.new(180, 180)
+			sparks.Drag = 2.5
+			sparks.Acceleration = Vector3.new(0, -6, 0)
+			sparks.LightEmission = 1
+			sparks.Rate = 0
+			sparks.Parent = burst
+			local flash = Instance.new("PointLight")
+			flash.Color = color
+			flash.Range = 40
+			flash.Brightness = 2
+			flash.Parent = burst
+			sparks:Emit(80)
+			task.delay(0.35, function()
+				flash.Enabled = false
+			end)
+			task.delay(2.5, function()
+				burst:Destroy()
+			end)
+		end)
+	end
+end
+
 function WorldBuilder.build(): World
 	local old = Workspace:FindFirstChild("GlowUpWorld")
 	if old then
@@ -508,6 +676,7 @@ function WorldBuilder.build(): World
 
 	-- Floor
 	part(folder, "Floor", Vector3.new(160, 1, 190), CFrame.new(0, -0.5, 15), rgb(255, 225, 238))
+	buildRooftop(folder)
 
 	-- Salon (where everyone spawns)
 	local salon = Instance.new("Folder")
@@ -521,7 +690,16 @@ function WorldBuilder.build(): World
 			part(salon, "Tile", Vector3.new(tile, 0.2, tile), CFrame.new(-32.5 + ix * tile, 0.1, 32.5 + iz * tile), color, Enum.Material.SmoothPlastic)
 		end
 	end
-	part(salon, "BackWall", Vector3.new(72, 22, 1), CFrame.new(0, 11, 70), rgb(235, 220, 255))
+	part(salon, "BackWall", Vector3.new(72, 22, 1), CFrame.new(0, 11, 70), rgb(74, 36, 96))
+	-- a pink and white striped awning over the stations
+	for i = 0, 17 do
+		local x = -34 + i * 4
+		local stripe = part(salon, "Awning", Vector3.new(4, 0.3, 8), CFrame.new(x, 20.4, 66.2) * CFrame.Angles(math.rad(-18), 0, 0), if i % 2 == 0 then PINK else rgb(255, 255, 255), Enum.Material.Fabric)
+		stripe.CastShadow = false
+		local scallop = part(salon, "AwningScallop", Vector3.new(0.3, 3.6, 3.6), CFrame.new(x, 19.1, 62.4) * CFrame.Angles(0, 0, math.rad(90)), if i % 2 == 0 then PINK else rgb(255, 255, 255), Enum.Material.Fabric)
+		scallop.Shape = Enum.PartType.Cylinder
+		scallop.CastShadow = false
+	end
 	for _, x in { -34, 34 } do
 		plant(salon, Vector3.new(x, 0, 66))
 		plant(salon, Vector3.new(x, 0, 34))
@@ -553,8 +731,9 @@ function WorldBuilder.build(): World
 		part(salon, "ChairBack", Vector3.new(3, 3, 0.6), CFrame.new(x, 3.5, 60.3), PURPLE)
 		part(salon, "ChairBase", Vector3.new(1, 1.5, 1), CFrame.new(x, 0.75, 59), rgb(200, 200, 210), Enum.Material.Metal)
 	end
-	local salonSign = part(salon, "SalonSign", Vector3.new(36, 7, 1), CFrame.new(0, 15, 67), rgb(255, 255, 255))
-	sign(salonSign, Enum.NormalId.Front, "✨ 5 Minute Glow Up Salon ✨", PINK)
+	local salonSign = part(salon, "SalonSign", Vector3.new(36, 6, 1), CFrame.new(0, 14.6, 67), rgb(190, 20, 105))
+	sign(salonSign, Enum.NormalId.Front, "✨ 5 Minute Glow Up Salon ✨", rgb(255, 255, 255))
+	part(salon, "SalonSignFrame", Vector3.new(37, 7, 0.6), CFrame.new(0, 14.6, 67.6), GOLD, Enum.Material.Neon)
 	buildStations(salon)
 	buildDanceFloor(salon)
 	buildAtmosphere(salon)
@@ -574,7 +753,7 @@ function WorldBuilder.build(): World
 		local light = Instance.new("PointLight")
 		light.Color = PINK
 		light.Range = 12
-		light.Brightness = 0.8
+		light.Brightness = 0.5
 		light.Parent = strip
 	end
 
@@ -588,7 +767,7 @@ function WorldBuilder.build(): World
 		spot.Face = Enum.NormalId.Bottom
 		spot.Angle = 60
 		spot.Range = 60
-		spot.Brightness = 1.6
+		spot.Brightness = 1
 		spot.Color = rgb(255, 230, 245)
 		spot.Parent = cap
 	end
@@ -642,6 +821,8 @@ function WorldBuilder.build(): World
 			seat.CFrame = CFrame.new(x, 0.5, z) * CFrame.Angles(0, if x < 0 then -math.pi / 2 else math.pi / 2, 0)
 			seat.Color = if math.abs(x) == 9 then PINK else PURPLE
 			seat.Parent = runway
+			local outward = if x < 0 then -1 else 1
+			part(runway, "SeatBack", Vector3.new(0.5, 2.6, 3), CFrame.new(x + outward * 1.3, 1.8, z), seat.Color)
 		end
 	end
 

@@ -11,6 +11,7 @@ local Pets = require(ReplicatedStorage.Shared.Pets)
 local Progress = require(ReplicatedStorage.Shared.Progress)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Effects = require(script.Parent.Effects)
+local Sounds = require(script.Parent.Sounds)
 local Theme = require(script.Parent.Theme)
 
 local C = Theme.Colors
@@ -101,6 +102,29 @@ function Showcase.new(gui: ScreenGui, ctx)
 		}),
 	})
 	self.cheerRow = cheers
+	-- The cheer meter rides on top of the card: fill it and the crowd goes wild
+	local meter = new("Frame", {
+		Name = "CheerMeter",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 0, -8),
+		Size = UDim2.new(0.9, 0, 0, 30),
+		BackgroundColor3 = C.white,
+		ZIndex = 41,
+		Parent = self.panel,
+	}, { Theme.round(), Theme.stroke(C.hotPink, 3) })
+	self.meterFill = new("Frame", {
+		Size = UDim2.fromScale(0, 1),
+		BackgroundColor3 = C.gold,
+		ZIndex = 42,
+		Parent = meter,
+	}, { Theme.round() })
+	self.meterText = new("TextLabel", {
+		Size = UDim2.fromScale(1, 1),
+		Text = "🔥 Cheer meter: tap the cheers!",
+		TextColor3 = C.text,
+		ZIndex = 43,
+		Parent = meter,
+	}, { Theme.maxText(20), Theme.padding(3) })
 	for i, emoji in CHEERS do
 		local b = Theme.button({
 			Text = emoji,
@@ -362,6 +386,7 @@ end
 function Showcase:show(payload)
 	self.current = payload
 	self.voted = false
+	self:setMeter(0, 1)
 	self:showVote(0)
 	self.panel.Visible = true
 	Theme.pop(self.panel)
@@ -399,8 +424,28 @@ function Showcase:show(payload)
 	self:setScreen(payload.client.name, stylist, payload.client, payload.look, payload.clean)
 end
 
-function Showcase:reaction(emoji: string)
+function Showcase:reaction(emoji: string, cheers: number?, goal: number?)
 	Effects.floatEmoji(self.gui, emoji)
+	if cheers and goal then
+		self:setMeter(cheers, goal)
+	end
+end
+
+function Showcase:setMeter(cheers: number, goal: number)
+	local full = cheers >= goal
+	self.meterFill.Size = UDim2.fromScale(math.clamp(cheers / goal, 0, 1), 1)
+	self.meterFill.BackgroundColor3 = if full then C.hotPink else C.gold
+	self.meterText.TextColor3 = if full then C.white else C.text
+	self.meterText.Text = if full then "🎆 The crowd goes WILD! 🎆"
+		elseif cheers > 0 then "🔥 Cheer meter " .. cheers .. "/" .. goal
+		else "🔥 Cheer meter: tap the cheers!"
+	if full and not self.wildShown then
+		self.wildShown = true
+		Effects.confetti(self.gui, 40)
+		Sounds.play("Cheer", 0.7)
+	elseif not full then
+		self.wildShown = false
+	end
 end
 
 function Showcase:hide()
