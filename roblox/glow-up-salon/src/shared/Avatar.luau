@@ -403,7 +403,8 @@ local function addCostume(glam: Folder, model: Model, itemId: string?)
 	local bodyAttachment = nil
 	if accAttachment then
 		for _, d in model:GetDescendants() do
-			if d:IsA("Attachment") and d.Name == accAttachment.Name and d.Parent and d.Parent:IsA("BasePart") and not d:IsDescendantOf(glam) then
+			-- (the body's own attachment: not one inside the glam or inside clothes the avatar wears)
+			if d:IsA("Attachment") and d.Name == accAttachment.Name and d.Parent and d.Parent:IsA("BasePart") and not d:IsDescendantOf(glam) and not d:FindFirstAncestorWhichIsA("Accessory") then
 				bodyAttachment = d
 				break
 			end
@@ -541,6 +542,34 @@ function Avatar.pose(model: Model, poseId: string?): AnimationTrack?
 		return track
 	end
 	return nil
+end
+
+-- Real clothes (layered clothing) are added to the character itself, not the Glam folder: the
+-- humanoid wraps them around the body. Only changed when the garment changes.
+local function setGarment(model: Model, itemId: string?)
+	local wanted = if itemId and not Catalog.isNone(itemId) then itemId else ""
+	if model:GetAttribute("Garment") == wanted then
+		return
+	end
+	for _, child in model:GetChildren() do
+		if child:IsA("Accessory") and child:GetAttribute("GlowGarment") then
+			child:Destroy()
+		end
+	end
+	model:SetAttribute("Garment", wanted)
+	if wanted == "" then
+		return
+	end
+	local assets = Avatar.assets(0)
+	local costumes = assets and assets:FindFirstChild("Costume")
+	local template = costumes and costumes:FindFirstChild(wanted)
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if not (template and humanoid) then
+		return
+	end
+	local acc = template:Clone() :: Accessory
+	acc:SetAttribute("GlowGarment", true)
+	humanoid:AddAccessory(acc)
 end
 
 -- Accessories are built from simple shapes so they match the colors in the menus.
@@ -783,7 +812,8 @@ function Avatar.dress(model: Model, client, look, options: LookRenderer.Options?
 			sparkles(spot, top, 4)
 		end
 	end
-	if dress then
+	local garment = look.garment and not Catalog.isNone(look.garment)
+	if dress and not garment then -- (a real dress or suit replaces the drawn skirt)
 		local long = outfit ~= nil and (outfit.name:find("Gown") ~= nil or outfit.name:find("Princess") ~= nil)
 		addSkirt(glam, model, top, accent, long, look.outfitPattern, patternColor, outfit ~= nil and outfit.sparkle == true)
 	end
@@ -794,6 +824,7 @@ function Avatar.dress(model: Model, client, look, options: LookRenderer.Options?
 		addCostume(glam, model, look[key])
 	end
 	addEffect(glam, model, look.effect)
+	setGarment(model, look.garment)
 	glam.Parent = model
 	Avatar.setFace(model, client, look, options)
 end

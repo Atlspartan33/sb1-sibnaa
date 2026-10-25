@@ -45,7 +45,7 @@ local themeOf: () -> Catalog.Theme = nil :: any
 local STATION_KEYS = {
 	Hair = { "hairStyle", "hairColor" },
 	Face = { "eyeshadow", "lashes", "blush", "lipstick", "gems" },
-	Outfit = { "outfit", "outfitColor", "outfitPattern" },
+	Outfit = { "garment", "outfit", "outfitColor", "outfitPattern" },
 	Costume = { "accessory", "costumeBack", "costumeFace", "costumeWaist", "costumeShoulder" },
 	Pet = { "pet" },
 	Show = { "pose", "effect" },
@@ -54,7 +54,7 @@ local STATION_KEYS = {
 local KEY_CHANCE = {
 	gems = 0.35, lashes = 0.6, outfitColor = 0.35, outfitPattern = 0.35,
 	costumeBack = 0.6, costumeFace = 0.35, costumeWaist = 0.3, costumeShoulder = 0.35, accessory = 0.55,
-	pet = 0.6, effect = 0.6,
+	pet = 0.6, effect = 0.6, garment = 0.75,
 }
 
 -- A free (no coins, no pass, no level) item for this key, picking theme matches by skill.

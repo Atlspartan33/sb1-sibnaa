@@ -619,6 +619,10 @@ M.Humanoid.MoveTo = function(self, pos)
 	self.MoveToFinished:Fire(true)
 end
 M.Humanoid.Move = function() end
+-- Real clothes: the accessory just goes on the character (no wrapping here)
+M.Humanoid.AddAccessory = function(self, accessory)
+	accessory.Parent = self.Parent
+end
 -- Only sitting is tracked: a humanoid is either Seated or Running
 M.Humanoid.GetState = function(self)
 	return if self.Sit then Enum.HumanoidStateType.Seated else Enum.HumanoidStateType.Running

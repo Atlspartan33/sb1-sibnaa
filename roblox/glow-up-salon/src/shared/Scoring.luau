@@ -19,7 +19,7 @@ export type Entry = {
 local MAKEUP_KEYS = { "eyeshadow", "lashes", "blush", "lipstick" }
 -- Things that can match the theme. 4 matches = full theme points.
 local THEME_SLOTS = {
-	"hairStyle", "hairColor", "eyeshadow", "blush", "lipstick", "outfit", "accessory", "gems",
+	"hairStyle", "hairColor", "eyeshadow", "blush", "lipstick", "outfit", "garment", "accessory", "gems",
 	"costumeBack", "costumeFace", "costumeWaist", "costumeShoulder", "pet", "pose", "effect",
 }
 -- The fun stuff that makes a runway walk a show
@@ -185,7 +185,7 @@ function Scoring.judge(entry: Entry, theme: Catalog.Theme): (number, { string })
 	if applied == 0 then
 		table.insert(comments, "Don't forget the makeup! 💄")
 	end
-	if Catalog.isNone(look.outfit) then
+	if Catalog.isNone(look.outfit) and Catalog.isNone(look.garment or "") then
 		table.insert(comments, "Pick an outfit! 👗")
 	else
 		points += 0.5

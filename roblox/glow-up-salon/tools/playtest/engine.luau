@@ -738,6 +738,14 @@ function INST.IsDescendantOf(self, other)
 	end
 	return false
 end
+function INST.FindFirstAncestorWhichIsA(self, cls)
+	local p = D[self].parent
+	while p do
+		if isA(D[p].class, cls) then return p end
+		p = D[p].parent
+	end
+	return nil
+end
 function INST.Destroy(self)
 	for _, c in table.clone(D[self].children) do c:Destroy() end
 	setParent(self, nil)

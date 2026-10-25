@@ -65,6 +65,8 @@ H.click(H.card(tori, "Pink"), "Pink lipstick")
 H.shot(tori, "07_face")
 H.click(H.tab(tori, "GoOutfit"), "walk to the Wardrobe")
 E.runFor(0.2)
+H.click(H.button(tori, "Outfit"), "Outfit chip (Real Clothes opens first)")
+E.runFor(0.1)
 H.click(H.card(tori, "Pink Party Dress"), "Party dress")
 H.shot(tori, "08_outfit")
 

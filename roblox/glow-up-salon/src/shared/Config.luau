@@ -43,6 +43,7 @@ Config.GamePasses = {
 	Princess = 0, -- "Princess Pack": 2 gowns, Princess Curls, Rose Gold hair, tiara, pink gems
 	DoubleCoins = 0, -- "2x Coins": earn double coins every show
 	RunwayStar = 0, -- "Runway Star": sparkles and confetti when your client walks the runway
+	FashionWeek = 0, -- "Fashion Week Pack": 6 real designer dresses and a puffer jacket
 }
 
 Config.DevProducts = {
