@@ -93,7 +93,16 @@ function Results:show(results)
 			-- the two most useful judge tips, short; stars only when they're good news
 			local comments = table.concat(row.comments, "  ", 1, math.min(#row.comments, 2))
 			local stars = if row.stars >= 3 then "  " .. Theme.stars(row.stars) else ""
-			self.mine.Text = string.format("%s:%s\n%s  +%d 💰\n%s", row.client.name, stars, row.award or "", row.coins, comments)
+			self.mine.Text = string.format(
+				"%s:%s\n%s  %s  +%d 💰%s\n%s",
+				row.client.name,
+				stars,
+				row.ribbon or "",
+				row.award or "",
+				row.coins,
+				if row.friendBonus then "  👯 friend bonus!" else "",
+				comments
+			)
 			LookRenderer.render(self.minePortrait, row.client, row.look, { clean = 1, mood = if row.stars >= 4 then "grin" else "smile" })
 			self:celebrate(row, #results.rows)
 		end
@@ -148,7 +157,9 @@ end
 -- A big pop-up for your own result, with confetti for good scores.
 function Results:celebrate(row, players: number)
 	local title
-	if players >= 2 and row.rank == 1 then
+	if row.ribbon then
+		title = row.ribbon .. "!"
+	elseif players >= 2 and row.rank == 1 then
 		title = "🏆 You WON! 🏆"
 	elseif players >= 2 and row.rank <= 3 then
 		title = MEDALS[row.rank] .. " #" .. row.rank .. " Place!"

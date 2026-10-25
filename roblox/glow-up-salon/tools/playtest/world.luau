@@ -590,6 +590,9 @@ local function spawnCharacter(p)
 	return character
 end
 M.Player = {
+	IsFriendsWith = function()
+		return false -- the test players aren't friends
+	end,
 	LoadCharacter = function(self)
 		local old = D[self].props.Character
 		if old then old:Destroy() end

@@ -15,14 +15,16 @@ Config.BOTS_FILL_TO = 3
 Config.STARTING_COINS = 100
 Config.COINS_PARTICIPATION = 20
 Config.COINS_PER_STAR = 10
-Config.COINS_SPOTLESS_BONUS = 10
+Config.COINS_SPOTLESS_BONUS = 0 -- (washing is on the shelf, so there's no spotless bonus)
 Config.COINS_PER_VOTE = 2
 Config.HUNT_STARS = 12 -- stars to chase around the rooftop in the lobby
 Config.COINS_PER_HUNT_STAR = 2
 Config.CHEER_GOAL = 12 -- cheers for one walk that set off the fireworks
 Config.COINS_CROWD_FAVORITE = 5 -- for the walker when the crowd goes wild
-Config.COINS_PER_WISH = 10 -- each of the client's wishes you make come true
-Config.COINS_PLACEMENT = { 50, 30, 15 } -- 1st, 2nd, 3rd (only when 2+ stylists played)
+Config.COINS_PER_WISH = 15 -- each of the client's wishes you make come true
+Config.COINS_PLACEMENT = { 50, 30, 15 } -- 1st, 2nd, 3rd (only when 2+ real players were in the show)
+Config.FRIEND_BONUS = 0.2 -- extra coins when a Roblox friend is in the server with you
+Config.HURRY_SECONDS = 30 -- once half the real players are done, everyone else gets this long
 -- Daily gift calendar: coins on days 1-6, a special accessory on day 7 (missing a day just pauses it)
 Config.CALENDAR_COINS = { 30, 40, 50, 60, 70, 80 }
 Config.CALENDAR_DAY7_COINS = 200 -- once every day-7 accessory has been collected
@@ -41,7 +43,6 @@ Config.GamePasses = {
 	Princess = 0, -- "Princess Pack": 2 gowns, Princess Curls, Rose Gold hair, tiara, pink gems
 	DoubleCoins = 0, -- "2x Coins": earn double coins every show
 	RunwayStar = 0, -- "Runway Star": sparkles and confetti when your client walks the runway
-	RainbowBubbles = 0, -- "Rainbow Bubbles": washing makes rainbow bubbles (just for looks)
 }
 
 Config.DevProducts = {

@@ -144,6 +144,7 @@ local function assignClient(player: Player)
 		votes = {},
 		assignedAt = now(),
 	}
+	entry.client.wishes = Scoring.themeWishes(theme(), state.eventId, rng)
 	entries[player.UserId] = entry
 	-- their real skin goes in the payload, so the menus' little faces match them
 	prepareCharacter(entry)
@@ -535,9 +536,9 @@ end
 
 -- One cheer from the audience (a player or a Style Bot). Each walk has a cheer meter; filling it
 -- sets off the fireworks.
-local function cheer(emoji: string)
+local function cheer(emoji: string, fromUserId: number?)
 	local walk = showcase
-	if state.phase == "Showcase" and walk and not walk.wild then
+	if state.phase == "Showcase" and walk and not walk.wild and fromUserId ~= walk.userId then
 		walk.cheers = (walk.cheers or 0) + 1
 		if walk.cheers >= Config.CHEER_GOAL then
 			walk.wild = true
@@ -557,7 +558,7 @@ local function botsCheer(walk)
 			for _ = 1, rng:NextInteger(2, 4) do
 				task.delay(rng:NextNumber(1, Config.SHOWCASE_SECONDS_PER_LOOK - 1), function()
 					if showcase == walk then
-						cheer(BOT_CHEERS[rng:NextInteger(1, #BOT_CHEERS)])
+						cheer(BOT_CHEERS[rng:NextInteger(1, #BOT_CHEERS)], bot.userId)
 					end
 				end)
 			end
@@ -577,7 +578,7 @@ local function onReact(player: Player, emoji: unknown)
 		return
 	end
 	lastReaction[player] = t
-	cheer(emoji)
+	cheer(emoji, player.UserId)
 	-- the cheering player's avatar cheers in the audience too (at most every few seconds)
 	if player.Character and (not lastCheer[player] or t - lastCheer[player] > 2.5) then
 		lastCheer[player] = t
@@ -681,12 +682,26 @@ local function scoreAll()
 		row.award = Scoring.awardName(best or Scoring.FALLBACK_AWARD.id, theme())
 	end
 
+	local realPlayers = 0
+	for _, row in rows do
+		if not row.bot then
+			realPlayers += 1
+		end
+	end
 	for rank, row in rows do
 		row.rank = rank
 		if row.bot then
 			continue -- Style Bots don't earn coins or save anything
 		end
 		local player = entries[row.userId].player
+		local wishes = entries[row.userId].client.wishes or {}
+		local granted = 0
+		for _, w in wishes do
+			if Scoring.wishMet(w, entries[row.userId].look) then
+				granted += 1
+			end
+		end
+		row.ribbon = Scoring.ribbon(row.stars, granted, #wishes)
 		local coins = Config.COINS_PARTICIPATION + math.floor(row.score * Config.COINS_PER_STAR)
 		if row.spotless then
 			coins += Config.COINS_SPOTLESS_BONUS
@@ -697,8 +712,21 @@ local function scoreAll()
 				coins += Config.COINS_PER_WISH
 			end
 		end
-		if count >= 2 and Config.COINS_PLACEMENT[rank] then
+		if realPlayers >= 2 and Config.COINS_PLACEMENT[rank] then
 			coins += Config.COINS_PLACEMENT[rank]
+		end
+		-- playing with a friend pays a little more
+		for _, other in Players:GetPlayers() do
+			if other ~= player then
+				local ok, friends = pcall(function()
+					return player:IsFriendsWith(other.UserId)
+				end)
+				if ok and friends then
+					coins = math.floor(coins * (1 + Config.FRIEND_BONUS))
+					row.friendBonus = true
+					break
+				end
+			end
 		end
 		if hasPass(player, "DoubleCoins") then
 			coins *= 2
@@ -712,7 +740,7 @@ local function scoreAll()
 			profile.stats.shows += 1
 			profile.stats.totalStars += row.stars
 			profile.stats.bestStars = math.max(profile.stats.bestStars, row.stars)
-			if rank == 1 and count >= 2 then
+			if rank == 1 and realPlayers >= 2 then
 				profile.stats.wins += 1
 			end
 			local newLevel = Progress.level(profile.stats.totalStars)
@@ -858,10 +886,31 @@ local function runRound()
 	end
 	BotService.ensure(wantedBots())
 	BotService.startMakeover(Config.MAKEOVER_SECONDS)
+	local hurried = false
 	while now() < state.endsAt do
 		task.wait(0.5)
 		if allDone() then
 			break
+		end
+		if not hurried then
+			local playing, done = 0, 0
+			for _, entry in entries do
+				if entry.player.Parent then
+					playing += 1
+					if entry.done then
+						done += 1
+					end
+				end
+			end
+			if playing >= 2 and done * 2 >= playing and state.endsAt - now() > Config.HURRY_SECONDS then
+				hurried = true
+				setState("Makeover", Config.HURRY_SECONDS)
+				for _, entry in entries do
+					if entry.player.Parent and not entry.done then
+						Remotes.Notify:FireClient(entry.player, "⏰ Hurry! Your friends are ready. " .. Config.HURRY_SECONDS .. " seconds left!")
+					end
+				end
+			end
 		end
 	end
 
@@ -940,8 +989,13 @@ local function runRound()
 	-- Results
 	local rows = scoreAll()
 	if #rows > 0 then
+		for _, player in Players:GetPlayers() do
+			Remotes.Notify:FireClient(player, "🥁 And the winners are...")
+		end
+		task.wait(1.6)
 		results = { themeId = state.themeId, rows = rows }
 		sendResults()
+		WorldBuilder.fireworks()
 		setState("Results", Config.RESULTS_SECONDS)
 		-- The top 3 stand on the podium in their looks; everyone else gathers in front
 		for _, row in rows do

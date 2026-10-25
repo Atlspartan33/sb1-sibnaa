@@ -10,6 +10,7 @@ local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
 local Pets = require(ReplicatedStorage.Shared.Pets)
 local Progress = require(ReplicatedStorage.Shared.Progress)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Avatar = require(ReplicatedStorage.Shared.Avatar)
 local Effects = require(script.Parent.Effects)
 local Sounds = require(script.Parent.Sounds)
 local Theme = require(script.Parent.Theme)
@@ -102,6 +103,45 @@ function Showcase.new(gui: ScreenGui, ctx)
 		}),
 	})
 	self.cheerRow = cheers
+	-- On your own walk the cheers turn into pose buttons: strike a pose for the photographers
+	local poses = new("Frame", {
+		Name = "Poses",
+		Position = UDim2.new(0, 0, 0, 68),
+		Size = UDim2.new(1, 0, 0, 56),
+		BackgroundTransparency = 1,
+		Visible = false,
+		ZIndex = 41,
+		Parent = self.panel,
+	}, {
+		new("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			Padding = UDim.new(0, 10),
+		}),
+	})
+	self.poseRow = poses
+	for i, pose in { { "pose_wave", "👋 Wave" }, { "pose_cheer", "🙌 Cheer" }, { "pose_dance", "💃 Dance" } } do
+		local b = Theme.button({
+			Text = pose[2],
+			LayoutOrder = i,
+			Size = UDim2.new(0.3, 0, 1, 0),
+			Color = C.hotPink,
+			TextColor3 = C.white,
+			ZIndex = 42,
+			MaxText = 26,
+			Parent = poses,
+		})
+		b.Activated:Connect(function()
+			local me = Players.LocalPlayer.Character
+			if me then
+				Avatar.pose(me, pose[1])
+			end
+			Effects.flash(self.gui)
+			task.delay(0.25, function()
+				Effects.flash(self.gui)
+			end)
+		end)
+	end
 	-- The cheer meter rides on top of the card: fill it and the crowd goes wild
 	local meter = new("Frame", {
 		Name = "CheerMeter",
@@ -395,10 +435,10 @@ function Showcase:show(payload)
 	local mine = payload.userId == Players.LocalPlayer.UserId
 	self.title.Text = "💃 " .. payload.client.name .. " is on the runway! (" .. payload.index .. "/" .. payload.total .. ")"
 	local level = payload.level or 1
-	local stylist = "Styled by " .. payload.stylist .. (if payload.vip then " 👑" else "") .. "  •  Lv " .. level .. " " .. Progress.title(level)
+	local stylist = "Styled by " .. payload.stylist .. "  •  Lv " .. level .. " " .. Progress.title(level)
 	-- The card stays short so it doesn't hide the walk; it only grows for the vote buttons
 	if mine then
-		self.prompt.Text = "That's YOU! Strike a pose! 📸"
+		self.prompt.Text = "That's YOU! Tap a pose for the cameras! 📸"
 		self.starRow.Visible = false
 	else
 		self.prompt.Text = "How much do you love it?"
@@ -409,6 +449,10 @@ function Showcase:show(payload)
 	self.prompt.Visible = not short
 	self.starRow.Position = UDim2.new(0, 0, 0, if short then 40 else 68)
 	self.cheerRow.Position = UDim2.new(0, 0, 0, if mine then (if short then 40 else 68) else (if short then 100 else 128))
+	-- your own walk: pose buttons instead of cheering for yourself
+	self.cheerRow.Visible = not mine
+	self.poseRow.Visible = mine
+	self.poseRow.Position = UDim2.new(0, 0, 0, if short then 40 else 68)
 	self.panel.Size = UDim2.new(0.5, 0, 0, (if mine then 68 else 128) + 56 + 24 - (if short then 28 else 0))
 	-- Camera flashes from the photographers
 	task.spawn(function()

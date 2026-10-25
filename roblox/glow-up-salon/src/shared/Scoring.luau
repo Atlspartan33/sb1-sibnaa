@@ -81,6 +81,74 @@ local function wishesMet(entry: Entry): (number, number)
 	return met, #wishes
 end
 
+-- Judge's Wishes: two things the judge asks for each round, made from the theme ("a pirate hat",
+-- "something red"). Every wish can be met with free items, so nobody has to buy anything.
+local WISH_SLOTS = {
+	{ key = "accessory", noun = "hat or clip", emoji = "🎩", article = true },
+	{ key = "costumeBack", noun = "wings or cape", emoji = "🪽" },
+	{ key = "costumeFace", noun = "mask or glasses", emoji = "🕶️", article = true },
+	{ key = "pet", noun = "pet", emoji = "🐾", article = true },
+	{ key = "outfit", noun = "outfit", emoji = "👗", article = true },
+	{ key = "hairColor", noun = "hair", emoji = "💇" },
+	{ key = "lipstick", noun = "lips", emoji = "💋" },
+}
+local WISH_WORDS = {
+	sparkle = "sparkly", rockstar = "rock star", ocean = "sea", animal = "animal", spooky = "spooky",
+}
+
+local function freeFor(it: Catalog.Item, eventId: string?): boolean
+	return not it.price and not it.pass and not it.level and not it.gift and (not it.event or it.event == eventId)
+end
+
+function Scoring.themeWishes(theme: Catalog.Theme, eventId: string?, rng: Random): { Wish }
+	local options = {}
+	for _, slot in WISH_SLOTS do
+		local category = Catalog.categoryByKey[slot.key]
+		for _, tag in theme.tags do
+			local possible = false
+			for _, it in (category and category.items or {}) :: { Catalog.Item } do
+				if not Catalog.isNone(it.id) and freeFor(it, eventId) and Catalog.hasTag(it, tag) then
+					possible = true
+					break
+				end
+			end
+			if possible then
+				local word = WISH_WORDS[tag] or tag
+				local article = if slot.article then (if string.match(word, "^[aeiou]") then "an " else "a ") else ""
+				table.insert(options, { key = slot.key, tag = tag, text = slot.emoji .. " " .. article .. word .. " " .. slot.noun })
+			end
+		end
+	end
+	-- two wishes for two different things
+	local picked = {}
+	while #picked < 2 and #options > 0 do
+		local wish = table.remove(options, rng:NextInteger(1, #options))
+		local clash = false
+		for _, p in picked do
+			if p.key == wish.key then
+				clash = true
+			end
+		end
+		if not clash then
+			table.insert(picked, wish)
+		end
+	end
+	return picked
+end
+
+-- The ribbon you earn this round (the real goal when you play alone): Bronze at 3 stars, Silver at
+-- 4, Gold for 5 stars with every wish granted.
+function Scoring.ribbon(stars: number, wishesMetCount: number, wishCount: number): string
+	if stars >= 5 and wishesMetCount >= wishCount then
+		return "🥇 Gold Ribbon"
+	elseif stars >= 4 then
+		return "🥈 Silver Ribbon"
+	elseif stars >= 3 then
+		return "🥉 Bronze Ribbon"
+	end
+	return "🎀 Runway Rosette"
+end
+
 -- Returns stars (1..5, in half steps) and a list of judge comments.
 function Scoring.judge(entry: Entry, theme: Catalog.Theme): (number, { string })
 	local look = entry.look

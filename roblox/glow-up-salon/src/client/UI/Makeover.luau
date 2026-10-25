@@ -538,6 +538,15 @@ function Makeover:buildGuide()
 		Parent = done,
 	})
 
+	-- The judge's two wishes for this round, along the bottom beside the guide
+	self.wishLabel.Parent = self.frame
+	self.wishLabel.AnchorPoint = Vector2.new(0, 1)
+	self.wishLabel.Position = UDim2.new(0, 196, 1, -12)
+	self.wishLabel.Size = UDim2.new(0.5, -206, 0, 50)
+	self.wishLabel.BackgroundColor3 = C.white
+	self.wishLabel.TextColor3 = C.purple
+	Theme.stroke(C.hotPink, 3).Parent = self.wishLabel
+
 	-- What you say pops up at the top of the hall
 	self.speech.Parent = self.frame
 	self.speech.AnchorPoint = Vector2.new(0, 0)
@@ -718,7 +727,7 @@ function Makeover:assign(payload)
 				for _, w in wishes do
 					table.insert(texts, w.text)
 				end
-				self:say("I wish for " .. table.concat(texts, " and ") .. "! 💌", 4)
+				self:say("💌 The judge wishes for " .. table.concat(texts, " and ") .. "!", 4)
 			end
 		end)
 	end
@@ -874,7 +883,7 @@ function Makeover:refreshWishes()
 		table.insert(parts, (if Scoring.wishMet(w, self.look) then "✅" else "") .. w.text)
 	end
 	self.wishLabel.Visible = #parts > 0
-	self.wishLabel.Text = "💌 " .. table.concat(parts, "  ")
+	self.wishLabel.Text = "💌 Judge wishes:  " .. table.concat(parts, "   ")
 end
 
 function Makeover:needsBrush(): boolean
@@ -1302,7 +1311,7 @@ function Makeover:choose(key: string, itemId: string)
 		end
 	end
 	if self:wishesMet() > wishesBefore then
-		self:say("Yay! My wish came true! 💌", 2.5)
+		self:say("💌 A judge's wish came true!", 2.5)
 		Effects.confetti(self.frame, 15)
 	elseif self.hearts >= 5 and not self.bestShown then
 		self.bestShown = true

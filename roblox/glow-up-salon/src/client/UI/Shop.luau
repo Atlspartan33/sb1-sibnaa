@@ -19,11 +19,10 @@ local Shop = {}
 Shop.__index = Shop
 
 local ROBUX_ITEMS = {
-	{ kind = "pass", key = "VIP", icon = "👑", title = "VIP Glam Kit", text = "Rainbow & galaxy hair, Royal Updo, Mermaid Waves, Golden Gala Gown, crown and more - plus a VIP badge on the runway!" },
+	{ kind = "pass", key = "VIP", icon = "👑", title = "VIP Glam Kit", text = "Rainbow & galaxy hair, Royal Updo, Mermaid Waves, Golden Gala Gown, crown and more and more!" },
 	{ kind = "pass", key = "Princess", icon = "👸", title = "Princess Pack", text = "Ice Ball Gown, Rose Gown, Princess Curls, Rose Gold hair, a tiara and pink gems!" },
 	{ kind = "pass", key = "DoubleCoins", icon = "💰", title = "2x Coins", text = "Earn double coins after every fashion show, forever." },
 	{ kind = "pass", key = "RunwayStar", icon = "🌟", title = "Runway Star", text = "Confetti cannons and sparkles every time you walk the runway!" },
-	{ kind = "pass", key = "RainbowBubbles", icon = "🫧", title = "Rainbow Bubbles", text = "Washing makes rainbow-colored bubbles. Just for fun!" },
 	{ kind = "product", key = "CoinsSmall", icon = "💰", title = "500 Coins", text = "Unlock new looks a little faster." },
 }
 
@@ -222,6 +221,12 @@ function Shop:askUnlock(it: Catalog.Item)
 		return
 	elseif it.pass then
 		local packName = if it.pass == "VIP" then "👑 VIP Glam Kit" elseif it.pass == "Princess" then "👸 Princess Pack" else it.pass
+		-- never a Robux prompt in the middle of a round: point to the Shop for later instead
+		local phase = self.ctx.state().phase
+		if phase ~= "Intermission" and phase ~= "Waiting" then
+			self.ctx.toast(it.name .. " comes with the " .. packName .. ". Ask a grown-up in the Shop after the show!", C.purple)
+			return
+		end
 		self.confirmText.Text = it.name .. " comes with the " .. packName .. ". Take a look?"
 		self.confirmYes.Text = "Take a look"
 		self.onConfirm = function()
