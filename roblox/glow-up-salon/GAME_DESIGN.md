@@ -95,7 +95,9 @@
 2. **Dressing Hall (5:00):** everyone walks around in their own avatar. Six stations: 💇 Hair Chair, 💄 Makeup Vanity, 👗 Wardrobe, 🦸 Costume Closet (hats, wings and capes, masks, tails, shoulder buddies), 🐶 Pet Park, 💃 Pose Stage (pose and effect). Step on a glowing pad and its menu opens while the camera frames you; the look goes on your real character, so everyone sees everyone getting ready. A guide on the left shows what's done and walks you to the next station. **I'm Done!** stays quiet until three stations are done and asks once before ending early.
    - **Body positivity:** you play in your own skin and body; there is no skin picker, and the game only adds things. A classic head carries the drawn makeup face during the round, and your normal look comes back after the show.
 3. **Fashion Show (~9s per look):** you walk the runway in your own avatar with your pet trotting alongside and your effect around you, then strike your pose. Everyone else sits in the audience; they vote with hearts (+2 coins for voting), and tapping a cheer makes their avatar cheer too.
-   - **Between rounds:** a dance floor (step on it and you dance), and your pet follows you around the hall.
+   - **Between rounds:** a dance floor under a disco ball (step on it and you dance), string lights and balloons, a photo booth (3-2-1, flash, your pose, a polaroid with your name and the theme), and your pet follows you around the hall.
+   - **Style Bots (solo play):** when there are fewer than 3 players, 🤖 bots fill in. They dance between rounds, walk to the stations and dress for the theme (better or worse depending on the bot), walk the runway, give every real look 4-5 hearts, and can land on the podium. They never earn coins. One lobby switch turns them off for the whole server.
+   - **Runway walk:** everyone wears Roblox's Catwalk Glam walk during the round, twirls at the end of the runway, then strikes their pose.
 4. **Results (15s):** the top 3 stand on the podium. Each player gets a private card with their stars, coins and judge tips, plus a confetti pop-up.
 
 ## Scoring (out of 5 stars)
@@ -145,5 +147,5 @@ New packs are easy to add: give items `pass = "PackName"` in `Catalog` and add t
 - Your own salon to decorate with coins
 - Real 3D hair and dresses (needs uploaded meshes). The paper-doll runway works well without them.
 - Voice clips for the client ("Ewww!", "I LOVE it!") for kids who can't read yet
-- Photo mode: save a picture card with frames
+- Photo mode: save the booth polaroid to a Look Book page
 - Client of the Day requests ("Make me look like a mermaid!")

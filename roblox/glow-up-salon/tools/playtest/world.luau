@@ -616,6 +616,15 @@ M.Humanoid.MoveTo = function(self, pos)
 	self.MoveToFinished:Fire(true)
 end
 M.Humanoid.Move = function() end
+-- Only sitting is tracked: a humanoid is either Seated or Running
+M.Humanoid.GetState = function(self)
+	return if self.Sit then Enum.HumanoidStateType.Seated else Enum.HumanoidStateType.Running
+end
+M.Humanoid.ChangeState = function(self, state)
+	if state ~= Enum.HumanoidStateType.Seated then
+		self.Sit = false
+	end
+end
 M.HumanoidDescription = {
 	SetAccessories = function() end,
 }

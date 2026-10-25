@@ -1,6 +1,8 @@
 # ✨ 5 Minute Glow Up Salon (Roblox)
 
-Tori's dress-up game. Every round has a theme (Superhero, Pirate, Under the Sea, Princess Ball...). You get 5 minutes to walk around the **Dressing Hall** in **your own Roblox avatar** (your own skin and body) and style yourself at six stations: hair, makeup, an outfit, costume pieces from the avatar shop (wings, capes, masks, tails, hats, shoulder buddies), a pet to walk with you, and a runway pose and effect. Then everyone walks the runway, votes with hearts, and the judges pick the winners.
+Tori's dress-up game. Every round has a theme (Superhero, Pirate, Under the Sea, Princess Ball...). You get 5 minutes to walk around the **Dressing Hall** in **your own Roblox avatar** (your own skin and body) and style yourself at six stations: hair, makeup, an outfit, costume pieces from the avatar shop (wings, capes, masks, tails, hats, shoulder buddies), a pet to walk with you, and a runway pose and effect. Then everyone struts the runway in a model's catwalk walk, votes with hearts, and the judges pick the winners.
+
+Playing alone or with one friend? **Style Bots** (🤖 Kiki, Zara and friends) fill the hall up to 3 players: they hang out on the dance floor, walk to the stations and dress for the theme, walk the runway and vote kindly. Anyone can switch them off with the **Style Bots** button on the lobby card. Between rounds the hall has a disco ball, string lights, balloons, a dance floor and a **photo booth** (stand on the gold pad for a 3-2-1 and a polaroid of your look).
 
 - **How the game works and how it makes money:** [GAME_DESIGN.md](GAME_DESIGN.md)
 - **What it looks like:** [docs/face-preview.jpg](docs/face-preview.jpg) and the screenshots in [docs/screens](docs/screens)
@@ -62,7 +64,7 @@ Until an ID is filled in, that item shows **"Soon!"** in the shop, so it's safe 
 
 ## 4. Add sounds and music (optional)
 
-Sound makes a big difference for young kids. The game already plays music while styling and on the runway, a chime when dirt comes off and when speech bubbles pop up, a soft splash when rinsing, and a jingle for celebrations. These are free sounds from Roblox's own audio tutorials, plus the splash that's built into every Roblox player. Change how loud each one is in `Config.SoundVolumes`. Button clicks, scrubbing and camera clicks are still silent: pick free ones from the Creator Store, which has thousands of sounds and licensed music any game may use.
+Sound makes a big difference for young kids. The game already plays music while styling and on the runway, a chime when dirt comes off and when speech bubbles pop up, a soft splash when rinsing, and a jingle for celebrations. These are free sounds from Roblox's own audio tutorials, plus the splash that's built into every Roblox player. Buttons make a soft tap and the photo booth and runway use Roblox's own camera shutter. Change how loud each one is in `Config.SoundVolumes`. Only scrubbing is still silent: pick free sounds from the Creator Store, which has thousands of sounds and licensed music any game may use.
 
 | Config key | Search the Toolbox for |
 |---|---|

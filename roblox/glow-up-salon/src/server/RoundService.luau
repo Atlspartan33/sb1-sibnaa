@@ -406,19 +406,7 @@ local function wantedBots(): number
 	return math.max(0, Config.BOTS_FILL_TO - #Players:GetPlayers())
 end
 
-local function unseat(character: Model)
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	if humanoid then
-		local seat = humanoid.SeatPart
-		humanoid.Sit = false
-		if seat then
-			local weld = seat:FindFirstChild("SeatWeld")
-			if weld then
-				weld:Destroy()
-			end
-		end
-	end
-end
+local unseat = Avatar.unseat
 
 -- The player's own character walks the runway (their pet trots along), then strikes their pose.
 -- If they have no character (just left), a stand-in model walks instead.
@@ -475,7 +463,8 @@ local function walkRunway(entry: Entry)
 	while os.clock() - started < walkTime + 1.5 and (Vector3.new(root.Position.X, 0, root.Position.Z) - Vector3.new(world.runwayEnd.X, 0, world.runwayEnd.Z)).Magnitude > 1.5 do
 		task.wait(0.1)
 	end
-	character:SetAttribute("WalkTarget", nil)
+	character:SetAttribute("WalkTarget", nil) -- their screen faces them to the crowd and twirls
+	task.wait(0.9)
 	strikePose(character, entry.look.pose)
 	task.delay(Config.SHOWCASE_SECONDS_PER_LOOK - walkTime - 0.5, function()
 		if character.Parent then
@@ -892,10 +881,7 @@ local function runRound()
 		for _, row in rows do
 			local bot = if row.bot then BotService.byUserId(row.userId) else nil
 			if bot and bot.model then
-				local humanoid = bot.model:FindFirstChildOfClass("Humanoid")
-				if humanoid and humanoid.SeatPart then
-					humanoid.Sit = false
-				end
+				Avatar.unseat(bot.model)
 				bot.busy = true
 				local spot = world.podium[row.rank] or (world.podium[1] + Vector3.new((row.rank - 5) * 3, -world.podium[1].Y, 9))
 				Avatar.place(bot.model, spot, Vector3.new(0, 0, 1))

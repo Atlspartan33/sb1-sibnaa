@@ -168,21 +168,40 @@ local function newBot(index: number): Bot?
 	-- walk animation while moving, idle while standing
 	local animator = humanoid:FindFirstChildOfClass("Animator")
 	if animator then
-		local anim = Instance.new("Animation")
-		anim.AnimationId = WALK_ANIMATION
-		local ok, track = pcall(function()
-			return animator:LoadAnimation(anim)
-		end)
-		if ok and track then
-			bot.walkTrack = track
-			humanoid.Running:Connect(function(speed)
-				if speed > 0.5 and not track.IsPlaying then
-					track:Play(0.2)
-				elseif speed <= 0.5 and track.IsPlaying then
-					track:Stop(0.2)
+		-- the same catwalk strut the players have (or the plain walk until it has loaded)
+		local loadedId: string? = nil
+		local function walkTrack(): AnimationTrack?
+			local assets = Avatar.assets(0)
+			local strut = assets and assets:GetAttribute("CatwalkWalk")
+			local id = if type(strut) == "string" then strut else WALK_ANIMATION
+			if id ~= loadedId then
+				local anim = Instance.new("Animation")
+				anim.AnimationId = id
+				local ok, track = pcall(function()
+					return animator:LoadAnimation(anim)
+				end)
+				if ok and track then
+					if bot.walkTrack then
+						bot.walkTrack:Stop(0)
+					end
+					bot.walkTrack = track
+					loadedId = id
 				end
-			end)
+			end
+			return bot.walkTrack
 		end
+		walkTrack()
+		humanoid.Running:Connect(function(speed)
+			local track = walkTrack()
+			if not track then
+				return
+			end
+			if speed > 0.5 and not track.IsPlaying then
+				track:Play(0.2)
+			elseif speed <= 0.5 and track.IsPlaying then
+				track:Stop(0.2)
+			end
+		end)
 	end
 	Avatar.idle(model)
 	dress(bot)
@@ -195,6 +214,10 @@ local function walkTo(bot: Bot, target: Vector3, timeout: number)
 	local root = model and model:FindFirstChild("HumanoidRootPart")
 	if not (humanoid and root and root:IsA("BasePart")) then
 		return
+	end
+	if humanoid.SeatPart or humanoid:GetState() == Enum.HumanoidStateType.Seated then
+		Avatar.unseat(model)
+		task.wait(0.1)
 	end
 	humanoid:MoveTo(target)
 	local started = os.clock()
@@ -343,10 +366,8 @@ function BotService.walkRunway(bot: Bot)
 	bot.busy = true
 	local humanoid = model:FindFirstChildOfClass("Humanoid") :: Humanoid
 	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
-	if humanoid.SeatPart then
-		humanoid.Sit = false
-		task.wait(0.1)
-	end
+	Avatar.unseat(model)
+	task.wait(0.1)
 	Avatar.place(model, world.runwayStart, Vector3.new(0, 0, 1))
 	if bot.pet then
 		bot.pet:PivotTo(CFrame.new(world.runwayStart + Vector3.new(2.6, 0, 0)))
@@ -357,7 +378,7 @@ function BotService.walkRunway(bot: Bot)
 	walkTo(bot, world.runwayEnd, walkTime + 1.5)
 	humanoid.WalkSpeed = 10
 	if root.Parent then
-		root.CFrame = CFrame.lookAt(root.Position, root.Position + Vector3.new(0, 0, 1))
+		BotService.twirl(root)
 		Avatar.pose(model, if Catalog.isNone(bot.look.pose) then "pose_wave" else bot.look.pose)
 	end
 	task.delay(Config.SHOWCASE_SECONDS_PER_LOOK - walkTime - 0.5, function()
@@ -365,6 +386,16 @@ function BotService.walkRunway(bot: Bot)
 			model:SetAttribute("Walking", nil)
 		end
 	end)
+end
+
+-- A twirl at the end of the runway (one full turn, ending face to the crowd).
+function BotService.twirl(root: BasePart)
+	local pos = root.Position
+	for i = 1, 16 do
+		root.CFrame = CFrame.new(pos) * CFrame.Angles(0, math.pi + i / 16 * math.pi * 2, 0)
+		task.wait(0.05)
+	end
+	root.CFrame = CFrame.lookAt(pos, pos + Vector3.new(0, 0, 1))
 end
 
 -- Bots are kind judges: every real look gets 4 or 5 hearts from them.

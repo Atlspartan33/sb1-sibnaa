@@ -87,9 +87,9 @@ local function setupLighting(look)
 	Lighting.ClockTime = look.clock
 	local bloom = Instance.new("BloomEffect")
 	bloom.Name = "GlowUp"
-	bloom.Intensity = 0.7
+	bloom.Intensity = 0.45
 	bloom.Size = 28
-	bloom.Threshold = 1.6
+	bloom.Threshold = 1.9
 	bloom.Parent = Lighting
 	local color = Instance.new("ColorCorrectionEffect")
 	color.Name = "GlowUp"
@@ -103,8 +103,8 @@ local function setupLighting(look)
 	atmosphere.Density = 0.28
 	atmosphere.Color = look.air
 	atmosphere.Decay = look.decay
-	atmosphere.Haze = 1.2
-	atmosphere.Glare = 0.4
+	atmosphere.Haze = 0.6
+	atmosphere.Glare = 0
 	atmosphere.Parent = Lighting
 end
 
@@ -298,7 +298,7 @@ local function buildStations(salon: Instance)
 		local beam = Instance.new("PointLight")
 		beam.Color = s.color
 		beam.Range = 10
-		beam.Brightness = 1.2
+		beam.Brightness = 0.7
 		beam.Parent = pad
 	end
 
@@ -326,7 +326,7 @@ local function buildStations(salon: Instance)
 	spot.Face = Enum.NormalId.Bottom
 	spot.Color = rgb(255, 240, 220)
 	spot.Range = 16
-	spot.Brightness = 3
+	spot.Brightness = 1.6
 	spot.Angle = 45
 	spot.Parent = light
 	local pet = Stations.byTab.Pet.pad
@@ -368,6 +368,132 @@ local function buildDanceFloor(salon: Instance)
 				t.Color = colors[(i + step) % #colors + 1]
 			end
 			task.wait(0.6)
+		end
+	end)
+end
+
+-- Life in the Dressing Hall: a disco ball over the dance floor, string lights, wall lights that
+-- drift through the colors, floating sparkles, balloon bunches, and a photo booth (Main.client
+-- does the 3-2-1 and the flash when you step on its pad).
+local function buildAtmosphere(salon: Instance)
+	local folder = Instance.new("Folder")
+	folder.Name = "Atmosphere"
+	folder.Parent = salon
+	local colors = { PINK, PURPLE, GOLD, rgb(90, 200, 255), rgb(120, 220, 140) }
+
+	-- Disco ball with spinning colored spots over the dance floor
+	local floor = salon:FindFirstChild("DanceFloor")
+	local center = floor and floor:GetAttribute("Center") or Vector3.new(-24, 0, 39)
+	local disco = part(folder, "DiscoBall", Vector3.new(2.6, 2.6, 2.6), CFrame.new(center + Vector3.new(0, 12, 0)), rgb(235, 235, 245), Enum.Material.Glass)
+	disco.Shape = Enum.PartType.Ball
+	disco.Reflectance = 0.6
+	disco.CanCollide = false
+	part(folder, "DiscoString", Vector3.new(0.1, 6, 0.1), CFrame.new(center + Vector3.new(0, 16, 0)), rgb(200, 200, 210)).CanCollide = false
+	local spots = {}
+	for i, c in { PINK, rgb(90, 200, 255), GOLD } do
+		local s = Instance.new("SpotLight")
+		s.Color = c
+		s.Range = 18
+		s.Brightness = 1.4
+		s.Angle = 35
+		s.Face = Enum.NormalId.Bottom
+		local holder = part(folder, "DiscoSpot" .. i, Vector3.new(0.2, 0.2, 0.2), disco.CFrame, c)
+		holder.Transparency = 1
+		holder.CanCollide = false
+		s.Parent = holder
+		table.insert(spots, holder)
+	end
+	local sparkle = Instance.new("ParticleEmitter")
+	sparkle.Texture = Config.Textures.Star
+	sparkle.Color = ColorSequence.new(rgb(255, 240, 255), rgb(255, 190, 230))
+	sparkle.Size = NumberSequence.new(0.35, 0)
+	sparkle.Lifetime = NumberRange.new(1.5, 2.5)
+	sparkle.Speed = NumberRange.new(2, 4)
+	sparkle.SpreadAngle = Vector2.new(180, 180)
+	sparkle.Rate = 6
+	sparkle.LightEmission = 0.7
+	sparkle.Parent = disco
+
+	-- String lights along the top of the back wall and over the entrance
+	for x = -34, 34, 2 do
+		local bulb = part(folder, "Bulb", Vector3.new(0.6, 0.6, 0.6), CFrame.new(x, 20.5 - math.abs(math.sin(x / 4)) * 0.8, 69.2), colors[(x // 2) % #colors + 1], Enum.Material.Neon)
+		bulb.Shape = Enum.PartType.Ball
+		bulb.CanCollide = false
+		bulb.CastShadow = false
+	end
+
+	-- Wall lights that drift slowly through the colors
+	local wallLights = {}
+	for _, x in { -30, -10, 10, 30 } do
+		local lamp = part(folder, "WallLamp", Vector3.new(1.4, 1.4, 0.4), CFrame.new(x, 13, 69.4), rgb(255, 255, 255), Enum.Material.Neon)
+		lamp.CanCollide = false
+		local l = Instance.new("PointLight")
+		l.Range = 22
+		l.Brightness = 0.7
+		l.Parent = lamp
+		table.insert(wallLights, { lamp = lamp, light = l })
+	end
+
+	-- Sparkles floating in the air of the hall
+	local air = part(folder, "HallSparkles", Vector3.new(60, 1, 30), CFrame.new(0, 16, 50), rgb(255, 255, 255))
+	air.Transparency = 1
+	air.CanCollide = false
+	local float = Instance.new("ParticleEmitter")
+	float.Texture = Config.Textures.Star
+	float.Color = ColorSequence.new(rgb(255, 220, 245), rgb(220, 200, 255))
+	float.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0.35), NumberSequenceKeypoint.new(1, 0) })
+	float.Lifetime = NumberRange.new(4, 7)
+	float.Speed = NumberRange.new(0.5, 1.5)
+	float.SpreadAngle = Vector2.new(180, 180)
+	float.Rate = 10
+	float.LightEmission = 0.6
+	float.Shape = Enum.ParticleEmitterShape.Box
+	float.Parent = air
+
+	-- Balloon bunches beside each station
+	for i, s in Stations.list do
+		local base = s.pad + Vector3.new(if i % 2 == 0 then 5.5 else -5.5, 0, 2)
+		for k = 0, 2 do
+			local c = colors[(i + k) % #colors + 1]
+			local pos = base + Vector3.new((k - 1) * 0.9, 7 + (k % 2) * 0.8, 0)
+			ball(folder, "Balloon", 1.6, pos, c).Reflectance = 0.15
+			part(folder, "BalloonString", Vector3.new(0.05, 6, 0.05), CFrame.new(pos - Vector3.new(0, 3.6, 0)), rgb(255, 255, 255)).CanCollide = false
+		end
+	end
+
+	-- Photo booth by the entrance, facing into the hall: a frame, a backdrop and a glowing pad to stand on
+	local booth = Vector3.new(8, 0.2, 36)
+	local back = part(folder, "BoothBackdrop", Vector3.new(9, 9, 0.4), CFrame.new(booth + Vector3.new(0, 4.5, -3.4)) * CFrame.Angles(0, math.pi, 0), rgb(255, 235, 245))
+	sign(back, Enum.NormalId.Front, "📸", PINK)
+	part(folder, "BoothFrameTop", Vector3.new(9.6, 0.6, 0.6), CFrame.new(booth + Vector3.new(0, 9.2, -3.2)), GOLD, Enum.Material.Neon).CanCollide = false
+	for _, x in { -4.8, 4.8 } do
+		part(folder, "BoothFrameSide", Vector3.new(0.6, 9, 0.6), CFrame.new(booth + Vector3.new(x, 4.5, -3.2)), GOLD, Enum.Material.Neon)
+	end
+	local boothPad = part(folder, "BoothPad", Vector3.new(0.3, 5, 5), CFrame.new(booth) * CFrame.Angles(0, 0, math.rad(90)), GOLD, Enum.Material.Neon)
+	boothPad.Shape = Enum.PartType.Cylinder
+	boothPad.Transparency = 0.35
+	boothPad.CanCollide = false
+	local boothSign = part(folder, "BoothSign", Vector3.new(8, 2, 0.4), CFrame.lookAt(booth + Vector3.new(0, 10.8, -3), booth + Vector3.new(0, 10.8, 0)), rgb(255, 255, 255))
+	boothSign.CanCollide = false
+	sign(boothSign, Enum.NormalId.Front, "📸 Photo Booth", PINK)
+	folder:SetAttribute("BoothCenter", booth)
+
+	-- Slow motion: the disco spots sweep around and the wall lights change color
+	task.spawn(function()
+		local t = 0
+		while folder.Parent do
+			t += 0.1
+			disco.CFrame = CFrame.new(disco.Position) * CFrame.Angles(0, t * 0.6, 0)
+			for i, holder in spots do
+				local a = t * 0.8 + i * 2.1
+				holder.CFrame = CFrame.lookAt(disco.Position, center + Vector3.new(math.cos(a) * 5, 0, math.sin(a) * 5))
+			end
+			for i, w in wallLights do
+				local c = Color3.fromHSV((t * 0.02 + i * 0.25) % 1, 0.45, 1)
+				w.lamp.Color = c
+				w.light.Color = c
+			end
+			task.wait(0.1)
 		end
 	end)
 end
@@ -431,6 +557,7 @@ function WorldBuilder.build(): World
 	sign(salonSign, Enum.NormalId.Front, "✨ 5 Minute Glow Up Salon ✨", PINK)
 	buildStations(salon)
 	buildDanceFloor(salon)
+	buildAtmosphere(salon)
 
 	-- Runway
 	local runway = Instance.new("Folder")
@@ -447,7 +574,7 @@ function WorldBuilder.build(): World
 		local light = Instance.new("PointLight")
 		light.Color = PINK
 		light.Range = 12
-		light.Brightness = 1.5
+		light.Brightness = 0.8
 		light.Parent = strip
 	end
 
@@ -461,7 +588,7 @@ function WorldBuilder.build(): World
 		spot.Face = Enum.NormalId.Bottom
 		spot.Angle = 60
 		spot.Range = 60
-		spot.Brightness = 3
+		spot.Brightness = 1.6
 		spot.Color = rgb(255, 230, 245)
 		spot.Parent = cap
 	end

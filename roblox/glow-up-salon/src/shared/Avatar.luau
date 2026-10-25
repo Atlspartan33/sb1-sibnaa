@@ -10,6 +10,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
+local Config = require(ReplicatedStorage.Shared.Config)
 local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
 
 local Avatar = {}
@@ -130,6 +131,16 @@ function Avatar.preload()
 		end
 	end
 
+	pending += 1
+	task.spawn(function()
+		local loaded, model = pcall(InsertService.LoadAsset, InsertService, Config.Catwalk.Walk)
+		local anim = loaded and model and model:FindFirstChildWhichIsA("Animation", true)
+		if anim then
+			folder:SetAttribute("CatwalkWalk", anim.AnimationId)
+		end
+		pending -= 1
+	end)
+
 	local started = os.clock()
 	while pending > 0 and os.clock() - started < 20 do
 		task.wait(0.1)
@@ -236,6 +247,10 @@ function Avatar.prepareCharacter(character: Model): Color3?
 	local base = desc:Clone()
 	base.Head = 0
 	base.Face = 0
+	-- strut like a model for the round
+	base.WalkAnimation = Config.Catwalk.Walk
+	base.RunAnimation = Config.Catwalk.Run
+	base.IdleAnimation = Config.Catwalk.Idle
 	base.Shirt, base.Pants, base.GraphicTShirt = 0, 0, 0
 	base.HatAccessory, base.HairAccessory, base.FaceAccessory, base.NeckAccessory = "", "", "", ""
 	base.ShouldersAccessory, base.FrontAccessory, base.BackAccessory, base.WaistAccessory = "", "", "", ""
@@ -809,6 +824,25 @@ function Avatar.setTangle(model: Model, tangle: number)
 				t.Transparency = 1 - tangle
 			end
 		end
+	end
+end
+
+-- Gets a model out of its seat so it can walk again (a server-owned model also needs a nudge out of the Seated state).
+function Avatar.unseat(model: Model)
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return
+	end
+	local seat = humanoid.SeatPart
+	humanoid.Sit = false
+	if seat then
+		local weld = seat:FindFirstChild("SeatWeld")
+		if weld then
+			weld:Destroy()
+		end
+	end
+	if humanoid:GetState() == Enum.HumanoidStateType.Seated then
+		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 	end
 end
 

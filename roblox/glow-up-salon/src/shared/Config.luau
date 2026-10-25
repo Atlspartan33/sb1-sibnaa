@@ -52,13 +52,13 @@ Config.CoinPackAmounts = {
 -- Add more in Studio: Toolbox -> Audio (or the Creator Store), right-click one ->
 -- "Copy Asset ID", and paste it here like "rbxassetid://1234567". Empty ones are skipped.
 Config.Sounds = {
-	Click = "", -- tapping a button or item
+	Click = "rbxassetid://122966251252708", -- tapping a button or item (a 0.1s soft UI tap)
 	Pop = "rbxassetid://4110925712", -- pop-ups and speech bubbles (the same gentle chime)
 	Scrub = "", -- rubbing with soap or brushing hair
 	Rinse = "rbxasset://sounds/impact_water.mp3", -- rinsing the bubbles (a water splash built into Roblox)
 	Sparkle = "rbxassetid://4110925712", -- a dirt spot comes off (Roblox tutorial "simple chime")
 	Cheer = "rbxassetid://3422389728", -- results, level up, daily gift (Roblox tutorial "retro jingle")
-	Camera = "", -- camera flash on the runway
+	Camera = "rbxassetid://17208312548", -- camera flash on the runway and in the photo booth (Roblox GUI camera shutter)
 	MakeoverMusic = "rbxassetid://1841461968", -- loops during the makeover (Roblox tutorial "upbeat" track)
 	RunwayMusic = "rbxassetid://1846248593", -- loops during the fashion show (Roblox tutorial "cheerful, celebratory" track)
 }
@@ -66,7 +66,15 @@ Config.Sounds = {
 -- Volume for each sound (0-1). Sounds not listed play at 0.6.
 Config.SoundVolumes = {
 	Rinse = 0.25,
+	Click = 0.35,
 } :: { [string]: number }
+
+-- A model's strut (Roblox's Catwalk Glam animation pack): everyone walks like this during a round.
+Config.Catwalk = {
+	Walk = 103190462987721,
+	Run = 75036746190467,
+	Idle = 101279640971758,
+}
 
 -- Particle pictures from Roblox's own particle tutorial
 Config.Textures = {

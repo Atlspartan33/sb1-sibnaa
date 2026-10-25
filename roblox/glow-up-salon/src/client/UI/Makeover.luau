@@ -742,6 +742,12 @@ function Makeover:setDone(done: boolean, silent: boolean?)
 	self:styleDone()
 	if not silent then
 		Remotes.Done:FireServer(done)
+		if done then
+			-- ready for the runway! a burst of confetti and a cheer
+			Effects.confetti(self.frame, 40)
+			Sounds.play("Cheer", 0.6)
+			self:say("I'm runway ready! 💃", 2.5)
+		end
 	end
 end
 

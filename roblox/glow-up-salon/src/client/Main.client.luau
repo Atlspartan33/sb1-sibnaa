@@ -244,8 +244,15 @@ local function watchCharacter(character: Model)
 				humanoid.WalkSpeed = 16
 				local root = character:FindFirstChild("HumanoidRootPart")
 				if root and root:IsA("BasePart") then
-					-- face the crowd at the end of the runway
-					root.CFrame = CFrame.lookAt(root.Position, root.Position + Vector3.new(0, 0, 1))
+					-- a twirl at the end of the runway, ending face to the crowd
+					task.spawn(function()
+						local pos = root.Position
+						for i = 1, 16 do
+							root.CFrame = CFrame.new(pos) * CFrame.Angles(0, math.pi + i / 16 * math.pi * 2, 0)
+							task.wait(0.05)
+						end
+						root.CFrame = CFrame.lookAt(pos, pos + Vector3.new(0, 0, 1))
+					end)
 				end
 			end
 		end
@@ -294,9 +301,97 @@ local function updateDance()
 	end
 end
 
+-- The photo booth: stand on the gold pad for a 3-2-1, a flash, your pose and a polaroid frame.
+local inBooth, snapping = false, false
+local function snapPhoto(center: Vector3)
+	snapping = true
+	local character = Players.LocalPlayer.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	-- the photographer stands in front of the booth, so the picture is of their face, not the back of their head
+	local camera = workspace.CurrentCamera
+	local lens = center + Vector3.new(0, 5, 9)
+	camera.CameraType = Enum.CameraType.Scriptable
+	local shot = CFrame.lookAt(lens, center + Vector3.new(0, 3.5, 0))
+	camera.CFrame = shot
+	local function faceCamera()
+		if root and root:IsA("BasePart") and root.Parent then
+			root.CFrame = CFrame.lookAt(root.Position, Vector3.new(lens.X, root.Position.Y, lens.Z))
+		end
+	end
+	-- a big 3-2-1 off to the side (a card in the middle would cover the kid)
+	for _, n in { "3", "2", "1" } do
+		faceCamera()
+		local number = Theme.new("TextLabel", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.8, 0.45),
+			Size = UDim2.fromScale(0.2, 0.3),
+			Text = n,
+			TextColor3 = Theme.Colors.white,
+			ZIndex = 260,
+			Parent = gui,
+		}, { Theme.stroke(Theme.Colors.hotPink, 6) })
+		number:FindFirstChildOfClass("UIStroke").ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+		Theme.pop(number)
+		Sounds.play("Pop", 0.5)
+		task.wait(0.8)
+		number:Destroy()
+	end
+	faceCamera()
+	Effects.flash(gui)
+	Sounds.play("Camera")
+	if character then
+		local pose = makeover.look and makeover.look.pose
+		Avatar.pose(character, if pose and not Catalog.isNone(pose) then pose else "pose_cheer")
+	end
+	-- the picture: a white polaroid border around the screen, with a caption strip along the bottom
+	local theme = Catalog.themeById[state.themeId]
+	local polaroid = Theme.new("Frame", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		ZIndex = 255,
+		Parent = gui,
+	}, { Theme.stroke(Theme.Colors.white, 18) })
+	Theme.new("Frame", {
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.fromScale(0.5, 1),
+		Size = UDim2.new(1, 0, 0, 76),
+		BackgroundColor3 = Theme.Colors.white,
+		ZIndex = 256,
+		Parent = polaroid,
+	}, {
+		Theme.new("TextLabel", {
+			Size = UDim2.fromScale(1, 1),
+			Text = "📸 " .. Players.LocalPlayer.DisplayName .. (if theme then "  •  " .. theme.name else ""),
+			TextColor3 = Theme.Colors.hotPink,
+			ZIndex = 257,
+		}, { Theme.padding(12), Theme.maxText(40) }),
+	})
+	task.wait(3)
+	polaroid:Destroy()
+	if camera.CameraType == Enum.CameraType.Scriptable and camera.CFrame == shot then -- (unless the show took the camera meanwhile)
+		camera.CameraType = Enum.CameraType.Custom
+	end
+	snapping = false
+end
+local function updateBooth()
+	local character = Players.LocalPlayer.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local atmosphere = workspace:FindFirstChild("GlowUpWorld") and workspace.GlowUpWorld:FindFirstChild("Atmosphere", true)
+	local center = atmosphere and atmosphere:GetAttribute("BoothCenter")
+	local on = false
+	if root and root:IsA("BasePart") and typeof(center) == "Vector3" then
+		on = Vector3.new(root.Position.X - center.X, 0, root.Position.Z - center.Z).Magnitude <= 2.5
+	end
+	if on and not inBooth and not snapping and (state.phase == "Makeover" or state.phase == "Intermission" or state.phase == "Waiting") then
+		task.spawn(snapPhoto, center :: Vector3)
+	end
+	inBooth = on
+end
+
 RunService.RenderStepped:Connect(function()
 	hud:update()
 	showcase:updateWalkers()
 	showcase:followWalker()
 	updateDance()
+	updateBooth()
 end)
