@@ -88,8 +88,8 @@ function StarHunt.spawn(parent: Instance)
 				return
 			end
 			taken = true
-			DataService.addCoins(player, Config.COINS_PER_STAR)
-			Remotes.Collected:FireClient(player, Config.COINS_PER_STAR)
+			DataService.addCoins(player, Config.COINS_PER_HUNT_STAR)
+			Remotes.Collected:FireClient(player, Config.COINS_PER_HUNT_STAR)
 			star:Destroy()
 		end)
 	end
