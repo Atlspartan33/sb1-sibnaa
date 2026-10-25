@@ -1,5 +1,5 @@
 -- Runway buddies, built from simple shapes: Bean the Boston terrier, a kitty, a bunny, a baby
--- dragon, a unicorn and a dino. Each pet is a small model whose pivot sits on the ground under it,
+-- dragon, a unicorn, a dino, and the Pet Palace pack (winged bunny, glitter kitty, pegasus, turtle). Each pet is a small model whose pivot sits on the ground under it,
 -- facing forward (-Z), so it can trot along next to its owner.
 
 local Pets = {}
@@ -150,6 +150,91 @@ function BUILDERS.pet_dino(m: Model)
 	for side = -1, 1, 2 do
 		ball(m, "Arm", Vector3.new(0.18, 0.18, 0.3), Vector3.new(side * 0.35, 1.25, -0.55), green)
 	end
+end
+
+-- Pet Palace pack ------------------------------------------------------------
+
+-- Feathery wings on both sides (for the bunny and the pegasus)
+local function featherWings(m: Model, y: number, z: number, color: Color3, span: number)
+	for side = -1, 1, 2 do
+		for i = 0, 2 do
+			local wing = part(
+				m,
+				"Wing",
+				Vector3.new(span - i * 0.18, 0.07, 0.42 - i * 0.06),
+				CFrame.new(side * (0.55 + span * 0.35), y + i * 0.06, z + i * 0.2) * CFrame.Angles(0, math.rad(side * -12), math.rad(side * (28 + i * 8))),
+				color
+			)
+			wing.Material = Enum.Material.SmoothPlastic
+		end
+	end
+end
+
+function BUILDERS.pet_wingbunny(m: Model)
+	BUILDERS.pet_bunny(m)
+	featherWings(m, 1.25, 0.05, rgb(255, 220, 240), 0.9)
+end
+
+function BUILDERS.pet_glitterkitty(m: Model)
+	local lilac, cream = rgb(185, 130, 255), rgb(255, 235, 250)
+	legs(m, lilac, cream, 0.28, 0.45, 0.5)
+	ball(m, "Body", Vector3.new(0.9, 0.8, 1.45), Vector3.new(0, 0.9, 0), lilac, Enum.Material.Glass)
+	ball(m, "Head", Vector3.new(0.95, 0.85, 0.85), Vector3.new(0, 1.55, -0.72), lilac, Enum.Material.Glass)
+	ball(m, "Muzzle", Vector3.new(0.45, 0.3, 0.3), Vector3.new(0, 1.42, -1.1), cream)
+	ball(m, "Nose", Vector3.new(0.12, 0.09, 0.09), Vector3.new(0, 1.5, -1.24), PINK)
+	eyes(m, Vector3.new(0, 1.67, -1.08), 0.22, 0.17)
+	for side = -1, 1, 2 do
+		part(m, "Ear", Vector3.new(0.1, 0.4, 0.4), CFrame.new(side * 0.3, 2.0, -0.7) * CFrame.Angles(math.rad(45), 0, math.rad(-side * 10)), lilac)
+	end
+	for i = 0, 4 do
+		ball(m, "Tail", Vector3.one * 0.24, Vector3.new(0, 1.0 + i * 0.22, 0.75 + math.sin(i * 0.6) * 0.15), if i == 4 then GOLD else lilac)
+	end
+	-- glitter all over
+	local sparkles = Instance.new("Sparkles")
+	sparkles.SparkleColor = rgb(255, 210, 255)
+	sparkles.Parent = m:FindFirstChild("Body")
+end
+
+function BUILDERS.pet_pegasus(m: Model)
+	legs(m, WHITE, rgb(200, 220, 255), 0.32, 0.5, 0.7)
+	ball(m, "Body", Vector3.new(1, 0.95, 1.6), Vector3.new(0, 1.15, 0), WHITE)
+	part(m, "Neck", Vector3.new(0.5, 0.75, 0.5), CFrame.new(0, 1.7, -0.6) * CFrame.Angles(math.rad(-25), 0, 0), WHITE)
+	ball(m, "Head", Vector3.new(0.7, 0.7, 0.95), Vector3.new(0, 2.12, -0.9), WHITE)
+	eyes(m, Vector3.new(0, 2.22, -1.22), 0.22, 0.14)
+	local mane = { rgb(150, 200, 255), rgb(190, 170, 255), rgb(150, 230, 255) }
+	for i, c in mane do
+		ball(m, "Mane", Vector3.one * 0.32, Vector3.new(0, 2.35 - i * 0.18, -0.65 + i * 0.12), c)
+		ball(m, "Tail", Vector3.one * 0.3, Vector3.new(0, 1.3 - i * 0.15, 0.85 + i * 0.05), c)
+	end
+	featherWings(m, 1.55, 0.0, rgb(235, 240, 255), 1.2)
+end
+
+function BUILDERS.pet_turtle(m: Model)
+	local green, shell = rgb(120, 210, 140), rgb(60, 160, 170)
+	for _, x in { -0.42, 0.42 } do
+		for _, z in { -0.42, 0.42 } do
+			ball(m, "Flipper", Vector3.new(0.35, 0.2, 0.45), Vector3.new(x, 0.22, z), green)
+		end
+	end
+	ball(m, "Shell", Vector3.new(1.3, 0.8, 1.45), Vector3.new(0, 0.62, 0.05), shell)
+	for i = 0, 4 do
+		local a = i / 5 * math.pi * 2
+		ball(m, "ShellSpot", Vector3.new(0.3, 0.12, 0.3), Vector3.new(math.cos(a) * 0.35, 0.98, 0.05 + math.sin(a) * 0.38), rgb(255, 210, 120))
+	end
+	ball(m, "Head", Vector3.new(0.6, 0.55, 0.6), Vector3.new(0, 0.7, -0.85), green)
+	eyes(m, Vector3.new(0, 0.82, -1.1), 0.17, 0.13)
+	-- a little stream of bubbles
+	local bubbles = Instance.new("ParticleEmitter")
+	bubbles.Texture = "rbxassetid://6711256324"
+	bubbles.Color = ColorSequence.new(rgb(200, 240, 255))
+	bubbles.Transparency = NumberSequence.new(0.3, 1)
+	bubbles.Size = NumberSequence.new(0.12, 0.25)
+	bubbles.Lifetime = NumberRange.new(1, 1.6)
+	bubbles.Speed = NumberRange.new(1, 2)
+	bubbles.SpreadAngle = Vector2.new(15, 15)
+	bubbles.EmissionDirection = Enum.NormalId.Top
+	bubbles.Rate = 3
+	bubbles.Parent = m:FindFirstChild("Head")
 end
 
 -- A fresh pet model, or nil for "no pet".

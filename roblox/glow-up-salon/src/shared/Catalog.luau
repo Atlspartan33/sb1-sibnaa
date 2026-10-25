@@ -709,6 +709,10 @@ Catalog.Categories = {
 			item({ id = "pet_dino", name = "Baby Dino", icon = "🦖", price = 60, tags = { "dino", "green" } }),
 			item({ id = "pet_dragon", name = "Baby Dragon", icon = "🐉", price = 100, tags = { "fairy", "purple", "spooky", "dino" } }),
 			item({ id = "pet_unicorn", name = "Unicorn", icon = "🦄", pass = "Princess", tags = { "princess", "fairy", "sparkle", "pink" } }),
+			item({ id = "pet_wingbunny", name = "Winged Bunny", icon = "🐰", pass = "PetPalace", tags = { "fairy", "white", "pink", "animal" } }),
+			item({ id = "pet_glitterkitty", name = "Glitter Kitty", icon = "😺", pass = "PetPalace", tags = { "sparkle", "purple", "animal", "party" } }),
+			item({ id = "pet_pegasus", name = "Baby Pegasus", icon = "🪽", pass = "PetPalace", tags = { "princess", "white", "fairy", "winter" } }),
+			item({ id = "pet_turtle", name = "Bubble Turtle", icon = "🐢", pass = "PetPalace", tags = { "ocean", "green", "animal" } }),
 		},
 	},
 	{

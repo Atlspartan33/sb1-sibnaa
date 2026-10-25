@@ -44,14 +44,19 @@ Config.GamePasses = {
 	DoubleCoins = 0, -- "2x Coins": earn double coins every show
 	RunwayStar = 0, -- "Runway Star": sparkles and confetti when your client walks the runway
 	FashionWeek = 0, -- "Fashion Week Pack": 6 real designer dresses and a puffer jacket
+	PetPalace = 0, -- "Pet Palace": Winged Bunny, Glitter Kitty, Baby Pegasus, Bubble Turtle
 }
 
 Config.DevProducts = {
-	CoinsSmall = 0, -- 500 coins
+	CoinsSmall = 0, -- 500 coins (49 R$)
+	CoinsMedium = 0, -- 1,500 coins (99 R$)
+	CoinsLarge = 0, -- 4,000 coins (199 R$)
 }
 
 Config.CoinPackAmounts = {
 	CoinsSmall = 500,
+	CoinsMedium = 1500,
+	CoinsLarge = 4000,
 }
 
 -- Sounds and music. The filled-in ones are free sounds from Roblox's own audio tutorials.

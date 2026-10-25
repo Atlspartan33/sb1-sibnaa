@@ -22,9 +22,12 @@ local ROBUX_ITEMS = {
 	{ kind = "pass", key = "VIP", icon = "👑", title = "VIP Glam Kit", text = "The real Starlight Royal Gown and Rainbow Sequin Dress, rainbow & galaxy hair, Royal Updo, Mermaid Waves, Rainbow Wings, a crown and more!" },
 	{ kind = "pass", key = "Princess", icon = "👸", title = "Princess Pack", text = "Real Pastel Summer and Enchanted Rainbow gowns, Ice Ball Gown, Rose Gown, Princess Curls, Rose Gold hair, a tiara, pink gems and a Unicorn pet!" },
 	{ kind = "pass", key = "FashionWeek", icon = "👗", title = "Fashion Week Pack", text = "6 real designer outfits: Pink Ribbon, Pink Ruffle, Rainbow Heart, Snow Crystal, Pastel Dream and a Designer Puffer!" },
+	{ kind = "pass", key = "PetPalace", icon = "🐢", title = "Pet Palace", text = "4 magic pets to walk the runway with you: Winged Bunny, Glitter Kitty, Baby Pegasus and Bubble Turtle!" },
 	{ kind = "pass", key = "DoubleCoins", icon = "💰", title = "2x Coins", text = "Earn double coins after every fashion show, forever." },
 	{ kind = "pass", key = "RunwayStar", icon = "🌟", title = "Runway Star", text = "Confetti cannons and sparkles every time you walk the runway!" },
 	{ kind = "product", key = "CoinsSmall", icon = "💰", title = "500 Coins", text = "Unlock new looks a little faster." },
+	{ kind = "product", key = "CoinsMedium", icon = "💰", title = "1,500 Coins", text = "Enough for a big dream dress." },
+	{ kind = "product", key = "CoinsLarge", icon = "💎", title = "4,000 Coins", text = "Fill your closet!" },
 }
 
 local priceCache: { [string]: string } = {}
@@ -224,6 +227,7 @@ function Shop:askUnlock(it: Catalog.Item)
 		local packName = if it.pass == "VIP" then "👑 VIP Glam Kit"
 			elseif it.pass == "Princess" then "👸 Princess Pack"
 			elseif it.pass == "FashionWeek" then "👗 Fashion Week Pack"
+			elseif it.pass == "PetPalace" then "🐢 Pet Palace"
 			else it.pass
 		-- never a Robux prompt in the middle of a round: point to the Shop for later instead
 		local phase = self.ctx.state().phase
