@@ -216,34 +216,18 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 	return self
 end
 
--- A short note across the top of the screen.
-function HUD:toast(text: string)
-	if self.toastLabel then
-		self.toastLabel:Destroy()
-	end
-	local label = new("TextLabel", {
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -24),
-		Size = UDim2.new(0, 420, 0, 48),
-		BackgroundTransparency = 0,
-		BackgroundColor3 = C.purple,
-		TextColor3 = C.white,
-		Text = text,
-		ZIndex = 60,
-		Parent = self.pill.Parent,
-	}, { Theme.round(), Theme.maxText(24), Theme.padding(6) })
-	self.toastLabel = label
-	Theme.pop(label)
-	task.delay(3, function()
-		if label.Parent then
-			label:Destroy()
-		end
-	end)
-end
-
 function HUD:setState(state)
 	local before = self.state
 	self.state = state
+	-- notes sit near the bottom while you style (clear of the speech bubble) and up top during
+	-- the show and results (clear of the vote card)
+	local up = state.phase == "Showcase" or state.phase == "Results"
+	self.toasts.AnchorPoint = Vector2.new(0.5, if up then 0 else 1)
+	self.toasts.Position = if up then UDim2.new(0.5, 0, 0, 60) else UDim2.new(0.5, 0, 1, -74)
+	local stack = self.toasts:FindFirstChildOfClass("UIListLayout")
+	if stack then
+		stack.VerticalAlignment = if up then Enum.VerticalAlignment.Top else Enum.VerticalAlignment.Bottom
+	end
 	local botsOn = state.bots ~= false
 	self.botsButton.Text = "🤖 Robot friends " .. (if botsOn then "✓" else "✗")
 	-- everyone hears about it, since one tap changes it for the whole server

@@ -84,12 +84,14 @@ function StarHunt.spawn(parent: Instance)
 				return
 			end
 			local player = Players:GetPlayerFromCharacter(hit.Parent)
-			if not player then
+			local root = player and player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			if not (root and root:IsA("BasePart")) or (root.Position - star.Position).Magnitude > 8 then
 				return
 			end
 			taken = true
-			DataService.addCoins(player, Config.COINS_PER_HUNT_STAR)
-			Remotes.Collected:FireClient(player, Config.COINS_PER_HUNT_STAR)
+			local finder = player :: Player
+			DataService.addCoins(finder, Config.COINS_PER_HUNT_STAR)
+			Remotes.Collected:FireClient(finder, Config.COINS_PER_HUNT_STAR)
 			star:Destroy()
 		end)
 	end

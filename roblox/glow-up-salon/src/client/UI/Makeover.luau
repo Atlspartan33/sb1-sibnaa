@@ -1615,7 +1615,7 @@ function Makeover:showBotTags(show: boolean)
 	if not world then
 		return
 	end
-	for _, model in world:GetDescendants() do
+	for _, model in world:GetChildren() do
 		if model:IsA("Model") and string.find(model.Name, "(Style Bot)", 1, true) then
 			local head = model:FindFirstChild("Head")
 			local tag = head and head:FindFirstChild("NameTag")
@@ -1688,7 +1688,14 @@ function Makeover:startStage()
 		local camera = Workspace.CurrentCamera
 		local character = self:character()
 		local root = character and character:FindFirstChild("HumanoidRootPart")
-		local here = if self.frame.Visible and root and root:IsA("BasePart") then Stations.at(root.Position) else nil
+		if not self.frame.Visible then
+			if self.station then
+				self:closeStation()
+			end
+			controlling = false -- (don't hand the camera back: the show or results own it now)
+			return
+		end
+		local here = if root and root:IsA("BasePart") then Stations.at(root.Position) else nil
 		if self.walkTarget then
 			if here == self.walkTarget then
 				self.walkTarget = nil

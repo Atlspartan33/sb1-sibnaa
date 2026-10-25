@@ -185,7 +185,15 @@ local function onUpdateLook(player: Player, key: unknown, itemId: unknown)
 		return
 	end
 	entry.look[key] = itemId
-	dressCharacter(entry)
+	if not entry.redressQueued then
+		entry.redressQueued = true
+		task.delay(0.15, function()
+			entry.redressQueued = false
+			if entries[player.UserId] == entry and state.phase == "Makeover" then
+				dressCharacter(entry)
+			end
+		end)
+	end
 	-- Holiday items you used during the event are yours to keep afterwards
 	if it.event then
 		local profile = DataService.get(player)
@@ -1078,10 +1086,18 @@ function RoundService.init(builtWorld: WorldBuilder.World)
 	end)
 	BotService.init(world, theme)
 	-- The lobby's Style Bots switch (one switch for the whole server)
-	Remotes.SetBots.OnServerEvent:Connect(function(_player, on: unknown)
+	local lastBotsToggle: { [Player]: number } = {}
+	local lastAnyToggle = 0
+	Remotes.SetBots.OnServerEvent:Connect(function(player, on: unknown)
 		if type(on) ~= "boolean" or on == state.bots then
 			return
 		end
+		local t = os.clock()
+		if t - lastAnyToggle < 1 or (lastBotsToggle[player] and t - lastBotsToggle[player] < 3) then
+			return
+		end
+		lastAnyToggle = t
+		lastBotsToggle[player] = t
 		state.bots = on
 		Remotes.State:FireAllClients(state)
 		if state.phase == "Intermission" or state.phase == "Waiting" then
@@ -1090,6 +1106,7 @@ function RoundService.init(builtWorld: WorldBuilder.World)
 		end
 	end)
 	Players.PlayerRemoving:Connect(function(player)
+		lastBotsToggle[player] = nil
 		local entry = entries[player.UserId]
 		if entry and entry.pet then
 			entry.pet:Destroy()

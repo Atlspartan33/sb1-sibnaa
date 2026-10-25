@@ -278,12 +278,27 @@ if Players.LocalPlayer.Character then
 	watchCharacter(Players.LocalPlayer.Character)
 end
 
+-- The dance floor and the photo booth live deep in the world; look them up once.
+local found: { [string]: Instance } = {}
+local function worldPart(name: string): Instance?
+	local hit = found[name]
+	if hit and hit.Parent then
+		return hit
+	end
+	local world = workspace:FindFirstChild("GlowUpWorld")
+	hit = world and world:FindFirstChild(name, true)
+	if hit then
+		found[name] = hit
+	end
+	return hit
+end
+
 -- Step onto the dance floor and you dance (everyone sees it); step off and you stop.
 local danceTrack: AnimationTrack? = nil
 local function updateDance()
 	local character = Players.LocalPlayer.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
-	local floor = workspace:FindFirstChild("GlowUpWorld") and workspace.GlowUpWorld:FindFirstChild("DanceFloor", true)
+	local floor = worldPart("DanceFloor")
 	local center, radius = floor and floor:GetAttribute("Center"), floor and floor:GetAttribute("Radius")
 	local on = false
 	if root and root:IsA("BasePart") and typeof(center) == "Vector3" and type(radius) == "number" then
@@ -411,10 +426,17 @@ local function snapPhoto(center: Vector3)
 	end
 	finish()
 end
+local function safeSnap(center: Vector3)
+	local ok = pcall(snapPhoto, center)
+	if not ok then
+		gui.Enabled = true
+		snapping = false
+	end
+end
 local function updateBooth()
 	local character = Players.LocalPlayer.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
-	local atmosphere = workspace:FindFirstChild("GlowUpWorld") and workspace.GlowUpWorld:FindFirstChild("Atmosphere", true)
+	local atmosphere = worldPart("Atmosphere")
 	local center = atmosphere and atmosphere:GetAttribute("BoothCenter")
 	local on = false
 	if root and root:IsA("BasePart") and typeof(center) == "Vector3" then
@@ -423,7 +445,7 @@ local function updateBooth()
 	-- (not in the last few seconds of a phase: the photo would run into the show)
 	local timeLeft = state.endsAt - workspace:GetServerTimeNow()
 	if on and not inBooth and not snapping and BOOTH_PHASES[state.phase] and (state.phase == "Waiting" or timeLeft > 8) then
-		task.spawn(snapPhoto, center :: Vector3)
+		task.spawn(safeSnap, center :: Vector3)
 	end
 	inBooth = on
 end

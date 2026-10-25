@@ -29,6 +29,7 @@ export type Bot = {
 	pet: Model?,
 	skill: number, -- 0..1: how closely they follow the theme (so real players can win too)
 	walkTrack: AnimationTrack?,
+	makeoverToken: {}?, -- the current dress-up routine (nil = stop)
 	danceTrack: AnimationTrack?,
 	busy: boolean, -- walking the runway or on the podium (the wander loop leaves them alone)
 }
@@ -91,7 +92,7 @@ local function dress(bot: Bot)
 			bot.pet:Destroy()
 			bot.pet = nil
 		end
-		local pet = Pets.build(petId)
+		local pet = if bot.model and bot.model.Parent then Pets.build(petId) else nil
 		if pet and bot.model then
 			pet:SetAttribute("PetId", petId)
 			pet.Name = bot.name .. "'s Pet"
@@ -240,7 +241,12 @@ function BotService.init(builtWorld, theme: () -> Catalog.Theme)
 end
 
 -- Makes sure there are `count` Style Bots (adds or removes some).
+local ensuring = false
 function BotService.ensure(count: number)
+	if ensuring or not Avatar.assets(0) then
+		return -- (still filling in, or the bodies haven't loaded yet: the next round adds them)
+	end
+	ensuring = true
 	while #bots > count do
 		BotService.remove(bots[#bots])
 	end
@@ -261,6 +267,7 @@ function BotService.ensure(count: number)
 		end
 		index += 1
 	end
+	ensuring = false
 end
 
 function BotService.remove(bot: Bot)
@@ -268,11 +275,14 @@ function BotService.remove(bot: Bot)
 	if i then
 		table.remove(bots, i)
 	end
+	bot.makeoverToken = nil -- stops its dress-up routine
 	if bot.pet then
 		bot.pet:Destroy()
+		bot.pet = nil
 	end
 	if bot.model then
 		bot.model:Destroy()
+		bot.model = nil
 	end
 end
 
@@ -295,6 +305,7 @@ function BotService.hangOut()
 	local center = floor and floor:GetAttribute("Center")
 	for i, bot in bots do
 		bot.busy = false
+		bot.makeoverToken = nil
 		bot.votes = {}
 		task.spawn(function()
 			if typeof(center) == "Vector3" then
@@ -339,6 +350,11 @@ function BotService.startMakeover(endsIn: number)
 		bot.votes = {}
 		bot.busy = false
 		dress(bot)
+		local token = {}
+		bot.makeoverToken = token
+		local function alive(): boolean
+			return bot.makeoverToken == token and not bot.busy and bot.model ~= nil and bot.model.Parent ~= nil
+		end
 		task.spawn(function()
 			local order = { "Hair", "Face", "Outfit", "Costume", "Pet", "Show" }
 			-- not everyone goes in the same order
@@ -347,23 +363,29 @@ function BotService.startMakeover(endsIn: number)
 			end
 			local perStation = math.max(4, (endsIn - 20) / #order)
 			for _, tab in order do
-				if not bot.model or not bot.model.Parent or bot.busy then
+				if not alive() then
 					return
 				end
 				local station = Stations.byTab[tab]
 				local offset = Vector3.new(rng:NextNumber(-2, 2), 0, rng:NextNumber(-2, 2))
 				-- a real kid is styling here: wait a bit, then style from beside the pad instead
 				local waited = 0
-				while playerOn(station) and waited < 8 do
+				while playerOn(station) and waited < 8 and alive() do
 					task.wait(1)
 					waited += 1
 				end
 				if playerOn(station) then
 					offset = Vector3.new(if rng:NextNumber() < 0.5 then -6 else 6, 0, 2)
 				end
+				if not alive() then
+					return
+				end
 				walkTo(bot, station.pad + offset, 12)
 				task.wait(rng:NextNumber(1.5, 3))
 				for _, key in STATION_KEYS[tab] do
+					if not alive() then
+						return
+					end
 					if rng:NextNumber() < (KEY_CHANCE[key] or 1) then
 						local id = pickItem(key, theme, bot.skill)
 						if id then
@@ -373,10 +395,14 @@ function BotService.startMakeover(endsIn: number)
 						end
 					end
 				end
-				if bot.model and not Catalog.isNone(bot.look.pose) and tab == "Show" then
+				if alive() and bot.model and not Catalog.isNone(bot.look.pose) and tab == "Show" then
 					Avatar.pose(bot.model, bot.look.pose)
 				end
-				task.wait(math.max(0, perStation - 6))
+				-- the rest of this station's time, checking in so the show can call them away
+				local rest = os.clock() + math.max(0, perStation - 6)
+				while os.clock() < rest and alive() do
+					task.wait(0.5)
+				end
 			end
 		end)
 	end
@@ -389,6 +415,7 @@ function BotService.walkRunway(bot: Bot)
 		return
 	end
 	bot.busy = true
+	bot.makeoverToken = nil
 	local humanoid = model:FindFirstChildOfClass("Humanoid") :: Humanoid
 	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
 	Avatar.unseat(model)

@@ -232,13 +232,13 @@ local function buildRooftop(parent: Instance)
 		local top = rng:NextNumber(-30, 55)
 		local bottom = -140
 		local tone = rng:NextInteger(0, 18)
-		part(roof, "Tower", Vector3.new(w, top - bottom, d), CFrame.new(x, (top + bottom) / 2, z), rgb(30 + tone, 24 + tone, 58 + tone))
+		part(roof, "Tower", Vector3.new(w, top - bottom, d), CFrame.new(x, (top + bottom) / 2, z), rgb(30 + tone, 24 + tone, 58 + tone)).CastShadow = false
 		local glow = windowColors[rng:NextInteger(1, #windowColors)]
 		for y = top - 5, math.max(top - 48, -70), -6 do
 			if rng:NextNumber() < 0.7 then
 				local band = part(roof, "Windows", Vector3.new(w + 0.2, 0.9, d + 0.2), CFrame.new(x, y, z), glow, Enum.Material.Neon)
 				band.CastShadow = false
-				band.Transparency = 0.3
+				band.Color = glow:Lerp(rgb(40, 30, 70), 0.25) -- (a little dimmer instead of see-through: cheaper on tablets)
 			end
 		end
 		if top > 35 then
