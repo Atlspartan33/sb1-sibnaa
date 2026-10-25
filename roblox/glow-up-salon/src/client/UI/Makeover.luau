@@ -1,5 +1,6 @@
--- The makeover screen: wash the client's face, then do their hair, makeup, outfit and extras.
--- The client reacts as you go: they talk, smile more, and fill up their happy hearts.
+-- The dressing room: style your own avatar for the theme. Hair, face, outfit, costume pieces,
+-- a pet to walk with you, and your runway pose and effect. Your avatar reacts as you go: it talks,
+-- smiles more, and fills up its happy hearts.
 
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
@@ -9,6 +10,7 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local Avatar = require(ReplicatedStorage.Shared.Avatar)
+local Pets = require(ReplicatedStorage.Shared.Pets)
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Events = require(ReplicatedStorage.Shared.Events)
 local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
@@ -24,7 +26,8 @@ local new = Theme.new
 local Makeover = {}
 Makeover.__index = Makeover
 
-local STEPS = { { "Wash", "🧼" }, { "Hair", "💇" }, { "Makeup", "💄" }, { "Outfit", "👗" } }
+local STEPS = { { "Hair", "💇" }, { "Face", "💄" }, { "Outfit", "👗" }, { "Costume", "🦸" } }
+local COSTUME_KEYS = { "costumeBack", "costumeFace", "costumeWaist", "costumeShoulder", "accessory" }
 local MAKEUP_KEYS = { "eyeshadow", "lashes", "blush", "lipstick" }
 local MAX_BUBBLES = 24
 local SEND_INTERVAL = 0.25
@@ -34,10 +37,12 @@ local STAND = Vector3.new(0, 0.2, 55.5)
 local FACING = Vector3.new(0, 0, -1)
 -- How much of the character fills the window on each tab (studs tall) and where to look.
 local FRAMING = {
-	Makeup = { height = 2.9, focus = "face" },
+	Face = { height = 2.9, focus = "face" },
 	Hair = { height = 4, focus = "hair" },
-	Extras = { height = 4, focus = "hair" },
 	Outfit = { height = 8.6, focus = "body" },
+	Costume = { height = 8.6, focus = "body" },
+	Pet = { height = 9.5, focus = "body" },
+	Show = { height = 8.6, focus = "body" },
 }
 
 local WASH_LINES = { "That tickles! 😆", "Scrub scrub! 🧽", "Ooh, bubbles!", "Keep going! 💪", "I can see my face again!" }
@@ -530,25 +535,21 @@ function Makeover:assign(payload)
 	self.bestShown = false
 	self.hearts = 0
 	self.tool = "soap"
-	self.tab = "Wash"
+	self.tab = "Hair"
 	self.brushed = self.look.hairStyle ~= "hair_messy"
 	self.tangle = if self.brushed then 0 else 1
-	local visits = self.client.visits or 1
-	self.nameTag.Text = "💖 " .. self.client.name .. (if visits > 1 then "  ⭐" .. visits else "")
+	self.nameTag.Text = "💖 " .. self.client.name
 	self:setDone(self.done, true)
 	self.spin = 0
 	self:buildAvatar()
 	self:renderPortrait()
-	self:setTab("Wash")
-	if visits > 1 then
-		self:say("Hi again! It's me, " .. self.client.name .. "! 💖 " .. self.client.story, 6)
-	else
-		self:say(self.client.story, 5)
-	end
+	self:setTab("Hair")
+	local theme = self:theme()
+	self:say(if theme then "Let's get ready for " .. theme.name .. "! ✨" else "Let's get ready for the show! ✨", 4)
 	local wishes = self.client.wishes or {}
 	if #wishes > 0 then
 		local client = self.client
-		task.delay(if visits > 1 then 6.2 else 5.2, function()
+		task.delay(4.2, function()
 			if self.client == client then
 				local texts = {}
 				for _, w in wishes do
@@ -585,6 +586,11 @@ function Makeover:setVisible(visible: boolean)
 			self.model:Destroy()
 			self.model = nil
 		end
+		if self.pet then
+			self.pet:Destroy()
+			self.pet = nil
+		end
+		self.petId = nil
 	elseif not self.model then
 		self:buildAvatar()
 	end
@@ -685,6 +691,19 @@ function Makeover:renderPortrait()
 	self:refreshChecklist()
 	if self.model then
 		Avatar.dress(self.model, self.client, self.look, self:avatarOptions())
+		if self.petId ~= self.look.pet then
+			self.petId = self.look.pet
+			if self.pet then
+				self.pet:Destroy()
+				self.pet = nil
+			end
+			local pet = Pets.build(self.look.pet)
+			if pet then
+				pet:PivotTo(CFrame.new(STAND + Vector3.new(2.6, 0, 0)))
+				pet.Parent = Workspace
+				self.pet = pet
+			end
+		end
 	end
 end
 
@@ -758,11 +777,17 @@ function Makeover:stepsDone()
 			makeupCount += 1
 		end
 	end
+	local costume = false
+	for _, key in COSTUME_KEYS do
+		if not Catalog.isNone(self.look[key]) then
+			costume = true
+		end
+	end
 	return {
-		Wash = self:isWashed(),
 		Hair = not Catalog.isNone(self.look.hairStyle),
-		Makeup = makeupCount >= 2,
+		Face = makeupCount >= 2,
 		Outfit = not Catalog.isNone(self.look.outfit),
+		Costume = costume,
 	}
 end
 
@@ -920,6 +945,15 @@ function Makeover:renderGrid()
 			local body = key == "outfit" or key == "outfitPattern"
 			local zoom = if body then 1 elseif key == "hairStyle" or key == "accessory" then 1.1 else 1.45
 			LookRenderer.render(preview, self.client, previewLook, { headOnly = not body, clean = 1, mood = "smile", zoom = zoom })
+		elseif it.asset then
+			new("ImageLabel", {
+				Size = UDim2.fromScale(1, 1),
+				BackgroundTransparency = 1,
+				Image = "rbxthumb://type=Asset&id=" .. it.asset .. "&w=150&h=150",
+				ScaleType = Enum.ScaleType.Fit,
+				ZIndex = 15,
+				Parent = preview,
+			})
 		elseif category.preview == "icon" and it.icon then
 			new("TextLabel", { Size = UDim2.fromScale(1, 1), Text = it.icon, TextColor3 = C.hotPink, ZIndex = 15, Parent = preview }, { Theme.maxText(56) })
 		elseif it.color then
@@ -1031,6 +1065,9 @@ function Makeover:choose(key: string, itemId: string)
 	Remotes.UpdateLook:FireServer(key, itemId)
 	self:renderPortrait()
 	self:refreshSelection(key)
+	if key == "pose" and self.model then
+		Avatar.pose(self.model, itemId) -- show it right away
+	end
 
 	local theme = self:theme()
 	local it = Catalog.byId[itemId]
@@ -1285,7 +1322,7 @@ function Makeover:cameraTarget(camera: Camera): CFrame?
 	local holder = self.portraitHolder
 	local center = holder.AbsolutePosition + holder.AbsoluteSize / 2
 	local viewport = camera.ViewportSize
-	if viewport.X <= 0 or holder.AbsoluteSize.Y <= 0 then
+	if not viewport or viewport.X <= 0 or holder.AbsoluteSize.Y <= 0 then
 		return nil
 	end
 	local tanV = math.tan(math.rad(camera.FieldOfView) / 2)
@@ -1341,6 +1378,9 @@ function Makeover:startStage()
 		local root = self.model and self.model:FindFirstChild("HumanoidRootPart")
 		if root and root:IsA("BasePart") then
 			root.CFrame = (self.standCFrame :: CFrame) * CFrame.Angles(0, self.spin + sway, 0)
+		end
+		if self.pet and self.pet.Parent and self.model then
+			Pets.follow(self.pet, self.model, dt, -1)
 		end
 
 		local target = self:cameraTarget(camera)

@@ -7,6 +7,7 @@ local Workspace = game:GetService("Workspace")
 
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
+local Pets = require(ReplicatedStorage.Shared.Pets)
 local Progress = require(ReplicatedStorage.Shared.Progress)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Effects = require(script.Parent.Effects)
@@ -28,8 +29,8 @@ function Showcase.new(gui: ScreenGui, ctx)
 	self.panel = new("Frame", {
 		Name = "Showcase",
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -20),
-		Size = UDim2.new(0.55, 0, 0, 196),
+		Position = UDim2.new(0.5, 0, 1, -12),
+		Size = UDim2.new(0.5, 0, 0, 196),
 		BackgroundColor3 = C.white,
 		Visible = false,
 		ZIndex = 40,
@@ -85,6 +86,7 @@ function Showcase.new(gui: ScreenGui, ctx)
 
 	-- Cheer buttons: everyone can tap these, and the emoji float up on every screen
 	local cheers = new("Frame", {
+		Name = "Cheers",
 		Position = UDim2.new(0, 0, 0, 128),
 		Size = UDim2.new(1, 0, 0, 44),
 		BackgroundTransparency = 1,
@@ -97,6 +99,7 @@ function Showcase.new(gui: ScreenGui, ctx)
 			Padding = UDim.new(0, 10),
 		}),
 	})
+	self.cheerRow = cheers
 	for i, emoji in CHEERS do
 		local b = Theme.button({
 			Text = emoji,
@@ -217,12 +220,46 @@ function Showcase:setCamera(view: string?)
 	end
 end
 
+-- Each runway or podium look with a pet gets that pet trotting next to it, on this screen.
+function Showcase:updatePets(world: Instance)
+	local t = os.clock()
+	local dt = math.min(t - (self.petClock or t), 0.1)
+	self.petClock = t
+	self.pets = self.pets or {}
+	for owner, pet in self.pets do
+		if not owner.Parent then
+			pet:Destroy()
+			self.pets[owner] = nil
+		end
+	end
+	for _, m in world:GetChildren() do
+		local petId = m:IsA("Model") and m:GetAttribute("Pet")
+		if type(petId) == "string" and not Catalog.isNone(petId) then
+			local pet = self.pets[m]
+			if not pet then
+				pet = Pets.build(petId)
+				if not pet then
+					continue
+				end
+				local root = m:FindFirstChild("HumanoidRootPart")
+				if root and root:IsA("BasePart") then
+					pet:PivotTo(root.CFrame * CFrame.new(2.6, -3, 0.6))
+				end
+				pet.Parent = Workspace
+				self.pets[m] = pet
+			end
+			Pets.follow(pet, m, dt)
+		end
+	end
+end
+
 -- Moves runway models smoothly on this screen, using the walk the server described in attributes.
 function Showcase:updateWalkers()
 	local world = Workspace:FindFirstChild("GlowUpWorld")
 	if not world then
 		return
 	end
+	self:updatePets(world)
 	local now = Workspace:GetServerTimeNow()
 	for _, m in world:GetChildren() do
 		local from, to, start, walkTime = m:GetAttribute("WalkFrom"), m:GetAttribute("WalkTo"), m:GetAttribute("WalkStart"), m:GetAttribute("WalkTime")
@@ -279,7 +316,8 @@ function Showcase:followWalker()
 	local root = walker and walker:FindFirstChild("HumanoidRootPart")
 	if root and root:IsA("BasePart") then
 		local pos = root.Position
-		local goal = CFrame.lookAt(pos + Vector3.new(6, 3, 13), pos + Vector3.new(0, 1.5, 0))
+		-- aimed below the walker, so they're in the top of the screen above the voting card
+		local goal = CFrame.lookAt(pos + Vector3.new(6, 4, 14), pos + Vector3.new(0, -2.4, 0))
 		local camera = Workspace.CurrentCamera
 		camera.CFrame = camera.CFrame:Lerp(goal, 0.08)
 	end
@@ -322,13 +360,16 @@ function Showcase:show(payload)
 	self.title.Text = "💃 " .. payload.client.name .. " is on the runway! (" .. payload.index .. "/" .. payload.total .. ")"
 	local level = payload.level or 1
 	local stylist = "Styled by " .. payload.stylist .. (if payload.vip then " 👑" else "") .. "  •  Lv " .. level .. " " .. Progress.title(level)
+	-- The card stays short so it doesn't hide the walk; it only grows for the vote buttons
 	if mine then
-		self.prompt.Text = "This is YOUR client! Cheer for them! 📣"
+		self.prompt.Text = "That's YOU! Strike a pose! 📸"
 		self.starRow.Visible = false
 	else
 		self.prompt.Text = "How much do you love it?"
 		self.starRow.Visible = true
 	end
+	self.cheerRow.Position = UDim2.new(0, 0, 0, if mine then 68 else 128)
+	self.panel.Size = UDim2.new(0.5, 0, 0, if mine then 136 else 196)
 	-- Camera flashes from the photographers
 	task.spawn(function()
 		local current = payload

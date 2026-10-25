@@ -11,8 +11,15 @@ CACHE="$HERE/.cache"
 OUT="$HERE/out"
 mkdir -p "$CACHE" "$OUT"
 
-if [ ! -x "$CACHE/luau" ]; then
-	curl -sSL -o "$CACHE/luau.zip" https://github.com/luau-lang/luau/releases/download/0.650/luau-ubuntu.zip
+# Works on Linux, macOS and Windows (Git Bash)
+case "$(uname -s)" in
+	MINGW* | MSYS* | CYGWIN*) ZIP=luau-windows.zip; LUAU="$CACHE/luau.exe"; export PYTHONUTF8=1 ;;
+	Darwin*) ZIP=luau-macos.zip; LUAU="$CACHE/luau" ;;
+	*) ZIP=luau-ubuntu.zip; LUAU="$CACHE/luau" ;;
+esac
+command -v python3 >/dev/null 2>&1 || python3() { python "$@"; }
+if [ ! -x "$LUAU" ]; then
+	curl -sSL -o "$CACHE/luau.zip" "https://github.com/luau-lang/luau/releases/download/0.650/$ZIP"
 	unzip -o -q "$CACHE/luau.zip" -d "$CACHE"
 fi
 if [ ! -f "$CACHE/API-Dump.json" ]; then
@@ -24,14 +31,14 @@ python3 gen_api.py "$CACHE/API-Dump.json"
 python3 bundle.py "$GAME"
 python3 check_props.py "$CACHE/API-Dump.json" "$GAME/src"
 
-"$CACHE/luau" themes_check.luau | tee "$OUT/themes.out" | tail -1
+"$LUAU" themes_check.luau | tee "$OUT/themes.out" | tail -1
 grep -q "gaps	0" "$OUT/themes.out" || { echo "A theme can't be matched with free items"; exit 1; }
-"$CACHE/luau" events.luau > "$OUT/events.out"
+"$LUAU" events.luau > "$OUT/events.out"
 grep -v '^@@' "$OUT/events.out"
 grep -q "errors	0	fails	0" "$OUT/events.out" || { echo "HOLIDAY EVENTS TEST FAILED"; exit 1; }
-"$CACHE/luau" play.luau > "$OUT/play.out"
+"$LUAU" play.luau > "$OUT/play.out"
 grep -v '^@@' "$OUT/play.out"
-"$CACHE/luau" monkey.luau > "$OUT/monkey.out"
+"$LUAU" monkey.luau > "$OUT/monkey.out"
 cat "$OUT/monkey.out"
 grep -q "errors	0	warnings	0" "$OUT/monkey.out" || { echo "MONKEY TEST FAILED"; exit 1; }
 
@@ -40,9 +47,9 @@ if [ "${1:-}" = "--screens" ]; then
 		mkdir -p "$CACHE/three" && (cd "$CACHE/three" && npm init -y >/dev/null && npm install three@0.160.0 >/dev/null)
 	fi
 	python3 render.py "$OUT/play.out" "$OUT/screens"
-	"$CACHE/luau" gallery.luau > "$OUT/gallery.out" && python3 render.py "$OUT/gallery.out" "$OUT/screens"
-	"$CACHE/luau" dolls.luau > "$OUT/dolls.out" && python3 render.py "$OUT/dolls.out" "$OUT/screens"
-	"$CACHE/luau" world3d.luau > "$OUT/world.out" && python3 render3d.py "$OUT/world.out" "$OUT/3d"
+	"$LUAU" gallery.luau > "$OUT/gallery.out" && python3 render.py "$OUT/gallery.out" "$OUT/screens"
+	"$LUAU" dolls.luau > "$OUT/dolls.out" && python3 render.py "$OUT/dolls.out" "$OUT/screens"
+	"$LUAU" world3d.luau > "$OUT/world.out" && python3 render3d.py "$OUT/world.out" "$OUT/3d"
 	python3 render.py "$OUT/events.out" "$OUT/screens" && python3 render3d.py "$OUT/events.out" "$OUT/3d"
 fi
 

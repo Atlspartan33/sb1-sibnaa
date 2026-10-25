@@ -1,6 +1,8 @@
 # 5 Minute Glow Up Salon: Game Design
 
-**Pitch:** Customers walk into your salon straight from their jobs at the shop, covered in grease, mud, paint and frosting. You get **5 minutes** to wash their face, do their hair, makeup and nails, and dress them for the fashion show. Then they walk the runway, everyone cheers, and the best stylist wins.
+**Pitch:** Every round has a fun theme: Superhero, Pirate Adventure, Under the Sea, Dinosaur Party, Outer Space, Princess Ball, Fairy Garden, Rock Star, Animal Friends and more. You get **5 minutes** to dress up your own Roblox character to fit it, with hair, makeup, an outfit, costume pieces, a pet and a runway pose. Then everyone walks the runway, everyone votes, and the best look wins.
+
+> **October 2026 change:** this started as a salon where you washed and styled customers. Tori's favorite Roblox games are the dress-up ones where you style yourself and people vote, so the game now dresses **you**. It's not just about beauty: costume pieces, pets and runway effects count as much as makeup. The washing code is kept on the shelf for a possible salon mode.
 
 **Made for:** girls around 6–10. That means few words, big buttons, lots of happy feedback, and nothing that shames a player in front of others.
 
@@ -90,30 +92,29 @@
 ## Round loop (everyone in the server plays together)
 
 1. **Intermission (20s):** next theme, event banner, weekly goal and a 5-step how-to card. Players can open the Shop or Look Book.
-2. **Makeover (5:00):** each player gets their own dirty client, with tabs 🧼 Wash, 💇 Hair, 💄 Makeup, 💅 Nails, 👗 Outfit, ✨ Extras. If every stylist taps **I'm Done!**, the show starts early.
-3. **Fashion Show (~9s per look):** the client walks the runway and twirls. Other players vote with hearts (+2 coins for voting), and anyone can tap emoji cheers.
+2. **Dressing room (5:00):** your own character stands by the styling chair, shown live in 3D (drag to spin). Tabs: 💇 Hair, 💄 Face (skin tone and makeup), 👗 Outfit, 🦸 Costume (hats, wings and capes, masks, tails, shoulder buddies), 🐶 Pet, 💃 Show (pose and effect). If everyone taps **I'm Done!**, the show starts early.
+3. **Fashion Show (~9s per look):** your look walks the runway with your pet trotting alongside and your effect around you, twirls, then strikes your pose. Other players vote with hearts (+2 coins for voting), and anyone can tap emoji cheers.
 4. **Results (15s):** the top 3 stand on the podium. Each player gets a private card with their stars, coins and judge tips, plus a confetti pop-up.
 
 ## Scoring (out of 5 stars)
 
 | Part | Points |
 |---|---|
-| Face washed (all dirt gone) | 1 |
-| Hair styled (not messy) | 0.5 |
+| The show: costume pieces, a pet, a pose, an effect (4 of them = full points) | 1 |
+| Hair styled | 0.5 |
 | Makeup applied (4 kinds) | 0.75 |
 | Outfit chosen | 0.5 |
-| **Theme:** how many parts match (hair color, eyeshadow, blush, lipstick, outfit or 🎨 color, accessory, nails, face art). 4 matches = full points | 2.25 |
-| Bonus: each client wish granted | 0.25 each |
-| Bonus: nails, face art, accessory | up to 0.35 |
+| **Theme:** how many parts match (hair, makeup, outfit or 🎨 color, hat, costume pieces, pet, pose, effect, face art). 4 matches = full points | 2.25 |
+| Bonus: face art, hat | up to 0.2 |
 
-Forgot to rinse the bubbles? −0.2. The final score is the average of the judges and the players' heart votes, or the judges alone if nobody voted.
+Awards include 🎭 Best Costume, 🐶 Best Buddy and 🔥 Showstopper. The final score is the average of the judges and the players' heart votes, or the judges alone if nobody voted.
 
 ## Coins
 
 - Start with 100. The gift calendar gives 30–80 coins a day.
-- Every show: 20 + 10 per star, +10 for a spotless wash.
+- Every show: 20 + 10 per star.
 - Placing (2+ players): 1st +50, 2nd +30, 3rd +15.
-- +2 for each look you vote on. +25 when a regular becomes a best friend.
+- +2 for each look you vote on.
 
 About 170 items: 72 everyday items are free, 58 cost 30–150 coins, 21 come in Robux packs, and 35 are holiday items that come and go.
 

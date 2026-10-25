@@ -171,6 +171,22 @@ function Clients.returning(name: string, friend: Friend, rng: Random?, eventId: 
 	return client
 end
 
+-- You! The avatar a player dresses up is themselves: their name, their skin tone, no mess.
+function Clients.forPlayer(name: string, skinIndex: number): Client
+	local skin = math.clamp(skinIndex, 1, #SKIN_TONES)
+	return {
+		name = name,
+		story = "",
+		skin = SKIN_TONES[skin],
+		eyes = EYE_COLORS[2],
+		skinIndex = skin,
+		eyesIndex = 2,
+		visits = 1,
+		wishes = {},
+		dirt = {},
+	}
+end
+
 -- Rebuilds a client's face colors from saved indices (for the Look Book).
 function Clients.colors(skinIndex: number, eyesIndex: number): (Color3, Color3)
 	return SKIN_TONES[math.clamp(skinIndex, 1, #SKIN_TONES)], EYE_COLORS[math.clamp(eyesIndex, 1, #EYE_COLORS)]

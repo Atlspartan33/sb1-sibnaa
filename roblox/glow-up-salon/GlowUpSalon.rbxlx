@@ -103,6 +103,10 @@ function Avatar.preload()
 	hairFolder.Parent = folder
 
 	local desc = Instance.new("HumanoidDescription")
+	-- Colors are replaced when a look is put on; these are just a neutral start
+	local start = Color3.fromRGB(161, 102, 66)
+	desc.HeadColor, desc.TorsoColor = start, start
+	desc.LeftArmColor, desc.RightArmColor, desc.LeftLegColor, desc.RightLegColor = start, start, start, start
 	-- A slimmer, more doll-like shape than the default blocky body
 	desc.WidthScale = 0.8
 	desc.DepthScale = 0.85
@@ -154,6 +158,39 @@ function Avatar.preload()
 			pending -= 1
 		end)
 	end
+	-- Costume pieces (wings, capes, masks, tails, buddies, hats) keep their own colors
+	local costumeFolder = Instance.new("Folder")
+	costumeFolder.Name = "Costume"
+	costumeFolder.Parent = folder
+	for _, category in Catalog.Categories do
+		for _, it in category.items do
+			local assetId = it.asset
+			if assetId then
+				pending += 1
+				task.spawn(function()
+					local loaded, model = pcall(InsertService.LoadAsset, InsertService, assetId)
+					local acc = loaded and model and model:FindFirstChildWhichIsA("Accessory", true)
+					local handle = acc and acc:FindFirstChild("Handle")
+					if acc and handle and handle:IsA("BasePart") then
+						for _, p in acc:GetDescendants() do
+							if p:IsA("BasePart") then
+								p.CanCollide = false
+								p.CanQuery = false
+								p.CanTouch = false
+								p.Massless = true
+							end
+						end
+						acc.Name = it.id
+						acc.Parent = costumeFolder
+					else
+						warn("[GlowUp] Could not load costume", it.id, assetId, model)
+					end
+					pending -= 1
+				end)
+			end
+		end
+	end
+
 	local started = os.clock()
 	while pending > 0 and os.clock() - started < 20 do
 		task.wait(0.1)
@@ -348,10 +385,168 @@ local function addHair(glam: Folder, head: BasePart, look, options: LookRenderer
 	end
 end
 
+-- An avatar-shop costume piece, lined up with the matching attachment on the body.
+local function addCostume(glam: Folder, model: Model, itemId: string?)
+	local assets = Avatar.assets(0)
+	local costumes = assets and assets:FindFirstChild("Costume")
+	local template = costumes and costumes:FindFirstChild(itemId or "")
+	if not template then
+		return
+	end
+	local acc = template:Clone() :: Accessory
+	local handle = acc:FindFirstChild("Handle") :: BasePart
+	local accAttachment = handle:FindFirstChildWhichIsA("Attachment")
+	local bodyAttachment = nil
+	if accAttachment then
+		for _, d in model:GetDescendants() do
+			if d:IsA("Attachment") and d.Name == accAttachment.Name and d.Parent and d.Parent:IsA("BasePart") and not d:IsDescendantOf(glam) then
+				bodyAttachment = d
+				break
+			end
+		end
+	end
+	local anchor = (if bodyAttachment then bodyAttachment.Parent else model:FindFirstChild("Head")) :: BasePart
+	if bodyAttachment and accAttachment then
+		handle.CFrame = bodyAttachment.WorldCFrame * accAttachment.CFrame:Inverse()
+	else
+		handle.CFrame = anchor.CFrame
+	end
+	for _, p in acc:GetDescendants() do
+		if p:IsA("JointInstance") or p:IsA("WeldConstraint") then
+			p:Destroy()
+		elseif p:IsA("BasePart") then
+			p.Anchored = false
+			if p ~= handle then
+				attach(p, handle)
+			end
+		end
+	end
+	attach(handle, anchor)
+	acc.Parent = glam
+end
+
+-- Runway effects that follow the avatar around.
+local EFFECTS = {
+	fx_sparkles = { texture = "rbxasset://textures/particles/sparkles_main.dds", colors = { Color3.fromRGB(255, 240, 160), WHITE }, rate = 14, speed = 1.5, size = 0.5 },
+	fx_hearts = { texture = "rbxassetid://5857851618", colors = { Color3.fromRGB(255, 90, 150), Color3.fromRGB(255, 160, 200) }, rate = 6, speed = 2, size = 0.6, up = true },
+	fx_bubbles = { texture = "rbxassetid://6711256324", colors = { Color3.fromRGB(170, 220, 255), WHITE }, rate = 8, speed = 2, size = 0.5, up = true, transparency = 0.5 },
+	fx_stars = { texture = "rbxassetid://6772783963", colors = { Color3.fromRGB(255, 220, 80), WHITE }, rate = 8, speed = 2.5, size = 0.6 },
+	fx_snow = { texture = "rbxasset://textures/particles/sparkles_main.dds", colors = { WHITE, Color3.fromRGB(210, 235, 255) }, rate = 30, speed = 3, size = 0.35, down = true },
+	fx_leaves = { texture = "rbxassetid://6772783963", colors = { Color3.fromRGB(90, 200, 90), Color3.fromRGB(170, 230, 90) }, rate = 8, speed = 2, size = 0.45, down = true },
+	fx_confetti = { texture = "rbxasset://textures/particles/sparkles_main.dds", colors = { Color3.fromRGB(255, 90, 150), Color3.fromRGB(255, 210, 60), Color3.fromRGB(90, 170, 255), Color3.fromRGB(120, 220, 120) }, rate = 25, speed = 5, size = 0.4, down = true },
+}
+
+local function addEffect(glam: Folder, model: Model, effectId: string?)
+	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local chest = (model:FindFirstChild("UpperTorso") or root) :: BasePart?
+	if not root or not chest or not effectId or Catalog.isNone(effectId) then
+		return
+	end
+	local spot = part(glam, "EffectSpot", Vector3.new(0.1, 0.1, 0.1), chest.CFrame, WHITE)
+	spot.Transparency = 1
+	attach(spot, chest)
+	if effectId == "fx_fire" then
+		-- a friendly pink-and-gold fire, all around
+		local fire = Instance.new("Fire")
+		fire.Color = Color3.fromRGB(255, 120, 60)
+		fire.SecondaryColor = Color3.fromRGB(255, 80, 180)
+		fire.Size = 6
+		fire.Heat = 6
+		fire.Parent = spot
+	elseif effectId == "fx_smoke" then
+		-- a puff of smoke for a big entrance, then it clears
+		local smoke = Instance.new("Smoke")
+		smoke.Color = Color3.fromRGB(220, 210, 255)
+		smoke.Opacity = 0.35
+		smoke.Size = 3
+		smoke.RiseVelocity = 2
+		smoke.Parent = spot
+		task.delay(2.5, function()
+			smoke.Enabled = false
+		end)
+	elseif effectId == "fx_rainbow" then
+		local a0 = Instance.new("Attachment")
+		a0.Position = Vector3.new(0, 0.6, 0.3)
+		a0.Parent = spot
+		local a1 = Instance.new("Attachment")
+		a1.Position = Vector3.new(0, -1.4, 0.3)
+		a1.Parent = spot
+		local trail = Instance.new("Trail")
+		trail.Attachment0, trail.Attachment1 = a0, a1
+		trail.Lifetime = 1.2
+		trail.LightEmission = 0.5
+		trail.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 90, 120)),
+			ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 200, 80)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(110, 220, 140)),
+			ColorSequenceKeypoint.new(0.75, Color3.fromRGB(100, 160, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(190, 110, 255)),
+		})
+		trail.Transparency = NumberSequence.new(0.1, 1)
+		trail.Parent = spot
+	else
+		local def = EFFECTS[effectId]
+		if not def then
+			return
+		end
+		local e = Instance.new("ParticleEmitter")
+		e.Texture = def.texture
+		local keypoints = {}
+		for i, c in def.colors do
+			table.insert(keypoints, ColorSequenceKeypoint.new((i - 1) / math.max(#def.colors - 1, 1), c))
+		end
+		e.Color = ColorSequence.new(keypoints)
+		e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, def.size), NumberSequenceKeypoint.new(1, def.size * 0.4) })
+		e.Transparency = NumberSequence.new(def.transparency or 0, 1)
+		e.Lifetime = NumberRange.new(1.2, 2)
+		e.Rate = def.rate
+		e.Speed = NumberRange.new(def.speed * 0.6, def.speed)
+		e.SpreadAngle = Vector2.new(60, 60)
+		e.LightEmission = 0.4
+		e.EmissionDirection = if def.down then Enum.NormalId.Bottom else Enum.NormalId.Top
+		if def.down then
+			-- falls from above the head
+			spot.CFrame = chest.CFrame * CFrame.new(0, 4, 0)
+			e.Shape = Enum.ParticleEmitterShape.Box
+			spot.Size = Vector3.new(4, 0.1, 4)
+		end
+		e.Parent = spot
+	end
+end
+
+-- Plays a runway pose (an emote) once. Returns the track, or nil.
+function Avatar.pose(model: Model, poseId: string?): AnimationTrack?
+	local it = Catalog.byId[poseId or ""]
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if not (it and it.anim and humanoid) then
+		return nil
+	end
+	local animator = humanoid:FindFirstChildOfClass("Animator")
+	if not animator then
+		animator = Instance.new("Animator")
+		animator.Parent = humanoid
+	end
+	local anim = Instance.new("Animation")
+	anim.AnimationId = it.anim
+	local ok, track = pcall(function()
+		return (animator :: Animator):LoadAnimation(anim)
+	end)
+	if ok and track then
+		track.Priority = Enum.AnimationPriority.Action
+		track:Play(0.2)
+		return track
+	end
+	return nil
+end
+
 -- Accessories are built from simple shapes so they match the colors in the menus.
 local function addAccessory(glam: Folder, head: BasePart, look)
 	local it = Catalog.byId[look.accessory]
 	if not it or Catalog.isNone(it.id) then
+		return
+	end
+	if it.asset then
+		addCostume(glam, head.Parent :: Model, it.id)
 		return
 	end
 	local acc = it.draw or it.id
@@ -490,8 +685,8 @@ local function addSkirt(glam: Folder, model: Model, color: Color3, accent: Color
 	for i = 0, count - 1 do
 		local base = hips.CFrame * CFrame.Angles(0, i / count * math.pi * 2, 0)
 		local center = Vector3.new(0, topY - math.cos(tilt) * length / 2, -(r0 + math.sin(tilt) * length / 2))
-		local up = Vector3.new(0, math.cos(tilt), math.sin(tilt))
-		local panelCf = base * CFrame.fromMatrix(center, Vector3.new(1, 0, 0), up)
+		-- tipped outward at the bottom, so the skirt flares
+		local panelCf = base * CFrame.new(center) * CFrame.Angles(tilt, 0, 0)
 		local pleat = if i % 2 == 0 then color else color:Lerp(Color3.new(0, 0, 0), 0.08)
 		local panel = part(glam, "Skirt", Vector3.new(width, length, 0.08), panelCf, pleat)
 		attach(panel, hips)
@@ -519,6 +714,7 @@ end
 -- Dresses `model` in `look`. Safe to call again whenever the look changes.
 -- options: clean / dirtHealth / mood / brushed / tangle, like LookRenderer.render.
 function Avatar.dress(model: Model, client, look, options: LookRenderer.Options?)
+	client = LookRenderer.withSkin(client, look)
 	local old = model:FindFirstChild("Glam")
 	if old then
 		old:Destroy()
@@ -589,6 +785,10 @@ function Avatar.dress(model: Model, client, look, options: LookRenderer.Options?
 
 	addHair(glam, head, look, options)
 	addAccessory(glam, head, look)
+	for _, key in { "costumeBack", "costumeFace", "costumeWaist", "costumeShoulder" } do
+		addCostume(glam, model, look[key])
+	end
+	addEffect(glam, model, look.effect)
 	glam.Parent = model
 	Avatar.setFace(model, client, look, options)
 end
@@ -638,7 +838,8 @@ return Avatar
       <Item class="ModuleScript" referent="4">
         <Properties>
           <string name="Name">Catalog</string>
-          <string name="Source"><![CDATA[-- Everything a stylist can put on a client: hairstyles, colors, makeup, outfits and extras.
+          <string name="Source"><![CDATA[-- Everything you can put on your avatar: hairstyles, skin, makeup, outfits, costume pieces,
+-- a pet to walk with, and a runway pose and effect.
 --
 -- Item fields:
 --   id      unique id (also what gets saved when a player unlocks it)
@@ -671,7 +872,9 @@ export type Item = {
 	level: number?, -- unlocks for free at this stylist level
 	gift: boolean?, -- only from the daily gift calendar
 	draw: string?, -- draw it like another item (e.g. a gold bow uses "acc_bow")
-	icon: string?, -- symbol for nail art
+	icon: string?, -- symbol for nail art, or the picture on a menu card
+	asset: number?, -- an avatar-shop accessory (costume pieces) loaded when the game starts
+	anim: string?, -- a runway pose's animation
 	tags: { string },
 }
 
@@ -699,13 +902,26 @@ local function item(def): Item
 	return def :: Item
 end
 
+-- Nails and their items are kept for later, but have no tab (you can't see nails on the runway).
 Catalog.Tabs = {
-	{ id = "Wash", label = "Wash", icon = "🧼" },
 	{ id = "Hair", label = "Hair", icon = "💇" },
-	{ id = "Makeup", label = "Makeup", icon = "💄" },
-	{ id = "Nails", label = "Nails", icon = "💅" },
+	{ id = "Face", label = "Face", icon = "💄" },
 	{ id = "Outfit", label = "Outfit", icon = "👗" },
-	{ id = "Extras", label = "Extras", icon = "✨" },
+	{ id = "Costume", label = "Costume", icon = "🦸" },
+	{ id = "Pet", label = "Pet", icon = "🐶" },
+	{ id = "Show", label = "Show", icon = "💃" },
+}
+
+-- Skin tones, light to deep. Your own avatar's skin is picked to start.
+Catalog.SkinTones = {
+	{ "Cream", rgb(255, 224, 196) },
+	{ "Peach", rgb(250, 205, 175) },
+	{ "Honey", rgb(241, 194, 160) },
+	{ "Caramel", rgb(224, 172, 128) },
+	{ "Bronze", rgb(198, 134, 94) },
+	{ "Cocoa", rgb(161, 102, 66) },
+	{ "Chestnut", rgb(124, 78, 50) },
+	{ "Espresso", rgb(92, 57, 38) },
 }
 
 Catalog.Categories = {
@@ -724,9 +940,9 @@ Catalog.Categories = {
 			item({ id = "hair_pigtails", name = "Pigtails", price = 60 }),
 			item({ id = "hair_buns", name = "Space Buns", price = 80 }),
 			item({ id = "hair_braid", name = "Side Braid", price = 120 }),
-			item({ id = "hair_updo", name = "Royal Updo", pass = "VIP", tags = { "sparkle" } }),
-			item({ id = "hair_mermaid", name = "Mermaid Waves", pass = "VIP", tags = { "sparkle" } }),
-			item({ id = "hair_princess", name = "Princess Curls", pass = "Princess", draw = "hair_curls", tags = { "sparkle" } }),
+			item({ id = "hair_updo", name = "Royal Updo", pass = "VIP", tags = { "sparkle", "princess" } }),
+			item({ id = "hair_mermaid", name = "Mermaid Waves", pass = "VIP", tags = { "sparkle", "ocean" } }),
+			item({ id = "hair_princess", name = "Princess Curls", pass = "Princess", draw = "hair_curls", tags = { "sparkle", "princess" } }),
 		},
 	},
 	{
@@ -739,13 +955,13 @@ Catalog.Categories = {
 			item({ id = "hc_brown", name = "Brown", color = rgb(105, 66, 40) }), -- no tags: it's the starting color
 			item({ id = "hc_blonde", name = "Blonde", color = rgb(240, 205, 120), tags = { "gold", "bright" } }),
 			item({ id = "hc_strawberry", name = "Strawberry", color = rgb(250, 160, 170), tags = { "pink", "pastel" } }),
-			item({ id = "hc_teal", name = "Teal", color = rgb(60, 170, 180), tags = { "blue", "green" } }),
+			item({ id = "hc_teal", name = "Teal", color = rgb(60, 170, 180), tags = { "blue", "green", "ocean" } }),
 			item({ id = "hc_ginger", name = "Ginger", color = rgb(200, 95, 45), tags = { "red", "bright", "orange" } }),
 			item({ id = "hc_pink", name = "Bubblegum", color = rgb(255, 130, 190), price = 50, tags = { "pink", "pastel" } }),
 			item({ id = "hc_blue", name = "Ocean Blue", color = rgb(70, 140, 235), price = 50, tags = { "blue" } }),
 			item({ id = "hc_purple", name = "Grape", color = rgb(145, 80, 210), price = 50, tags = { "purple" } }),
-			item({ id = "hc_mint", name = "Mint", color = rgb(120, 220, 180), price = 50, tags = { "green", "pastel" } }),
-			item({ id = "hc_silver", name = "Silver", color = rgb(215, 220, 230), price = 75, tags = { "white" } }),
+			item({ id = "hc_mint", name = "Mint", color = rgb(120, 220, 180), price = 50, tags = { "green", "pastel", "fairy" } }),
+			item({ id = "hc_silver", name = "Silver", color = rgb(215, 220, 230), price = 75, tags = { "white", "space", "winter" } }),
 			item({
 				id = "hc_rainbow",
 				name = "Rainbow",
@@ -760,7 +976,7 @@ Catalog.Categories = {
 				pass = "VIP",
 				color = rgb(90, 60, 170),
 				gradient = { rgb(40, 20, 90), rgb(120, 60, 200), rgb(240, 110, 200) },
-				tags = { "purple", "blue", "sparkle", "dark" },
+				tags = { "purple", "blue", "sparkle", "dark", "space" },
 			}),
 			item({ id = "hc_cottoncandy", name = "Cotton Candy", level = 3, color = rgb(255, 170, 220), gradient = { rgb(255, 160, 215), rgb(170, 210, 255) }, tags = { "pink", "pastel", "blue" } }),
 			item({
@@ -769,7 +985,7 @@ Catalog.Categories = {
 				level = 15,
 				color = rgb(230, 170, 255),
 				gradient = { rgb(255, 170, 220), rgb(200, 160, 255), rgb(150, 210, 255), rgb(160, 240, 200) },
-				tags = { "pastel", "pink", "purple", "sparkle" },
+				tags = { "pastel", "pink", "purple", "sparkle", "fairy", "princess" },
 			}),
 			item({ id = "hc_rosegold", name = "Rose Gold", pass = "Princess", color = rgb(240, 170, 150), gradient = { rgb(250, 200, 170), rgb(230, 140, 150) }, tags = { "pink", "gold", "sparkle" } }),
 			-- Holiday colors
@@ -789,9 +1005,22 @@ Catalog.Categories = {
 		},
 	},
 	{
+		key = "skin",
+		label = "Skin",
+		tab = "Face",
+		preview = "swatch",
+		items = (function()
+			local list = {}
+			for i, tone in Catalog.SkinTones do
+				table.insert(list, item({ id = "skin_" .. i, name = tone[1], color = tone[2] }))
+			end
+			return list
+		end)(),
+	},
+	{
 		key = "eyeshadow",
 		label = "Eyeshadow",
-		tab = "Makeup",
+		tab = "Face",
 		preview = "swatch",
 		items = {
 			item({ id = "es_none", name = "None" }),
@@ -801,8 +1030,8 @@ Catalog.Categories = {
 			item({ id = "es_bronze", name = "Bronze", color = rgb(180, 120, 70), tags = { "gold", "brown" } }),
 			item({ id = "es_blue", name = "Sky Blue", color = rgb(110, 170, 255), tags = { "blue" } }),
 			item({ id = "es_purple", name = "Lilac", color = rgb(170, 120, 230), tags = { "purple" } }),
-			item({ id = "es_green", name = "Emerald", color = rgb(60, 180, 120), tags = { "green" } }),
-			item({ id = "es_smoky", name = "Smoky", color = rgb(70, 60, 75), price = 40, tags = { "dark" } }),
+			item({ id = "es_green", name = "Emerald", color = rgb(60, 180, 120), tags = { "green", "dino", "fairy" } }),
+			item({ id = "es_smoky", name = "Smoky", color = rgb(70, 60, 75), price = 40, tags = { "dark", "rockstar" } }),
 			item({ id = "es_gold", name = "Gold Glitter", color = rgb(235, 190, 80), sparkle = true, price = 100, tags = { "gold", "sparkle" } }),
 			item({ id = "es_ice", name = "Ice Glitter", color = rgb(200, 230, 255), sparkle = true, price = 100, tags = { "white", "blue", "sparkle" } }),
 			item({
@@ -812,7 +1041,7 @@ Catalog.Categories = {
 				color = rgb(120, 70, 200),
 				gradient = { rgb(60, 40, 160), rgb(200, 90, 220) },
 				sparkle = true,
-				tags = { "purple", "dark", "sparkle" },
+				tags = { "purple", "dark", "sparkle", "space" },
 			}),
 			item({
 				id = "es_rainbow",
@@ -831,7 +1060,7 @@ Catalog.Categories = {
 	{
 		key = "lashes",
 		label = "Lashes",
-		tab = "Makeup",
+		tab = "Face",
 		preview = "portrait",
 		items = {
 			item({ id = "lash_none", name = "None" }),
@@ -843,7 +1072,7 @@ Catalog.Categories = {
 	{
 		key = "blush",
 		label = "Blush",
-		tab = "Makeup",
+		tab = "Face",
 		preview = "swatch",
 		items = {
 			item({ id = "bl_none", name = "None" }),
@@ -856,19 +1085,19 @@ Catalog.Categories = {
 	{
 		key = "lipstick",
 		label = "Lipstick",
-		tab = "Makeup",
+		tab = "Face",
 		preview = "swatch",
 		items = {
 			item({ id = "lip_none", name = "None" }),
 			item({ id = "lip_nude", name = "Nude", color = rgb(200, 130, 115), tags = { "brown" } }),
-			item({ id = "lip_seaglass", name = "Sea Glass", color = rgb(90, 190, 180), tags = { "blue", "green" } }),
+			item({ id = "lip_seaglass", name = "Sea Glass", color = rgb(90, 190, 180), tags = { "blue", "green", "ocean" } }),
 			item({ id = "lip_clear", name = "Clear Gloss", color = rgb(245, 200, 205), sparkle = true, tags = { "sparkle", "white", "pastel" } }),
 			item({ id = "lip_pink", name = "Pink", color = rgb(250, 110, 170), tags = { "pink", "pastel" } }),
 			item({ id = "lip_red", name = "Classic Red", color = rgb(210, 30, 50), tags = { "red" } }),
 			item({ id = "lip_coral", name = "Coral", color = rgb(255, 120, 90), tags = { "bright", "orange" } }),
 			item({ id = "lip_berry", name = "Berry", color = rgb(150, 40, 100), tags = { "purple", "red" } }),
-			item({ id = "lip_black", name = "Midnight", color = rgb(40, 30, 45), price = 40, tags = { "dark" } }),
-			item({ id = "lip_blue", name = "Mermaid Blue", color = rgb(60, 150, 220), price = 40, tags = { "blue", "green" } }),
+			item({ id = "lip_black", name = "Midnight", color = rgb(40, 30, 45), price = 40, tags = { "dark", "rockstar", "spooky" } }),
+			item({ id = "lip_blue", name = "Mermaid Blue", color = rgb(60, 150, 220), price = 40, tags = { "blue", "green", "ocean" } }),
 			item({ id = "lip_gloss", name = "Pink Gloss", color = rgb(255, 150, 200), sparkle = true, price = 80, tags = { "pink", "pastel", "sparkle" } }),
 			item({ id = "lip_gold", name = "Golden Glam", color = rgb(225, 175, 60), sparkle = true, pass = "VIP", tags = { "gold", "sparkle" } }),
 			item({ id = "lip_bubblegum", name = "Bubblegum Gloss", level = 4, color = rgb(255, 120, 200), sparkle = true, tags = { "pink", "pastel", "sparkle" } }),
@@ -885,19 +1114,19 @@ Catalog.Categories = {
 		items = {
 			item({ id = "outfit_work", name = "Work Overalls", hidden = true, color = rgb(110, 120, 135), accent = rgb(80, 85, 95) }),
 			item({ id = "outfit_tee", name = "Comfy Tee", color = rgb(245, 245, 250), accent = rgb(255, 150, 190), tags = { "white" } }),
-			item({ id = "outfit_denim", name = "Denim Jacket", color = rgb(80, 120, 190), accent = rgb(230, 230, 240), tags = { "blue" } }),
-			item({ id = "outfit_cozy", name = "Cozy Cardigan", color = rgb(160, 105, 70), accent = rgb(245, 225, 200), tags = { "brown", "orange" } }),
-			item({ id = "outfit_band", name = "Band Tee", color = rgb(35, 30, 40), accent = rgb(220, 40, 60), tags = { "dark", "red" } }),
+			item({ id = "outfit_denim", name = "Denim Jacket", color = rgb(80, 120, 190), accent = rgb(230, 230, 240), tags = { "blue", "pirate" } }),
+			item({ id = "outfit_cozy", name = "Cozy Cardigan", color = rgb(160, 105, 70), accent = rgb(245, 225, 200), tags = { "brown", "orange", "pirate", "animal" } }),
+			item({ id = "outfit_band", name = "Band Tee", color = rgb(35, 30, 40), accent = rgb(220, 40, 60), tags = { "dark", "red", "rockstar" } }),
 			item({ id = "outfit_lilac", name = "Lilac Top", color = rgb(170, 120, 230), accent = rgb(245, 205, 90), tags = { "purple", "gold" } }),
-			item({ id = "outfit_lime", name = "Lime Hoodie", color = rgb(130, 210, 90), accent = rgb(255, 255, 255), tags = { "green", "bright" } }),
-			item({ id = "outfit_star", name = "Star Dress", dress = true, level = 6, color = rgb(250, 210, 80), accent = rgb(255, 255, 255), sparkle = true, tags = { "gold", "sparkle", "bright" } }),
-			item({ id = "outfit_party", dress = true, name = "Pink Party Dress", color = rgb(255, 140, 195), accent = rgb(255, 230, 240), tags = { "pink", "pastel" } }),
+			item({ id = "outfit_lime", name = "Lime Hoodie", color = rgb(130, 210, 90), accent = rgb(255, 255, 255), tags = { "green", "bright", "dino" } }),
+			item({ id = "outfit_star", name = "Star Dress", dress = true, level = 6, color = rgb(250, 210, 80), accent = rgb(255, 255, 255), sparkle = true, tags = { "gold", "sparkle", "bright", "space" } }),
+			item({ id = "outfit_party", dress = true, name = "Pink Party Dress", color = rgb(255, 140, 195), accent = rgb(255, 230, 240), tags = { "pink", "pastel", "princess" } }),
 			item({ id = "outfit_sunny", dress = true, name = "Sunny Sundress", color = rgb(255, 210, 70), accent = rgb(255, 255, 255), price = 60, tags = { "bright", "gold" } }),
 			item({ id = "outfit_black", dress = true, name = "Little Black Dress", color = rgb(30, 28, 35), accent = rgb(200, 200, 210), price = 60, tags = { "dark" } }),
-			item({ id = "outfit_rock", name = "Rockstar Jacket", color = rgb(110, 40, 160), accent = rgb(20, 20, 25), price = 100, tags = { "purple", "dark" } }),
-			item({ id = "outfit_mermaid", name = "Mermaid Top", color = rgb(60, 190, 170), accent = rgb(120, 200, 255), sparkle = true, price = 100, tags = { "green", "blue", "sparkle" } }),
-			item({ id = "outfit_red", dress = true, name = "Red Carpet Gown", color = rgb(200, 25, 45), accent = rgb(240, 200, 90), price = 120, tags = { "red", "gold" } }),
-			item({ id = "outfit_snow", dress = true, name = "Snow Princess", color = rgb(200, 230, 255), accent = rgb(255, 255, 255), sparkle = true, price = 150, tags = { "white", "blue", "sparkle" } }),
+			item({ id = "outfit_rock", name = "Rockstar Jacket", color = rgb(110, 40, 160), accent = rgb(20, 20, 25), price = 100, tags = { "purple", "dark", "rockstar" } }),
+			item({ id = "outfit_mermaid", name = "Mermaid Top", color = rgb(60, 190, 170), accent = rgb(120, 200, 255), sparkle = true, price = 100, tags = { "green", "blue", "sparkle", "ocean" } }),
+			item({ id = "outfit_red", dress = true, name = "Red Carpet Gown", color = rgb(200, 25, 45), accent = rgb(240, 200, 90), price = 120, tags = { "red", "gold", "superhero" } }),
+			item({ id = "outfit_snow", dress = true, name = "Snow Princess", color = rgb(200, 230, 255), accent = rgb(255, 255, 255), sparkle = true, price = 150, tags = { "white", "blue", "sparkle", "winter", "princess" } }),
 			item({ id = "outfit_gold", dress = true, name = "Golden Gala Gown", color = rgb(230, 180, 60), accent = rgb(255, 240, 180), sparkle = true, pass = "VIP", tags = { "gold", "sparkle" } }),
 			item({
 				id = "outfit_galaxy", dress = true,
@@ -943,8 +1172,8 @@ Catalog.Categories = {
 				tags = { "gold", "pink", "sparkle" },
 			}),
 			-- Holiday outfits
-			item({ id = "outfit_pumpkin", name = "Pumpkin Dress", dress = true, color = rgb(245, 130, 30), accent = rgb(60, 140, 60), price = 60, event = "halloween", tags = { "orange", "green" } }),
-			item({ id = "outfit_witch", name = "Witch Dress", dress = true, color = rgb(35, 25, 45), accent = rgb(150, 80, 220), price = 80, event = "halloween", tags = { "dark", "purple" } }),
+			item({ id = "outfit_pumpkin", name = "Pumpkin Dress", dress = true, color = rgb(245, 130, 30), accent = rgb(60, 140, 60), price = 60, event = "halloween", tags = { "orange", "green", "spooky" } }),
+			item({ id = "outfit_witch", name = "Witch Dress", dress = true, color = rgb(35, 25, 45), accent = rgb(150, 80, 220), price = 80, event = "halloween", tags = { "dark", "purple", "spooky" } }),
 			item({
 				id = "outfit_midnight",
 				name = "Midnight Witch Gown",
@@ -1084,71 +1313,228 @@ Catalog.Categories = {
 	{
 		key = "gems",
 		label = "Face Art",
-		tab = "Extras",
+		tab = "Face",
 		preview = "portrait",
 		items = {
 			item({ id = "gem_none", name = "None" }),
-			item({ id = "gem_freckles", name = "Freckles" }),
+			item({ id = "gem_freckles", name = "Freckles", tags = { "animal" } }),
 			item({ id = "gem_hearts", name = "Heart Stickers", price = 40, color = rgb(255, 80, 130), tags = { "pink", "red" } }),
-			item({ id = "gem_stars", name = "Star Stickers", price = 40, color = rgb(255, 200, 60), tags = { "gold", "bright" } }),
-			item({ id = "gem_rhinestones", name = "Rhinestones", pass = "VIP", color = rgb(220, 240, 255), tags = { "sparkle", "white" } }),
+			item({ id = "gem_stars", name = "Star Stickers", price = 40, color = rgb(255, 200, 60), tags = { "gold", "bright", "space", "superhero" } }),
+			item({ id = "gem_rhinestones", name = "Rhinestones", pass = "VIP", color = rgb(220, 240, 255), tags = { "sparkle", "white", "princess" } }),
 			item({ id = "gem_pinkgems", name = "Pink Gems", pass = "Princess", draw = "gem_rhinestones", color = rgb(255, 140, 200), tags = { "pink", "sparkle" } }),
-			item({ id = "gem_bats", name = "Bat Stickers", price = 30, event = "halloween", color = rgb(40, 30, 50), tags = { "dark", "purple" } }),
-			item({ id = "gem_web", name = "Spider Web", price = 30, event = "halloween", color = rgb(255, 255, 255), tags = { "dark", "white" } }),
+			item({ id = "gem_bats", name = "Bat Stickers", price = 30, event = "halloween", color = rgb(40, 30, 50), tags = { "dark", "purple", "spooky" } }),
+			item({ id = "gem_web", name = "Spider Web", price = 30, event = "halloween", color = rgb(255, 255, 255), tags = { "dark", "white", "spooky" } }),
 			item({ id = "gem_leaves", name = "Leaf Stickers", price = 30, event = "thanksgiving", color = rgb(220, 110, 30), tags = { "orange", "red", "brown" } }),
 			item({ id = "gem_snowflakes", name = "Snowflakes", price = 30, event = "christmas", color = rgb(200, 230, 255), tags = { "white", "blue", "sparkle" } }),
 		},
 	},
 	{
 		key = "accessory",
-		label = "Accessory",
-		tab = "Extras",
+		label = "Hats & Clips",
+		tab = "Costume",
 		preview = "portrait",
 		items = {
 			item({ id = "acc_none", name = "None" }),
 			item({ id = "acc_bow", name = "Big Bow", color = rgb(255, 110, 170), tags = { "pink" } }),
-			item({ id = "acc_headband", name = "Headband", color = rgb(90, 150, 255), tags = { "blue" } }),
+			item({ id = "acc_headband", name = "Headband", color = rgb(90, 150, 255), tags = { "blue", "superhero" } }),
 			item({ id = "acc_redbow", name = "Red Bow", draw = "acc_bow", color = rgb(220, 30, 50), tags = { "red" } }),
 			item({ id = "acc_purpleband", name = "Purple Headband", draw = "acc_headband", color = rgb(120, 60, 180), tags = { "purple", "dark" } }),
-			item({ id = "acc_flower", name = "Flower", color = rgb(255, 120, 90), tags = { "bright", "orange" } }),
+			item({ id = "acc_flower", name = "Flower", color = rgb(255, 120, 90), tags = { "bright", "orange", "fairy" } }),
 			item({ id = "acc_earrings", name = "Gold Hoops", color = rgb(240, 195, 70), price = 50, tags = { "gold" } }),
-			item({ id = "acc_catears", name = "Cat Ears", color = rgb(40, 35, 45), price = 80, tags = { "dark" } }),
-			item({ id = "acc_crown", name = "Royal Crown", color = rgb(245, 200, 60), pass = "VIP", tags = { "gold", "sparkle" } }),
-			item({ id = "acc_butterfly", name = "Butterfly Clip", level = 2, color = rgb(120, 180, 255), tags = { "blue", "bright" } }),
-			item({ id = "acc_halo", name = "Star Halo", level = 10, color = rgb(255, 220, 80), tags = { "gold", "sparkle" } }),
-			item({ id = "acc_diamondtiara", name = "Diamond Tiara", level = 12, draw = "acc_tiara", color = rgb(210, 235, 255), tags = { "white", "sparkle" } }),
-			item({ id = "acc_tiara", name = "Princess Tiara", pass = "Princess", color = rgb(245, 205, 90), tags = { "gold", "sparkle", "pink" } }),
+			item({ id = "acc_catears", name = "Cat Ears", color = rgb(40, 35, 45), price = 80, tags = { "dark", "animal" } }),
+			item({ id = "acc_crown", name = "Royal Crown", color = rgb(245, 200, 60), pass = "VIP", tags = { "gold", "sparkle", "princess" } }),
+			item({ id = "acc_butterfly", name = "Butterfly Clip", level = 2, color = rgb(120, 180, 255), tags = { "blue", "bright", "fairy" } }),
+			item({ id = "acc_halo", name = "Star Halo", level = 10, color = rgb(255, 220, 80), tags = { "gold", "sparkle", "fairy" } }),
+			item({ id = "acc_diamondtiara", name = "Diamond Tiara", level = 12, draw = "acc_tiara", color = rgb(210, 235, 255), tags = { "white", "sparkle", "princess" } }),
+			item({ id = "acc_tiara", name = "Princess Tiara", pass = "Princess", color = rgb(245, 205, 90), tags = { "gold", "sparkle", "pink", "princess" } }),
 			item({ id = "acc_goldbow", name = "Golden Bow", gift = true, draw = "acc_bow", color = rgb(245, 195, 60), tags = { "gold", "sparkle" } }),
 			item({ id = "acc_rainbowband", name = "Rainbow Headband", gift = true, draw = "acc_headband", color = rgb(255, 120, 160), gradient = { rgb(255, 90, 120), rgb(255, 210, 80), rgb(90, 210, 140), rgb(110, 150, 255) }, tags = { "bright", "pink", "blue" } }),
 			item({ id = "acc_clover", name = "Lucky Clover", gift = true, icon = "🍀", tags = { "green", "bright" } }),
 			item({ id = "acc_rainbowclip", name = "Rainbow Clip", gift = true, icon = "🌈", tags = { "bright", "pink", "blue" } }),
-			item({ id = "acc_unicorn", name = "Unicorn Clip", gift = true, icon = "🦄", tags = { "pink", "purple", "sparkle" } }),
+			item({ id = "acc_unicorn", name = "Unicorn Clip", gift = true, icon = "🦄", tags = { "pink", "purple", "sparkle", "fairy" } }),
 			item({ id = "acc_strawberry", name = "Strawberry Clip", gift = true, icon = "🍓", tags = { "red", "pink" } }),
 			item({ id = "acc_pearls", name = "Pearl Earrings", gift = true, draw = "acc_earrings", color = rgb(250, 245, 240), tags = { "white", "sparkle" } }),
-			item({ id = "acc_witchhat", name = "Witch Hat", color = rgb(35, 25, 45), accent = rgb(150, 80, 220), price = 60, event = "halloween", tags = { "dark", "purple" } }),
-			item({ id = "acc_pumpkin", name = "Pumpkin Clip", color = rgb(245, 130, 30), event = "halloween", tags = { "orange", "green" } }),
+			item({ id = "acc_witchhat", name = "Witch Hat", color = rgb(35, 25, 45), accent = rgb(150, 80, 220), price = 60, event = "halloween", tags = { "dark", "purple", "spooky" } }),
+			item({ id = "acc_pumpkin", name = "Pumpkin Clip", color = rgb(245, 130, 30), event = "halloween", tags = { "orange", "green", "spooky" } }),
 			item({ id = "acc_leafcrown", name = "Leaf Crown", color = rgb(220, 110, 30), price = 50, event = "thanksgiving", tags = { "orange", "red", "gold" } }),
 			item({ id = "acc_santahat", name = "Santa Hat", color = rgb(210, 30, 40), price = 60, event = "christmas", tags = { "red", "white" } }),
-			item({ id = "acc_antlers", name = "Reindeer Antlers", color = rgb(130, 80, 40), event = "christmas", tags = { "brown", "red" } }),
-			item({ id = "acc_earmuffs", name = "Fluffy Earmuffs", color = rgb(255, 255, 255), accent = rgb(110, 170, 255), price = 50, event = "christmas", tags = { "white", "blue" } }),
+			item({ id = "acc_antlers", name = "Reindeer Antlers", color = rgb(130, 80, 40), event = "christmas", tags = { "brown", "red", "animal", "winter" } }),
+			item({ id = "acc_earmuffs", name = "Fluffy Earmuffs", color = rgb(255, 255, 255), accent = rgb(110, 170, 255), price = 50, event = "christmas", tags = { "white", "blue", "winter" } }),
+			-- Hats from the avatar shop
+			item({ id = "acc_piratehat", name = "Pirate Hat", asset = 5891628524, tags = { "pirate", "dark" } }),
+			item({ id = "acc_captainhat", name = "Captain Hat", asset = 5860059125, price = 60, tags = { "pirate", "gold" } }),
+			item({ id = "acc_bandana", name = "Pirate Bandana", asset = 15549772889, price = 40, tags = { "pirate", "red" } }),
+			item({ id = "acc_shellcrown", name = "Seashell Crown", asset = 472605748, tags = { "ocean", "princess" } }),
+			item({ id = "acc_shelltiara", name = "Seashell Tiara", asset = 18261572591, price = 60, tags = { "ocean", "pink" } }),
+			item({ id = "acc_jellyhat", name = "Jellyfish Hat", asset = 32661648, price = 40, tags = { "ocean", "blue" } }),
+			item({ id = "acc_dinohood", name = "Dino Hood", asset = 4735353280, tags = { "dino", "green" } }),
+			item({ id = "acc_bluedino", name = "Blue Dino Hood", asset = 8405410150, price = 60, tags = { "dino", "blue" } }),
+			item({ id = "acc_pinkdino", name = "Pink Dino Hood", asset = 14103824394, price = 60, tags = { "dino", "pink" } }),
+			item({ id = "acc_astronaut", name = "Astronaut Helmet", asset = 1081366, tags = { "space", "white" } }),
+			item({ id = "acc_pastelhelmet", name = "Pastel Space Helmet", asset = 112810928618923, price = 80, tags = { "space", "pastel" } }),
+			item({ id = "acc_antenna", name = "Alien Antenna", asset = 13582999750, tags = { "space", "green" } }),
+			item({ id = "acc_heartantenna", name = "Heart Antennas", asset = 103873506199484, price = 40, tags = { "space", "pink" } }),
+			item({ id = "acc_saturn", name = "Saturn Headband", asset = 136682175562639, price = 40, tags = { "space", "purple" } }),
+			item({ id = "acc_bigcrown", name = "Gold Crown", asset = 138180638995878, tags = { "princess", "gold" } }),
+			item({ id = "acc_sparkletiara", name = "Sparkle Tiara", asset = 15170410900, price = 40, tags = { "princess", "sparkle" } }),
+			item({ id = "acc_flowercrown", name = "Flower Crown", asset = 8918679960, tags = { "fairy", "pastel", "green" } }),
+			item({ id = "acc_unicornhorn", name = "Unicorn Horn", asset = 9255093, price = 40, tags = { "fairy", "princess", "white" } }),
+			item({ id = "acc_starshades", name = "Star Shades", asset = 13174877315, price = 40, tags = { "rockstar", "white" } }),
+			item({ id = "acc_pumpkinhat", name = "Pumpkin Hat", asset = 5673632543, tags = { "spooky", "orange" } }),
+			item({ id = "acc_catears2", name = "Kitty Ears", asset = 9553060342, tags = { "animal", "dark" } }),
+			item({ id = "acc_bunnyears", name = "Bunny Ears", asset = 118301166634769, tags = { "animal", "white" } }),
+			item({ id = "acc_dogears", name = "Puppy Ears", asset = 11142487, tags = { "animal", "brown" } }),
+			item({ id = "acc_bowears", name = "Puppy Ears with Bow", asset = 91964461585164, price = 60, tags = { "animal", "pink" } }),
+		},
+	},
+	-- Costume pieces from the avatar shop (loaded when the game starts; see Avatar.preload)
+	{
+		key = "costumeBack",
+		label = "Wings & Capes",
+		tab = "Costume",
+		preview = "icon",
+		items = {
+			item({ id = "back_none", name = "None" }),
+			item({ id = "back_herocape", name = "Hero Cape", asset = 417456455, tags = { "superhero", "red" } }),
+			item({ id = "back_whitecape", name = "White Cape", asset = 8948936632, price = 40, tags = { "superhero", "white" } }),
+			item({ id = "back_fairywings", name = "Fairy Wings", asset = 7002533200, tags = { "fairy", "princess", "sparkle" } }),
+			item({ id = "back_butterfly", name = "Butterfly Wings", asset = 124754102, price = 60, tags = { "fairy", "bright" } }),
+			item({ id = "back_angel", name = "Angel Wings", asset = 18953818754, price = 60, tags = { "princess", "white", "winter" } }),
+			item({ id = "back_pinkwings", name = "Pink Wings", asset = 15302783937, price = 80, tags = { "pink", "fairy", "princess" } }),
+			item({ id = "back_rainbow", name = "Rainbow Wings", asset = 335080396, pass = "VIP", tags = { "fairy", "bright", "sparkle" } }),
+			item({ id = "back_dragon", name = "Dragon Wings", asset = 17426330725, price = 80, tags = { "dino", "spooky", "dark" } }),
+			item({ id = "back_bat", name = "Bat Wings", asset = 13990532463, tags = { "spooky", "dark", "purple" } }),
+			item({ id = "back_jetpack", name = "Jetpack", asset = 5768738455, tags = { "space", "superhero" } }),
+			item({ id = "back_rocket", name = "Rocket Pack", asset = 15518691268, price = 60, tags = { "space", "red" } }),
+			item({ id = "back_guitar", name = "Rock Guitar", asset = 1744123855, tags = { "rockstar", "dark" } }),
+			item({ id = "back_redguitar", name = "Red Guitar", asset = 1149571901, price = 60, tags = { "rockstar", "red" } }),
+			item({ id = "back_mermaid", name = "Mermaid Tail", asset = 136903969097188, tags = { "ocean", "blue" } }),
+			item({ id = "back_bubbles", name = "Bubbles", asset = 12590283275, price = 40, tags = { "ocean", "blue" } }),
+			item({ id = "back_dinotail", name = "Dino Tail", asset = 119813106280423, price = 40, tags = { "dino", "green" } }),
+			item({ id = "back_dinopack", name = "Dino Backpack", asset = 12610739631, tags = { "dino", "green" } }),
+			item({ id = "back_ghost", name = "Friendly Ghost", asset = 5702357673, price = 60, tags = { "spooky", "white" } }),
+			item({ id = "back_wand", name = "Big Magic Wand", asset = 6444932602, price = 80, tags = { "princess", "fairy", "pink" } }),
+		},
+	},
+	{
+		key = "costumeFace",
+		label = "Masks & Glasses",
+		tab = "Costume",
+		preview = "icon",
+		items = {
+			item({ id = "mask_none", name = "None" }),
+			item({ id = "mask_hero", name = "Hero Mask", asset = 5548522000, tags = { "superhero", "blue" } }),
+			item({ id = "mask_super", name = "Super Mask", asset = 6905344185, price = 40, tags = { "superhero", "red" } }),
+			item({ id = "mask_eyepatch", name = "Eye Patch", asset = 74970669, tags = { "pirate", "dark" } }),
+			item({ id = "mask_popstar", name = "Pop Star Shades", asset = 130883544614317, price = 60, tags = { "rockstar", "sparkle" } }),
+			item({ id = "mask_headphones", name = "Headphones", asset = 14253748049, price = 40, tags = { "rockstar", "dark" } }),
+			item({ id = "mask_mic", name = "Microphone", asset = 4963997880, tags = { "rockstar", "party" } }),
+			item({ id = "mask_starearrings", name = "Star Earrings", asset = 12611548379, price = 40, tags = { "space", "gold", "sparkle" } }),
+		},
+	},
+	{
+		key = "costumeWaist",
+		label = "Tails & More",
+		tab = "Costume",
+		preview = "icon",
+		items = {
+			item({ id = "tail_none", name = "None" }),
+			item({ id = "tail_herobelt", name = "Hero Belt", asset = 13073770809, tags = { "superhero", "gold" } }),
+			item({ id = "tail_cutlass", name = "Toy Cutlass", asset = 5891629882, price = 40, tags = { "pirate", "gold" } }),
+			item({ id = "tail_mermaid", name = "Mermaid Fin", asset = 18209759894, price = 40, tags = { "ocean", "green" } }),
+			item({ id = "tail_dino", name = "Dino Tail", asset = 707915127, tags = { "dino", "brown" } }),
+			item({ id = "tail_cat", name = "Cat Tail", asset = 13547447399, tags = { "animal", "dark" } }),
+			item({ id = "tail_bunny", name = "Bunny Tail", asset = 14447720654, price = 40, tags = { "animal", "white" } }),
+			item({ id = "tail_starwand", name = "Star Wand", asset = 13012740693, tags = { "princess", "fairy", "gold" } }),
+			item({ id = "tail_candybucket", name = "Candy Bucket", asset = 133612550428411, tags = { "spooky", "orange" } }),
+		},
+	},
+	{
+		key = "costumeShoulder",
+		label = "Buddies",
+		tab = "Costume",
+		preview = "icon",
+		items = {
+			item({ id = "pal_none", name = "None" }),
+			item({ id = "pal_parrot", name = "Parrot", asset = 9794669285, tags = { "pirate", "red", "green" } }),
+			item({ id = "pal_jellyfish", name = "Jellyfish", asset = 112156305935859, price = 40, tags = { "ocean", "pink" } }),
+			item({ id = "pal_puffer", name = "Puffer Fish", asset = 15812592051, tags = { "ocean", "orange" } }),
+			item({ id = "pal_bubbles", name = "Bubble Pal", asset = 16396460602, price = 40, tags = { "ocean", "blue" } }),
+			item({ id = "pal_dino", name = "Baby Dino Pal", asset = 11449705506, tags = { "dino", "green" } }),
+			item({ id = "pal_catghost", name = "Kitty Ghost", asset = 16444910191, price = 40, tags = { "spooky", "white" } }),
+			item({ id = "pal_ghost", name = "Little Ghost", asset = 94072997357023, tags = { "spooky", "white" } }),
+			item({ id = "pal_dragon", name = "Neon Dragon", asset = 14972209282, price = 60, tags = { "dino", "fairy", "bright" } }),
+		},
+	},
+	{
+		key = "pet",
+		label = "Pet",
+		tab = "Pet",
+		preview = "icon",
+		items = {
+			item({ id = "pet_none", name = "No Pet", icon = "🚫" }),
+			item({ id = "pet_bean", name = "Bean", icon = "🐶", tags = { "animal", "dark", "white" } }),
+			item({ id = "pet_kitty", name = "Kitty", icon = "🐱", tags = { "animal", "orange" } }),
+			item({ id = "pet_bunny", name = "Bunny", icon = "🐰", tags = { "animal", "white", "fairy" } }),
+			item({ id = "pet_dino", name = "Baby Dino", icon = "🦖", price = 60, tags = { "dino", "green" } }),
+			item({ id = "pet_dragon", name = "Baby Dragon", icon = "🐉", price = 100, tags = { "fairy", "purple", "spooky", "dino" } }),
+			item({ id = "pet_unicorn", name = "Unicorn", icon = "🦄", pass = "Princess", tags = { "princess", "fairy", "sparkle", "pink" } }),
+		},
+	},
+	{
+		key = "pose",
+		label = "Pose",
+		tab = "Show",
+		preview = "icon",
+		items = {
+			item({ id = "pose_none", name = "Just Walk", icon = "🚶" }),
+			item({ id = "pose_wave", name = "Wave", icon = "👋", anim = "rbxassetid://507770239", tags = { "princess" } }),
+			item({ id = "pose_cheer", name = "Hero Cheer", icon = "🙌", anim = "rbxassetid://507770677", tags = { "superhero" } }),
+			item({ id = "pose_point", name = "Point", icon = "👉", anim = "rbxassetid://507770453", tags = { "pirate", "space" } }),
+			item({ id = "pose_dance", name = "Dance", icon = "💃", anim = "rbxassetid://507771019", tags = { "rockstar", "party" } }),
+			item({ id = "pose_dance2", name = "Groove", icon = "🕺", anim = "rbxassetid://507776043", price = 40, tags = { "rockstar", "ocean" } }),
+			item({ id = "pose_dance3", name = "Robot", icon = "🤖", anim = "rbxassetid://507777268", price = 40, tags = { "space", "dino" } }),
+			item({ id = "pose_laugh", name = "Giggle", icon = "😆", anim = "rbxassetid://507770818", tags = { "animal", "fairy" } }),
+		},
+	},
+	{
+		key = "effect",
+		label = "Effect",
+		tab = "Show",
+		preview = "icon",
+		items = {
+			item({ id = "fx_none", name = "None", icon = "🚫" }),
+			item({ id = "fx_sparkles", name = "Sparkles", icon = "✨", tags = { "sparkle", "fairy", "princess" } }),
+			item({ id = "fx_hearts", name = "Hearts", icon = "💖", tags = { "pink", "princess" } }),
+			item({ id = "fx_bubbles", name = "Bubbles", icon = "💧", tags = { "ocean", "blue" } }),
+			item({ id = "fx_stars", name = "Stars", icon = "⭐", tags = { "space", "superhero", "gold" } }),
+			item({ id = "fx_snow", name = "Snow", icon = "❄️", tags = { "winter", "white" } }),
+			item({ id = "fx_leaves", name = "Leaves", icon = "🍃", tags = { "dino", "fairy", "green" } }),
+			item({ id = "fx_fire", name = "Fire", icon = "🔥", price = 60, tags = { "rockstar", "superhero", "dino", "red" } }),
+			item({ id = "fx_smoke", name = "Smoke Entrance", icon = "💨", price = 60, tags = { "spooky", "superhero", "pirate" } }),
+			item({ id = "fx_confetti", name = "Confetti", icon = "🎉", price = 40, tags = { "party", "bright" } }),
+			item({ id = "fx_rainbow", name = "Rainbow Trail", icon = "🌈", pass = "VIP", tags = { "bright", "fairy", "pink", "blue" } }),
 		},
 	},
 }
 
 -- Fashion show themes. The judges reward looks whose tags match.
 Catalog.Themes = {
-	{ id = "pink_party", name = "Pink Party 🎀", tags = { "pink", "sparkle" }, color = rgb(255, 130, 190) },
-	{ id = "rock_star", name = "Rock Star 🎸", tags = { "dark", "red" }, color = rgb(120, 40, 160) },
-	{ id = "under_sea", name = "Under the Sea 🐚", tags = { "blue", "green" }, color = rgb(50, 170, 200) },
-	{ id = "royal_ball", name = "Royal Ball 👑", tags = { "gold", "purple" }, color = rgb(220, 170, 60) },
+	{ id = "superhero", name = "Superhero 🦸", tags = { "superhero", "red", "blue" }, color = rgb(220, 40, 60) },
+	{ id = "pirate", name = "Pirate Adventure 🦜", tags = { "pirate", "brown", "gold" }, color = rgb(150, 90, 40) },
+	{ id = "under_sea", name = "Under the Sea 🐚", tags = { "ocean", "blue", "green" }, color = rgb(50, 170, 200) },
+	{ id = "dino_party", name = "Dinosaur Party 🦖", tags = { "dino", "green", "orange" }, color = rgb(80, 180, 80) },
+	{ id = "space", name = "Outer Space 🚀", tags = { "space", "purple", "dark" }, color = rgb(90, 60, 180) },
+	{ id = "royal_ball", name = "Princess Ball 👑", tags = { "princess", "gold", "sparkle" }, color = rgb(220, 170, 60) },
+	{ id = "fairy", name = "Fairy Garden 🧚", tags = { "fairy", "green", "pastel" }, color = rgb(150, 210, 140) },
+	{ id = "rock_star", name = "Rock Star 🎸", tags = { "rockstar", "dark", "red" }, color = rgb(120, 40, 160) },
+	{ id = "animals", name = "Animal Friends 🐾", tags = { "animal", "brown", "orange" }, color = rgb(200, 130, 60) },
+	{ id = "pink_party", name = "Pink Party 🎀", tags = { "pink", "sparkle", "party" }, color = rgb(255, 130, 190) },
 	{ id = "candy_land", name = "Candy Land 🍭", tags = { "pastel", "bright" }, color = rgb(255, 160, 210) },
-	{ id = "spooky", name = "Spooky Glam 🦇", tags = { "purple", "green" }, color = rgb(90, 50, 130) },
-	{ id = "beach", name = "Sunny Beach 🌴", tags = { "gold", "blue" }, color = rgb(255, 200, 70) },
-	{ id = "winter", name = "Winter Wonderland ❄️", tags = { "white", "blue" }, color = rgb(150, 200, 255) },
-	{ id = "red_carpet", name = "Red Carpet 🌟", tags = { "red", "gold" }, color = rgb(200, 30, 50) },
-	{ id = "halloween", name = "Halloween Party 🎃", tags = { "orange", "dark" }, color = rgb(245, 130, 30), event = "halloween" },
+	{ id = "winter", name = "Winter Wonderland ❄️", tags = { "winter", "white", "blue" }, color = rgb(150, 200, 255) },
+	{ id = "halloween", name = "Halloween Party 🎃", tags = { "spooky", "orange", "dark" }, color = rgb(245, 130, 30), event = "halloween" },
 	{ id = "thanksgiving", name = "Harvest Festival 🍂", tags = { "orange", "brown" }, color = rgb(200, 110, 40), event = "thanksgiving" },
-	{ id = "christmas", name = "Christmas Party 🎄", tags = { "red", "green" }, color = rgb(200, 30, 40), event = "christmas" },
+	{ id = "christmas", name = "Christmas Party 🎄", tags = { "red", "green", "winter" }, color = rgb(200, 30, 40), event = "christmas" },
 } :: { Theme }
 
 -- Day-7 prizes of the daily gift calendar, given in this order
@@ -1175,11 +1561,12 @@ for _, theme in Catalog.Themes do
 	Catalog.themeById[theme.id] = theme
 end
 
--- What every client looks like when they walk in the door.
+-- What every avatar starts with in the dressing room.
 function Catalog.defaultLook(): { [string]: string }
 	return {
-		hairStyle = "hair_messy",
-		hairColor = "hc_brown",
+		hairStyle = "hair_puff",
+		hairColor = "hc_black",
+		skin = "skin_7",
 		eyeshadow = "es_none",
 		lashes = "lash_none",
 		blush = "bl_none",
@@ -1191,7 +1578,33 @@ function Catalog.defaultLook(): { [string]: string }
 		outfitPattern = "pat_none",
 		gems = "gem_none",
 		accessory = "acc_none",
+		costumeBack = "back_none",
+		costumeFace = "mask_none",
+		costumeWaist = "tail_none",
+		costumeShoulder = "pal_none",
+		pet = "pet_none",
+		pose = "pose_none",
+		effect = "fx_none",
 	}
+end
+
+-- The skin color of a look (or the fallback when it has none).
+function Catalog.skinColor(look, fallback: Color3): Color3
+	local it = Catalog.byId[look and look.skin or ""]
+	return if it and it.color then it.color else fallback
+end
+
+-- The skin tone item closest to a color (used to start from the player's own avatar).
+function Catalog.closestSkin(color: Color3): string
+	local best, bestDistance = 1, math.huge
+	for i, tone in Catalog.SkinTones do
+		local c = tone[2]
+		local d = (c.R - color.R) ^ 2 + (c.G - color.G) ^ 2 + (c.B - color.B) ^ 2
+		if d < bestDistance then
+			best, bestDistance = i, d
+		end
+	end
+	return "skin_" .. best
 end
 
 -- Can this item be shown and used right now? Holiday items show up during their event,
@@ -1446,6 +1859,22 @@ function Clients.returning(name: string, friend: Friend, rng: Random?, eventId: 
 	client.eyes = EYE_COLORS[client.eyesIndex]
 	client.visits = friend.visits + 1
 	return client
+end
+
+-- You! The avatar a player dresses up is themselves: their name, their skin tone, no mess.
+function Clients.forPlayer(name: string, skinIndex: number): Client
+	local skin = math.clamp(skinIndex, 1, #SKIN_TONES)
+	return {
+		name = name,
+		story = "",
+		skin = SKIN_TONES[skin],
+		eyes = EYE_COLORS[2],
+		skinIndex = skin,
+		eyesIndex = 2,
+		visits = 1,
+		wishes = {},
+		dirt = {},
+	}
 end
 
 -- Rebuilds a client's face colors from saved indices (for the Look Book).
@@ -2145,9 +2574,21 @@ end
 
 ------------------------------------------------------------------------------
 
+-- The look's skin tone (if it picked one) replaces the client's own.
+local function withSkin(client, look)
+	if look and look.skin and Catalog.byId[look.skin] then
+		local c = table.clone(client)
+		c.skin = Catalog.skinColor(look, client.skin)
+		return c
+	end
+	return client
+end
+LookRenderer.withSkin = withSkin
+
 -- The whole client, head to toe, for the runway and podium (a "paper doll").
 -- `container` should be twice as tall as it is wide.
 function LookRenderer.renderBody(container: GuiObject, client, look, options: Options?): Frame
+	client = withSkin(client, look)
 	local old = container:FindFirstChild("Doll")
 	if old then
 		old:Destroy()
@@ -2235,6 +2676,7 @@ end
 local FINGERS = { { 0.335, 0.27 }, { 0.445, 0.17 }, { 0.555, 0.2 }, { 0.665, 0.28 } } -- x, fingertip y
 
 function LookRenderer.renderHand(container: GuiObject, client, look): Frame
+	client = withSkin(client, look)
 	local old = container:FindFirstChild("Portrait")
 	if old then
 		old:Destroy()
@@ -2310,6 +2752,7 @@ end
 
 -- Draws the client into `container`, replacing any older drawing. Returns the square root frame.
 function LookRenderer.render(container: GuiObject, client, look, options: Options?): Frame
+	client = withSkin(client, look)
 	local old = container:FindFirstChild("Portrait")
 	if old then
 		old:Destroy()
@@ -2363,6 +2806,209 @@ return LookRenderer
       </Item>
       <Item class="ModuleScript" referent="9">
         <Properties>
+          <string name="Name">Pets</string>
+          <string name="Source"><![CDATA[-- Runway buddies, built from simple shapes: Bean the Boston terrier, a kitty, a bunny, a baby
+-- dragon, a unicorn and a dino. Each pet is a small model whose pivot sits on the ground under it,
+-- facing forward (-Z), so it can trot along next to its owner.
+
+local Pets = {}
+
+local rgb = Color3.fromRGB
+local BLACK = rgb(28, 26, 30)
+local WHITE = rgb(250, 250, 252)
+local PINK = rgb(255, 150, 185)
+local GOLD = rgb(250, 200, 70)
+
+local function part(model: Model, name: string, size: Vector3, offset: CFrame, color: Color3, shape: Enum.PartType?, material: Enum.Material?): Part
+	local p = Instance.new("Part")
+	p.Name = name
+	if shape then
+		p.Shape = shape
+	end
+	p.Size = size
+	p.CFrame = offset
+	p.Color = color
+	p.Material = material or Enum.Material.SmoothPlastic
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.CastShadow = true
+	p.Parent = model
+	return p
+end
+
+local function ball(model, name, size: Vector3, pos: Vector3, color, material: Enum.Material?)
+	return part(model, name, size, CFrame.new(pos), color, Enum.PartType.Ball, material)
+end
+
+-- Eyes with a shine, looking forward (-Z)
+local function eyes(model, at: Vector3, spread: number, size: number)
+	for side = -1, 1, 2 do
+		ball(model, "Eye", Vector3.one * size, at + Vector3.new(side * spread, 0, 0), BLACK)
+		ball(model, "Shine", Vector3.one * size * 0.35, at + Vector3.new(side * spread + 0.04, size * 0.2, -size * 0.4), WHITE, Enum.Material.Neon)
+	end
+end
+
+local function legs(model, color: Color3, paw: Color3, width: number, length: number, height: number)
+	for _, x in { -width, width } do
+		for _, z in { -length, length } do
+			part(model, "Leg", Vector3.new(height, 0.28, 0.28), CFrame.new(x, height / 2, z) * CFrame.Angles(0, 0, math.rad(90)), color, Enum.PartType.Cylinder)
+			ball(model, "Paw", Vector3.new(0.32, 0.2, 0.36), Vector3.new(x, 0.1, z - 0.04), paw)
+		end
+	end
+end
+
+local BUILDERS = {}
+
+-- Bean: Tori's Boston terrier. Black with a white blaze, white chest and white paws, tall bat ears.
+function BUILDERS.pet_bean(m: Model)
+	legs(m, BLACK, WHITE, 0.32, 0.45, 0.55)
+	ball(m, "Body", Vector3.new(1.05, 0.85, 1.5), Vector3.new(0, 0.95, 0), BLACK)
+	ball(m, "Chest", Vector3.new(0.7, 0.7, 0.5), Vector3.new(0, 0.95, -0.55), WHITE)
+	ball(m, "Head", Vector3.new(0.95, 0.85, 0.85), Vector3.new(0, 1.6, -0.75), BLACK)
+	part(m, "Blaze", Vector3.new(0.18, 0.55, 0.12), CFrame.new(0, 1.72, -1.15), WHITE)
+	ball(m, "Muzzle", Vector3.new(0.5, 0.38, 0.35), Vector3.new(0, 1.42, -1.13), WHITE)
+	ball(m, "Nose", Vector3.new(0.16, 0.12, 0.12), Vector3.new(0, 1.5, -1.3), BLACK)
+	eyes(m, Vector3.new(0, 1.72, -1.12), 0.24, 0.16)
+	for side = -1, 1, 2 do
+		part(m, "Ear", Vector3.new(0.12, 0.55, 0.32), CFrame.new(side * 0.3, 2.12, -0.72) * CFrame.Angles(0, 0, math.rad(-side * 18)), BLACK)
+		part(m, "EarInside", Vector3.new(0.13, 0.38, 0.18), CFrame.new(side * 0.3, 2.08, -0.75) * CFrame.Angles(0, 0, math.rad(-side * 18)), PINK)
+	end
+	ball(m, "Tail", Vector3.new(0.18, 0.18, 0.25), Vector3.new(0, 1.15, 0.78), BLACK)
+end
+
+function BUILDERS.pet_kitty(m: Model)
+	local orange, cream = rgb(245, 150, 60), rgb(255, 230, 200)
+	legs(m, orange, cream, 0.28, 0.45, 0.5)
+	ball(m, "Body", Vector3.new(0.9, 0.8, 1.45), Vector3.new(0, 0.9, 0), orange)
+	ball(m, "Head", Vector3.new(0.95, 0.85, 0.85), Vector3.new(0, 1.55, -0.72), orange)
+	ball(m, "Muzzle", Vector3.new(0.45, 0.3, 0.3), Vector3.new(0, 1.42, -1.1), cream)
+	ball(m, "Nose", Vector3.new(0.12, 0.09, 0.09), Vector3.new(0, 1.5, -1.24), PINK)
+	eyes(m, Vector3.new(0, 1.67, -1.08), 0.22, 0.17)
+	for side = -1, 1, 2 do
+		part(m, "Ear", Vector3.new(0.1, 0.4, 0.4), CFrame.new(side * 0.3, 2.0, -0.7) * CFrame.Angles(math.rad(45), 0, math.rad(-side * 10)), orange)
+	end
+	for i = 0, 4 do
+		ball(m, "Tail", Vector3.one * 0.24, Vector3.new(0, 1.0 + i * 0.22, 0.75 + math.sin(i * 0.6) * 0.15), if i == 4 then cream else orange)
+	end
+end
+
+function BUILDERS.pet_bunny(m: Model)
+	legs(m, WHITE, WHITE, 0.26, 0.38, 0.4)
+	ball(m, "Body", Vector3.new(0.95, 0.9, 1.2), Vector3.new(0, 0.85, 0), WHITE)
+	ball(m, "Head", Vector3.new(0.85, 0.8, 0.8), Vector3.new(0, 1.5, -0.55), WHITE)
+	ball(m, "Nose", Vector3.new(0.12, 0.09, 0.09), Vector3.new(0, 1.42, -0.95), PINK)
+	eyes(m, Vector3.new(0, 1.6, -0.9), 0.2, 0.15)
+	for side = -1, 1, 2 do
+		ball(m, "Ear", Vector3.new(0.24, 0.85, 0.14), Vector3.new(side * 0.18, 2.25, -0.5), WHITE)
+		ball(m, "EarInside", Vector3.new(0.13, 0.6, 0.1), Vector3.new(side * 0.18, 2.25, -0.54), PINK)
+	end
+	ball(m, "Tail", Vector3.one * 0.35, Vector3.new(0, 0.95, 0.62), WHITE)
+end
+
+function BUILDERS.pet_dragon(m: Model)
+	local purple, belly = rgb(140, 80, 220), rgb(255, 210, 120)
+	legs(m, purple, purple, 0.3, 0.42, 0.5)
+	ball(m, "Body", Vector3.new(1, 0.9, 1.4), Vector3.new(0, 0.95, 0), purple)
+	ball(m, "Belly", Vector3.new(0.6, 0.6, 0.6), Vector3.new(0, 0.85, -0.45), belly)
+	ball(m, "Head", Vector3.new(0.9, 0.8, 0.95), Vector3.new(0, 1.62, -0.8), purple)
+	ball(m, "Snout", Vector3.new(0.55, 0.4, 0.5), Vector3.new(0, 1.48, -1.2), purple)
+	eyes(m, Vector3.new(0, 1.78, -1.15), 0.22, 0.17)
+	for side = -1, 1, 2 do
+		part(m, "Horn", Vector3.new(0.12, 0.4, 0.12), CFrame.new(side * 0.22, 2.1, -0.7) * CFrame.Angles(math.rad(-20), 0, 0), belly)
+		local wing = part(m, "Wing", Vector3.new(1.0, 0.06, 0.7), CFrame.new(side * 0.85, 1.45, 0.05) * CFrame.Angles(0, 0, math.rad(side * 30)), rgb(200, 150, 255))
+		wing.Transparency = 0.1
+	end
+	for i = 0, 3 do
+		ball(m, "Tail", Vector3.one * (0.34 - i * 0.05), Vector3.new(0, 0.85 - i * 0.08, 0.75 + i * 0.25), purple)
+	end
+end
+
+function BUILDERS.pet_unicorn(m: Model)
+	legs(m, WHITE, rgb(220, 200, 255), 0.32, 0.5, 0.7)
+	ball(m, "Body", Vector3.new(1, 0.95, 1.6), Vector3.new(0, 1.15, 0), WHITE)
+	part(m, "Neck", Vector3.new(0.5, 0.75, 0.5), CFrame.new(0, 1.7, -0.6) * CFrame.Angles(math.rad(-25), 0, 0), WHITE)
+	ball(m, "Head", Vector3.new(0.7, 0.7, 0.95), Vector3.new(0, 2.12, -0.9), WHITE)
+	eyes(m, Vector3.new(0, 2.22, -1.22), 0.22, 0.14)
+	part(m, "Horn", Vector3.new(0.13, 0.55, 0.13), CFrame.new(0, 2.6, -1.0) * CFrame.Angles(math.rad(-15), 0, 0), GOLD, nil, Enum.Material.Neon)
+	local mane = { rgb(255, 120, 170), rgb(255, 200, 90), rgb(120, 210, 255), rgb(190, 130, 255) }
+	for i, c in mane do
+		ball(m, "Mane", Vector3.one * 0.32, Vector3.new(0, 2.35 - i * 0.18, -0.65 + i * 0.12), c)
+		ball(m, "Tail", Vector3.one * 0.3, Vector3.new(0, 1.3 - i * 0.15, 0.85 + i * 0.05), c)
+	end
+end
+
+function BUILDERS.pet_dino(m: Model)
+	local green, belly = rgb(90, 190, 90), rgb(240, 230, 140)
+	for side = -1, 1, 2 do
+		part(m, "Leg", Vector3.new(0.35, 0.6, 0.4), CFrame.new(side * 0.3, 0.3, 0.1), green)
+	end
+	ball(m, "Body", Vector3.new(1, 1.1, 1.3), Vector3.new(0, 1.0, 0), green)
+	ball(m, "Belly", Vector3.new(0.6, 0.75, 0.4), Vector3.new(0, 0.95, -0.45), belly)
+	ball(m, "Head", Vector3.new(0.85, 0.75, 1.0), Vector3.new(0, 1.8, -0.55), green)
+	eyes(m, Vector3.new(0, 1.95, -0.95), 0.24, 0.16)
+	for i = 0, 3 do
+		part(m, "Spike", Vector3.new(0.08, 0.3, 0.3), CFrame.new(0, 2.15 - i * 0.28, -0.25 + i * 0.33) * CFrame.Angles(math.rad(45), 0, 0), rgb(255, 150, 60))
+	end
+	for i = 0, 3 do
+		ball(m, "Tail", Vector3.one * (0.45 - i * 0.08), Vector3.new(0, 0.75 - i * 0.12, 0.65 + i * 0.3), green)
+	end
+	for side = -1, 1, 2 do
+		ball(m, "Arm", Vector3.new(0.18, 0.18, 0.3), Vector3.new(side * 0.35, 1.25, -0.55), green)
+	end
+end
+
+-- A fresh pet model, or nil for "no pet".
+function Pets.build(petId: string?): Model?
+	local builder = petId and BUILDERS[petId]
+	if not builder then
+		return nil
+	end
+	local model = Instance.new("Model")
+	model.Name = "Pet"
+	builder(model)
+	local root = Instance.new("Part")
+	root.Name = "Root"
+	root.Size = Vector3.new(0.2, 0.2, 0.2)
+	root.CFrame = CFrame.new()
+	root.Transparency = 1
+	root.Anchored = true
+	root.CanCollide = false
+	root.CanQuery = false
+	root.CanTouch = false
+	root.Parent = model
+	model.PrimaryPart = root
+	return model
+end
+
+-- Trots `pet` beside `owner` (any model with a HumanoidRootPart), a little hop in each step.
+-- Call every frame; dt is the frame time.
+function Pets.follow(pet: Model, owner: Model, dt: number, side: number?)
+	local root = owner:FindFirstChild("HumanoidRootPart")
+	if not (root and root:IsA("BasePart")) or not pet.PrimaryPart then
+		return
+	end
+	local humanoid = owner:FindFirstChildOfClass("Humanoid")
+	local feet = root.Position.Y - (if humanoid then humanoid.HipHeight + root.Size.Y / 2 else 3)
+	local spot = root.CFrame * CFrame.new((side or 1) * 2.6, 0, 0.6)
+	local goal = Vector3.new(spot.Position.X, feet, spot.Position.Z)
+	local current = pet:GetPivot()
+	local pos = current.Position:Lerp(goal, 1 - math.exp(-dt * 6))
+	local moving = (goal - current.Position).Magnitude > 0.2
+	local hop = if moving then math.abs(math.sin(os.clock() * 10)) * 0.35 else math.abs(math.sin(os.clock() * 2)) * 0.06
+	local facing = root.CFrame.LookVector
+	pet:PivotTo(CFrame.lookAt(Vector3.new(pos.X, feet + hop, pos.Z), Vector3.new(pos.X, feet + hop, pos.Z) + Vector3.new(facing.X, 0, facing.Z)))
+end
+
+return Pets
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="10">
+        <Properties>
           <string name="Name">Progress</string>
           <string name="Source"><![CDATA[-- Stylist levels: stars earned in shows add up. Each level needs a few more stars than the last,
 -- so there's always something to work toward.
@@ -2412,7 +3058,7 @@ return Progress
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="10">
+      <Item class="ModuleScript" referent="11">
         <Properties>
           <string name="Name">Remotes</string>
           <string name="Source"><![CDATA[-- All the messages the server and players send each other.
@@ -2474,7 +3120,7 @@ return Remotes
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="11">
+      <Item class="ModuleScript" referent="12">
         <Properties>
           <string name="Name">Scoring</string>
           <string name="Source"><![CDATA[-- The judges! Gives a look 1-5 stars, says what they liked (or what to fix next time),
@@ -2497,7 +3143,12 @@ export type Entry = {
 
 local MAKEUP_KEYS = { "eyeshadow", "lashes", "blush", "lipstick" }
 -- Things that can match the theme. 4 matches = full theme points.
-local THEME_SLOTS = { "hairColor", "eyeshadow", "blush", "lipstick", "outfit", "accessory", "nailColor", "gems" }
+local THEME_SLOTS = {
+	"hairStyle", "hairColor", "eyeshadow", "blush", "lipstick", "outfit", "accessory", "gems",
+	"costumeBack", "costumeFace", "costumeWaist", "costumeShoulder", "pet", "pose", "effect",
+}
+-- The fun stuff that makes a runway walk a show
+local SHOW_KEYS = { "costumeBack", "costumeFace", "costumeWaist", "costumeShoulder", "pet", "pose", "effect" }
 local THEME_MATCHES_NEEDED = 4
 
 function Scoring.roundToHalf(stars: number): number
@@ -2561,23 +3212,23 @@ function Scoring.judge(entry: Entry, theme: Catalog.Theme): (number, { string })
 	local points = 0
 	local comments = {}
 
-	-- Washing (1 point)
-	local clean = math.clamp(entry.clean or 0, 0, 1)
-	points += clean
-	if clean < 0.5 then
-		table.insert(comments, "Wash the face first next time! 🧼")
-	elseif clean < 0.98 then
-		table.insert(comments, "Almost clean... you missed a spot!")
-	elseif not entry.rinsed then
-		points -= 0.2
-		table.insert(comments, "Rinse off the soap bubbles! 🚿")
-	else
-		table.insert(comments, "Squeaky clean! ✨")
+	-- The show (1 point): costume pieces, a pet, a pose, an effect
+	local show = 0
+	for _, key in SHOW_KEYS do
+		if not Catalog.isNone(look[key]) then
+			show += 1
+		end
+	end
+	points += math.min(show, 4) / 4
+	if show == 0 then
+		table.insert(comments, "Add a costume, a pet or a pose to WOW the crowd! 🐶💃")
+	elseif show >= 4 then
+		table.insert(comments, "What a show! 🔥")
 	end
 
 	-- Hair, makeup, outfit (1.75 points for doing each part)
 	if Catalog.isNone(look.hairStyle) then
-		table.insert(comments, "Fix that messy hair! 💇")
+		table.insert(comments, "Pick a hairstyle! 💇")
 	else
 		points += 0.5
 	end
@@ -2617,9 +3268,6 @@ function Scoring.judge(entry: Entry, theme: Catalog.Theme): (number, { string })
 	end
 
 	-- Little extras (bonus)
-	if not Catalog.isNone(look.nailColor) then
-		points += 0.15
-	end
 	if not Catalog.isNone(look.gems) then
 		points += 0.1
 	end
@@ -2631,7 +3279,7 @@ function Scoring.judge(entry: Entry, theme: Catalog.Theme): (number, { string })
 	if stars >= 4.5 then
 		table.insert(comments, 1, "ABSOLUTELY STUNNING! 😍")
 	elseif stars >= 3.5 then
-		table.insert(comments, 1, "What a glow up!")
+		table.insert(comments, 1, "Looking great!")
 	end
 	return stars, comments
 end
@@ -2665,14 +3313,14 @@ end
 
 Scoring.AWARDS = {
 	{ id = "theme", emoji = "⭐" }, -- named "Most <theme>"
-	{ id = "wishes", name = "Wish Granted", emoji = "💌" },
+	{ id = "costume", name = "Best Costume", emoji = "🎭" },
+	{ id = "pet", name = "Best Buddy", emoji = "🐶" },
+	{ id = "show", name = "Showstopper", emoji = "🔥" },
 	{ id = "hair", name = "Best Hair", emoji = "💇" },
 	{ id = "makeup", name = "Makeup Star", emoji = "💄" },
-	{ id = "nails", name = "Nail Queen", emoji = "💅" },
 	{ id = "sparkle", name = "Sparkliest", emoji = "✨" },
 	{ id = "colorful", name = "Most Colorful", emoji = "🌈" },
 	{ id = "extras", name = "Cutest Extras", emoji = "🎀" },
-	{ id = "clean", name = "Squeaky Clean", emoji = "🧼" },
 }
 Scoring.FALLBACK_AWARD = { id = "star", name = "Super Stylist", emoji = "💖" }
 
@@ -2707,17 +3355,22 @@ function Scoring.awardScores(entry: Entry, theme: Catalog.Theme): { [string]: nu
 			applied += 1
 		end
 	end
-	local met, total = wishesMet(entry)
+	local costume = 0
+	for _, key in { "costumeBack", "costumeFace", "costumeWaist", "costumeShoulder" } do
+		if has(key) then
+			costume += 1
+		end
+	end
 	return {
 		theme = Scoring.themeMatches(look, theme) / THEME_MATCHES_NEEDED,
-		wishes = if total > 0 then met / total else 0,
+		costume = math.min(costume / 2, 1),
+		pet = if has("pet") then 0.8 else 0,
+		show = (if has("pose") then 0.4 else 0) + (if has("effect") then 0.4 else 0),
 		hair = (if has("hairStyle") then 0.5 else 0) + (if slotMatches(look, "hairColor", theme) then 0.3 else 0) + (if has("accessory") then 0.1 else 0),
 		makeup = applied / #MAKEUP_KEYS,
-		nails = (if has("nailColor") then 0.6 else 0) + (if has("nailArt") then 0.4 else 0),
 		sparkle = math.min(sparkles / 3, 1),
 		colorful = distinct / #THEME_SLOTS,
 		extras = (if has("accessory") then 0.5 else 0) + (if has("gems") then 0.4 else 0),
-		clean = if (entry.clean or 0) >= 0.98 and entry.rinsed then 0.7 else 0,
 	}
 end
 
@@ -2727,15 +3380,15 @@ return Scoring
       </Item>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="12">
+  <Item class="ServerScriptService" referent="13">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Folder" referent="13">
+    <Item class="Folder" referent="14">
       <Properties>
         <string name="Name">Server</string>
       </Properties>
-      <Item class="ModuleScript" referent="14">
+      <Item class="ModuleScript" referent="15">
         <Properties>
           <string name="Name">DataService</string>
           <string name="Source"><![CDATA[-- Saves each player's coins, unlocked items and Super Soaps between visits.
@@ -3075,7 +3728,7 @@ return DataService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="15">
+      <Item class="Script" referent="16">
         <Properties>
           <string name="Name">Main</string>
           <token name="RunContext">0</token>
@@ -3106,7 +3759,7 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="16">
+      <Item class="ModuleScript" referent="17">
         <Properties>
           <string name="Name">RoundService</string>
           <string name="Source"><![CDATA[-- Runs the game loop that everyone in the server plays together:
@@ -3193,29 +3846,22 @@ end
 ------------------------------------------------------------------------------
 -- Makeover
 
--- Sometimes a client this stylist has styled before comes back.
-local function pickClient(player: Player): Clients.Client
-	local profile = DataService.get(player)
-	if profile and next(profile.friends) and rng:NextNumber() < Config.RETURNING_CLIENT_CHANCE then
-		local names = {}
-		for name in profile.friends do
-			table.insert(names, name)
-		end
-		table.sort(names)
-		local name = names[rng:NextInteger(1, #names)]
-		return Clients.returning(name, profile.friends[name], rng, state.eventId)
-	end
-	-- A new client never gets the same name as one of this stylist's regulars
-	return Clients.generate(rng, state.eventId, profile and profile.friends)
-end
-
+-- Each player dresses up themselves: their name, and the skin tone closest to their own avatar.
 local function assignClient(player: Player)
+	local skinId = "skin_7"
+	local character = player.Character
+	local head = character and character:FindFirstChild("Head")
+	if head and head:IsA("BasePart") then
+		skinId = Catalog.closestSkin(head.Color)
+	end
+	local look = Catalog.defaultLook()
+	look.skin = skinId
 	local entry: Entry = {
 		player = player,
-		client = pickClient(player),
-		look = Catalog.defaultLook(),
-		clean = 0,
-		rinsed = false,
+		client = Clients.forPlayer(player.DisplayName, tonumber(string.match(skinId, "%d+")) or 7),
+		look = look,
+		clean = 1, -- no washing: you come in fresh
+		rinsed = true,
 		done = false,
 		votes = {},
 		assignedAt = now(),
@@ -3347,9 +3993,30 @@ local function buildClientModel(entry: Entry): Model
 		model = buildBlockModel(entry.client.skin, top, outfit and outfit.accent or top)
 	end
 	model.Name = entry.client.name
+	model:SetAttribute("Pet", entry.look.pet) -- each screen walks the pet alongside (Showcase)
 
-	-- a little trail of stars behind every client
+	-- a little trail of stars behind every look, and the player's name over their head
 	local root = model.PrimaryPart or model:FindFirstChild("HumanoidRootPart")
+	local head = model:FindFirstChild("Head")
+	if head and head:IsA("BasePart") then
+		local tag = Instance.new("BillboardGui")
+		tag.Name = "NameTag"
+		tag.Size = UDim2.fromScale(6, 1)
+		tag.StudsOffset = Vector3.new(0, 3.2, 0)
+		tag.LightInfluence = 0
+		tag.MaxDistance = 120
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.fromScale(1, 1)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.FredokaOne
+		label.Text = entry.client.name
+		label.TextScaled = true
+		label.TextColor3 = Color3.fromRGB(176, 18, 91)
+		label.TextStrokeColor3 = Color3.new(1, 1, 1)
+		label.TextStrokeTransparency = 0
+		label.Parent = tag
+		tag.Parent = head
+	end
 	if root then
 		local trail = Instance.new("ParticleEmitter")
 		trail.Name = "StarTrail"
@@ -3437,18 +4104,6 @@ local function walkRunway(entry: Entry)
 	model:SetAttribute("WalkTo", target)
 	model:SetAttribute("WalkStart", now())
 	model:SetAttribute("WalkTime", walkTime)
-	-- The stylist's own avatar steps out to stand next to their client
-	local character = entry.player.Character
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	local stylistRoot = character and character:FindFirstChild("HumanoidRootPart")
-	local returnTo = stylistRoot and (stylistRoot :: BasePart).CFrame
-	task.delay(math.max(0, walkTime - 1), function()
-		if character and character.Parent and humanoid and stylistRoot then
-			humanoid.Sit = false
-			local spot = world.runwayEnd + Vector3.new(3.5, humanoid.HipHeight + (stylistRoot :: BasePart).Size.Y / 2 + 0.1, 0)
-			character:PivotTo(CFrame.lookAt(spot, spot + Vector3.new(0, 0, 1)))
-		end
-	end)
 	task.wait(walkTime)
 	if walk then
 		walk:Stop()
@@ -3456,13 +4111,8 @@ local function walkRunway(entry: Entry)
 	task.wait(1) -- the twirl at the end of the runway
 	if root.Parent then
 		root.CFrame = CFrame.lookAt(target, target + Vector3.new(0, 0, 1))
+		Avatar.pose(model, entry.look.pose) -- then strike their pose
 	end
-	-- After their moment on the runway, the stylist goes back to the salon
-	task.delay(Config.SHOWCASE_SECONDS_PER_LOOK - walkTime - 1, function()
-		if character and character.Parent and returnTo then
-			character:PivotTo(returnTo)
-		end
-	end)
 end
 
 ------------------------------------------------------------------------------
@@ -3589,41 +4239,12 @@ local function scoreAll()
 			local newLevel = Progress.level(profile.stats.totalStars)
 			row.level = newLevel
 
-			-- Remember this client; regulars who come back often become best friends
 			local entry = entries[row.userId]
 			local client = entry.client
-			local friend = profile.friends[client.name] or { visits = 0, skin = client.skinIndex, eyes = client.eyesIndex }
-			friend.visits = math.max(friend.visits, client.visits)
-			friend.skin, friend.eyes = client.skinIndex, client.eyesIndex
-			profile.friends[client.name] = friend
-			local friendCount = 0
-			for _ in profile.friends do
-				friendCount += 1
-			end
-			if friendCount > 12 then
-				-- forget the least-visited regular
-				local lowest, lowestName = math.huge, nil
-				for name, f in profile.friends do
-					if name ~= client.name and f.visits < lowest then
-						lowest, lowestName = f.visits, name
-					end
-				end
-				if lowestName then
-					profile.friends[lowestName] = nil
-				end
-			end
-			if table.find(Config.BEST_FRIEND_VISITS, client.visits) then
-				profile.coins += Config.BEST_FRIEND_COINS
-				task.delay(6, function()
-					if player.Parent then
-						Remotes.Celebrate:FireClient(player, { kind = "friend", name = client.name, visits = client.visits, coins = Config.BEST_FRIEND_COINS })
-					end
-				end)
-			end
 
 			-- Idle players (nothing changed) don't fill the Look Book or the weekly goal
 			local default = Catalog.defaultLook()
-			local touched = entry.clean > 0
+			local touched = false
 			for k, v in entry.look do
 				if default[k] ~= v then
 					touched = true
@@ -3863,7 +4484,7 @@ return RoundService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="17">
+      <Item class="ModuleScript" referent="18">
         <Properties>
           <string name="Name">ShopService</string>
           <string name="Source"><![CDATA[-- Unlocking items with coins, plus Robux Game Passes and Developer Products.
@@ -3981,7 +4602,7 @@ return ShopService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="18">
+      <Item class="ModuleScript" referent="19">
         <Properties>
           <string name="Name">WorldBuilder</string>
           <string name="Source"><![CDATA[-- Builds the salon, runway, big screen, audience seats and winners' podium when the game starts.
@@ -4459,19 +5080,19 @@ return WorldBuilder
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="19">
+  <Item class="StarterPlayer" referent="20">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="20">
+    <Item class="StarterPlayerScripts" referent="21">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="Folder" referent="21">
+      <Item class="Folder" referent="22">
         <Properties>
           <string name="Name">Client</string>
         </Properties>
-        <Item class="LocalScript" referent="22">
+        <Item class="LocalScript" referent="23">
           <Properties>
             <string name="Name">Main</string>
             <string name="Source"><![CDATA[-- Starts the game on each player's screen and connects it to the server.
@@ -4700,11 +5321,11 @@ end)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="Folder" referent="23">
+        <Item class="Folder" referent="24">
           <Properties>
             <string name="Name">UI</string>
           </Properties>
-          <Item class="ModuleScript" referent="24">
+          <Item class="ModuleScript" referent="25">
             <Properties>
               <string name="Name">Effects</string>
               <string name="Source"><![CDATA[-- Fun screen effects: confetti, floating emoji, camera flashes, sparkles and big pop-up cards.
@@ -4878,7 +5499,7 @@ return Effects
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="25">
+          <Item class="ModuleScript" referent="26">
             <Properties>
               <string name="Name">HUD</string>
               <string name="Source"><![CDATA[-- The always-on parts of the screen: round timer, coins, shop button, pop-up messages,
@@ -5069,7 +5690,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		Size = UDim2.new(1, 0, 0, 104),
 		LayoutOrder = 4,
 		Name = "Steps",
-		Text = "1. 🧼 Wash your client's dirty face\n2. 💇 Do their hair   3. 💄 Put on makeup\n4. 👗 Pick an outfit that fits the theme\n5. 📸 Walk the runway - you only get 5 minutes!",
+		Text = "1. 💇 Do your hair   2. 💄 Your face\n3. 👗 An outfit + 🦸 costume that fit the theme\n4. 🐶 Bring a pet   💃 Pick a pose\n5. 📸 Walk the runway - you only get 5 minutes!",
 		TextColor3 = C.text,
 		ZIndex = 41,
 		Parent = rows,
@@ -5169,11 +5790,12 @@ return HUD
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="26">
+          <Item class="ModuleScript" referent="27">
             <Properties>
               <string name="Name">Makeover</string>
-              <string name="Source"><![CDATA[-- The makeover screen: wash the client's face, then do their hair, makeup, outfit and extras.
--- The client reacts as you go: they talk, smile more, and fill up their happy hearts.
+              <string name="Source"><![CDATA[-- The dressing room: style your own avatar for the theme. Hair, face, outfit, costume pieces,
+-- a pet to walk with you, and your runway pose and effect. Your avatar reacts as you go: it talks,
+-- smiles more, and fills up its happy hearts.
 
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
@@ -5183,6 +5805,7 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local Avatar = require(ReplicatedStorage.Shared.Avatar)
+local Pets = require(ReplicatedStorage.Shared.Pets)
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Events = require(ReplicatedStorage.Shared.Events)
 local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
@@ -5198,7 +5821,8 @@ local new = Theme.new
 local Makeover = {}
 Makeover.__index = Makeover
 
-local STEPS = { { "Wash", "🧼" }, { "Hair", "💇" }, { "Makeup", "💄" }, { "Outfit", "👗" } }
+local STEPS = { { "Hair", "💇" }, { "Face", "💄" }, { "Outfit", "👗" }, { "Costume", "🦸" } }
+local COSTUME_KEYS = { "costumeBack", "costumeFace", "costumeWaist", "costumeShoulder", "accessory" }
 local MAKEUP_KEYS = { "eyeshadow", "lashes", "blush", "lipstick" }
 local MAX_BUBBLES = 24
 local SEND_INTERVAL = 0.25
@@ -5208,10 +5832,12 @@ local STAND = Vector3.new(0, 0.2, 55.5)
 local FACING = Vector3.new(0, 0, -1)
 -- How much of the character fills the window on each tab (studs tall) and where to look.
 local FRAMING = {
-	Makeup = { height = 2.9, focus = "face" },
+	Face = { height = 2.9, focus = "face" },
 	Hair = { height = 4, focus = "hair" },
-	Extras = { height = 4, focus = "hair" },
 	Outfit = { height = 8.6, focus = "body" },
+	Costume = { height = 8.6, focus = "body" },
+	Pet = { height = 9.5, focus = "body" },
+	Show = { height = 8.6, focus = "body" },
 }
 
 local WASH_LINES = { "That tickles! 😆", "Scrub scrub! 🧽", "Ooh, bubbles!", "Keep going! 💪", "I can see my face again!" }
@@ -5704,25 +6330,21 @@ function Makeover:assign(payload)
 	self.bestShown = false
 	self.hearts = 0
 	self.tool = "soap"
-	self.tab = "Wash"
+	self.tab = "Hair"
 	self.brushed = self.look.hairStyle ~= "hair_messy"
 	self.tangle = if self.brushed then 0 else 1
-	local visits = self.client.visits or 1
-	self.nameTag.Text = "💖 " .. self.client.name .. (if visits > 1 then "  ⭐" .. visits else "")
+	self.nameTag.Text = "💖 " .. self.client.name
 	self:setDone(self.done, true)
 	self.spin = 0
 	self:buildAvatar()
 	self:renderPortrait()
-	self:setTab("Wash")
-	if visits > 1 then
-		self:say("Hi again! It's me, " .. self.client.name .. "! 💖 " .. self.client.story, 6)
-	else
-		self:say(self.client.story, 5)
-	end
+	self:setTab("Hair")
+	local theme = self:theme()
+	self:say(if theme then "Let's get ready for " .. theme.name .. "! ✨" else "Let's get ready for the show! ✨", 4)
 	local wishes = self.client.wishes or {}
 	if #wishes > 0 then
 		local client = self.client
-		task.delay(if visits > 1 then 6.2 else 5.2, function()
+		task.delay(4.2, function()
 			if self.client == client then
 				local texts = {}
 				for _, w in wishes do
@@ -5759,6 +6381,11 @@ function Makeover:setVisible(visible: boolean)
 			self.model:Destroy()
 			self.model = nil
 		end
+		if self.pet then
+			self.pet:Destroy()
+			self.pet = nil
+		end
+		self.petId = nil
 	elseif not self.model then
 		self:buildAvatar()
 	end
@@ -5859,6 +6486,19 @@ function Makeover:renderPortrait()
 	self:refreshChecklist()
 	if self.model then
 		Avatar.dress(self.model, self.client, self.look, self:avatarOptions())
+		if self.petId ~= self.look.pet then
+			self.petId = self.look.pet
+			if self.pet then
+				self.pet:Destroy()
+				self.pet = nil
+			end
+			local pet = Pets.build(self.look.pet)
+			if pet then
+				pet:PivotTo(CFrame.new(STAND + Vector3.new(2.6, 0, 0)))
+				pet.Parent = Workspace
+				self.pet = pet
+			end
+		end
 	end
 end
 
@@ -5932,11 +6572,17 @@ function Makeover:stepsDone()
 			makeupCount += 1
 		end
 	end
+	local costume = false
+	for _, key in COSTUME_KEYS do
+		if not Catalog.isNone(self.look[key]) then
+			costume = true
+		end
+	end
 	return {
-		Wash = self:isWashed(),
 		Hair = not Catalog.isNone(self.look.hairStyle),
-		Makeup = makeupCount >= 2,
+		Face = makeupCount >= 2,
 		Outfit = not Catalog.isNone(self.look.outfit),
+		Costume = costume,
 	}
 end
 
@@ -6094,6 +6740,15 @@ function Makeover:renderGrid()
 			local body = key == "outfit" or key == "outfitPattern"
 			local zoom = if body then 1 elseif key == "hairStyle" or key == "accessory" then 1.1 else 1.45
 			LookRenderer.render(preview, self.client, previewLook, { headOnly = not body, clean = 1, mood = "smile", zoom = zoom })
+		elseif it.asset then
+			new("ImageLabel", {
+				Size = UDim2.fromScale(1, 1),
+				BackgroundTransparency = 1,
+				Image = "rbxthumb://type=Asset&id=" .. it.asset .. "&w=150&h=150",
+				ScaleType = Enum.ScaleType.Fit,
+				ZIndex = 15,
+				Parent = preview,
+			})
 		elseif category.preview == "icon" and it.icon then
 			new("TextLabel", { Size = UDim2.fromScale(1, 1), Text = it.icon, TextColor3 = C.hotPink, ZIndex = 15, Parent = preview }, { Theme.maxText(56) })
 		elseif it.color then
@@ -6205,6 +6860,9 @@ function Makeover:choose(key: string, itemId: string)
 	Remotes.UpdateLook:FireServer(key, itemId)
 	self:renderPortrait()
 	self:refreshSelection(key)
+	if key == "pose" and self.model then
+		Avatar.pose(self.model, itemId) -- show it right away
+	end
 
 	local theme = self:theme()
 	local it = Catalog.byId[itemId]
@@ -6459,7 +7117,7 @@ function Makeover:cameraTarget(camera: Camera): CFrame?
 	local holder = self.portraitHolder
 	local center = holder.AbsolutePosition + holder.AbsoluteSize / 2
 	local viewport = camera.ViewportSize
-	if viewport.X <= 0 or holder.AbsoluteSize.Y <= 0 then
+	if not viewport or viewport.X <= 0 or holder.AbsoluteSize.Y <= 0 then
 		return nil
 	end
 	local tanV = math.tan(math.rad(camera.FieldOfView) / 2)
@@ -6515,6 +7173,9 @@ function Makeover:startStage()
 		local root = self.model and self.model:FindFirstChild("HumanoidRootPart")
 		if root and root:IsA("BasePart") then
 			root.CFrame = (self.standCFrame :: CFrame) * CFrame.Angles(0, self.spin + sway, 0)
+		end
+		if self.pet and self.pet.Parent and self.model then
+			Pets.follow(self.pet, self.model, dt, -1)
 		end
 
 		local target = self:cameraTarget(camera)
@@ -6630,7 +7291,7 @@ return Makeover
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="27">
+          <Item class="ModuleScript" referent="28">
             <Properties>
               <string name="Name">Results</string>
               <string name="Source"><![CDATA[-- Shows who won the fashion show, what the judges said, and the coins you earned.
@@ -6717,7 +7378,7 @@ function Results:show(results)
 		end
 	end
 
-	self.mine.Text = "Watch the show, then style a client next round! 👀"
+	self.mine.Text = "Watch the show, then get dressed up next round! 👀"
 	local old = self.minePortrait:FindFirstChild("Portrait")
 	if old then
 		old:Destroy()
@@ -6726,7 +7387,7 @@ function Results:show(results)
 		local isMe = row.userId == Players.LocalPlayer.UserId
 		if isMe then
 			local comments = table.concat(row.comments, "  ", 1, math.min(#row.comments, 3))
-			self.mine.Text = string.format("Your %s: %s\n%s  +%d 💰\n%s", row.client.name, Theme.stars(row.stars), row.award or "", row.coins, comments)
+			self.mine.Text = string.format("%s: %s\n%s  +%d 💰\n%s", row.client.name, Theme.stars(row.stars), row.award or "", row.coins, comments)
 			LookRenderer.render(self.minePortrait, row.client, row.look, { clean = 1, mood = if row.stars >= 4 then "grin" else "smile" })
 			self:celebrate(row, #results.rows)
 		end
@@ -6757,7 +7418,7 @@ function Results:show(results)
 		new("TextLabel", {
 			Position = UDim2.new(0, 130, 0, 6),
 			Size = UDim2.new(1, -136, 0, 32),
-			Text = row.stylist .. "'s " .. row.client.name,
+			Text = row.client.name,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			ZIndex = 43,
 			Parent = card,
@@ -6806,7 +7467,7 @@ return Results
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="28">
+          <Item class="ModuleScript" referent="29">
             <Properties>
               <string name="Name">Shop</string>
               <string name="Source"><![CDATA[-- The shop: unlock looks with coins you earn, or get Robux extras.
@@ -6833,7 +7494,7 @@ local ROBUX_ITEMS = {
 	{ kind = "pass", key = "VIP", icon = "👑", title = "VIP Glam Kit", text = "Rainbow & galaxy hair, Royal Updo, Mermaid Waves, Golden Gala Gown, crown and more - plus a VIP badge on the runway!" },
 	{ kind = "pass", key = "Princess", icon = "👸", title = "Princess Pack", text = "Ice Ball Gown, Rose Gown, Princess Curls, Rose Gold hair, a tiara and pink gems!" },
 	{ kind = "pass", key = "DoubleCoins", icon = "💰", title = "2x Coins", text = "Earn double coins after every fashion show, forever." },
-	{ kind = "pass", key = "RunwayStar", icon = "🌟", title = "Runway Star", text = "Confetti cannons and sparkles every time your client walks the runway!" },
+	{ kind = "pass", key = "RunwayStar", icon = "🌟", title = "Runway Star", text = "Confetti cannons and sparkles every time you walk the runway!" },
 	{ kind = "pass", key = "RainbowBubbles", icon = "🫧", title = "Rainbow Bubbles", text = "Washing makes rainbow-colored bubbles. Just for fun!" },
 	{ kind = "product", key = "CoinsSmall", icon = "💰", title = "500 Coins", text = "Unlock new looks a little faster." },
 }
@@ -7311,7 +7972,7 @@ return Shop
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="29">
+          <Item class="ModuleScript" referent="30">
             <Properties>
               <string name="Name">Showcase</string>
               <string name="Source"><![CDATA[-- The fashion show: points the camera at the runway, puts the look on the big screen,
@@ -7323,6 +7984,7 @@ local Workspace = game:GetService("Workspace")
 
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
+local Pets = require(ReplicatedStorage.Shared.Pets)
 local Progress = require(ReplicatedStorage.Shared.Progress)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Effects = require(script.Parent.Effects)
@@ -7344,8 +8006,8 @@ function Showcase.new(gui: ScreenGui, ctx)
 	self.panel = new("Frame", {
 		Name = "Showcase",
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -20),
-		Size = UDim2.new(0.55, 0, 0, 196),
+		Position = UDim2.new(0.5, 0, 1, -12),
+		Size = UDim2.new(0.5, 0, 0, 196),
 		BackgroundColor3 = C.white,
 		Visible = false,
 		ZIndex = 40,
@@ -7401,6 +8063,7 @@ function Showcase.new(gui: ScreenGui, ctx)
 
 	-- Cheer buttons: everyone can tap these, and the emoji float up on every screen
 	local cheers = new("Frame", {
+		Name = "Cheers",
 		Position = UDim2.new(0, 0, 0, 128),
 		Size = UDim2.new(1, 0, 0, 44),
 		BackgroundTransparency = 1,
@@ -7413,6 +8076,7 @@ function Showcase.new(gui: ScreenGui, ctx)
 			Padding = UDim.new(0, 10),
 		}),
 	})
+	self.cheerRow = cheers
 	for i, emoji in CHEERS do
 		local b = Theme.button({
 			Text = emoji,
@@ -7533,12 +8197,46 @@ function Showcase:setCamera(view: string?)
 	end
 end
 
+-- Each runway or podium look with a pet gets that pet trotting next to it, on this screen.
+function Showcase:updatePets(world: Instance)
+	local t = os.clock()
+	local dt = math.min(t - (self.petClock or t), 0.1)
+	self.petClock = t
+	self.pets = self.pets or {}
+	for owner, pet in self.pets do
+		if not owner.Parent then
+			pet:Destroy()
+			self.pets[owner] = nil
+		end
+	end
+	for _, m in world:GetChildren() do
+		local petId = m:IsA("Model") and m:GetAttribute("Pet")
+		if type(petId) == "string" and not Catalog.isNone(petId) then
+			local pet = self.pets[m]
+			if not pet then
+				pet = Pets.build(petId)
+				if not pet then
+					continue
+				end
+				local root = m:FindFirstChild("HumanoidRootPart")
+				if root and root:IsA("BasePart") then
+					pet:PivotTo(root.CFrame * CFrame.new(2.6, -3, 0.6))
+				end
+				pet.Parent = Workspace
+				self.pets[m] = pet
+			end
+			Pets.follow(pet, m, dt)
+		end
+	end
+end
+
 -- Moves runway models smoothly on this screen, using the walk the server described in attributes.
 function Showcase:updateWalkers()
 	local world = Workspace:FindFirstChild("GlowUpWorld")
 	if not world then
 		return
 	end
+	self:updatePets(world)
 	local now = Workspace:GetServerTimeNow()
 	for _, m in world:GetChildren() do
 		local from, to, start, walkTime = m:GetAttribute("WalkFrom"), m:GetAttribute("WalkTo"), m:GetAttribute("WalkStart"), m:GetAttribute("WalkTime")
@@ -7595,7 +8293,8 @@ function Showcase:followWalker()
 	local root = walker and walker:FindFirstChild("HumanoidRootPart")
 	if root and root:IsA("BasePart") then
 		local pos = root.Position
-		local goal = CFrame.lookAt(pos + Vector3.new(6, 3, 13), pos + Vector3.new(0, 1.5, 0))
+		-- aimed below the walker, so they're in the top of the screen above the voting card
+		local goal = CFrame.lookAt(pos + Vector3.new(6, 4, 14), pos + Vector3.new(0, -2.4, 0))
 		local camera = Workspace.CurrentCamera
 		camera.CFrame = camera.CFrame:Lerp(goal, 0.08)
 	end
@@ -7638,13 +8337,16 @@ function Showcase:show(payload)
 	self.title.Text = "💃 " .. payload.client.name .. " is on the runway! (" .. payload.index .. "/" .. payload.total .. ")"
 	local level = payload.level or 1
 	local stylist = "Styled by " .. payload.stylist .. (if payload.vip then " 👑" else "") .. "  •  Lv " .. level .. " " .. Progress.title(level)
+	-- The card stays short so it doesn't hide the walk; it only grows for the vote buttons
 	if mine then
-		self.prompt.Text = "This is YOUR client! Cheer for them! 📣"
+		self.prompt.Text = "That's YOU! Strike a pose! 📸"
 		self.starRow.Visible = false
 	else
 		self.prompt.Text = "How much do you love it?"
 		self.starRow.Visible = true
 	end
+	self.cheerRow.Position = UDim2.new(0, 0, 0, if mine then 68 else 128)
+	self.panel.Size = UDim2.new(0.5, 0, 0, if mine then 136 else 196)
 	-- Camera flashes from the photographers
 	task.spawn(function()
 		local current = payload
@@ -7672,7 +8374,7 @@ return Showcase
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="30">
+          <Item class="ModuleScript" referent="31">
             <Properties>
               <string name="Name">Sounds</string>
               <string name="Source"><![CDATA[-- Plays the sounds and music listed in Config.Sounds (empty ones are skipped).
@@ -7739,7 +8441,7 @@ return Sounds
 ]]></string>
             </Properties>
           </Item>
-          <Item class="ModuleScript" referent="31">
+          <Item class="ModuleScript" referent="32">
             <Properties>
               <string name="Name">Theme</string>
               <string name="Source"><![CDATA[-- Colors, fonts and little helpers for building the game's screens in code.
@@ -7900,7 +8602,7 @@ return Theme
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="32">
+  <Item class="Workspace" referent="33">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>

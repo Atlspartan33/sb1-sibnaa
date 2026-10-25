@@ -74,6 +74,10 @@ function Avatar.preload()
 	hairFolder.Parent = folder
 
 	local desc = Instance.new("HumanoidDescription")
+	-- Colors are replaced when a look is put on; these are just a neutral start
+	local start = Color3.fromRGB(161, 102, 66)
+	desc.HeadColor, desc.TorsoColor = start, start
+	desc.LeftArmColor, desc.RightArmColor, desc.LeftLegColor, desc.RightLegColor = start, start, start, start
 	-- A slimmer, more doll-like shape than the default blocky body
 	desc.WidthScale = 0.8
 	desc.DepthScale = 0.85
@@ -125,6 +129,39 @@ function Avatar.preload()
 			pending -= 1
 		end)
 	end
+	-- Costume pieces (wings, capes, masks, tails, buddies, hats) keep their own colors
+	local costumeFolder = Instance.new("Folder")
+	costumeFolder.Name = "Costume"
+	costumeFolder.Parent = folder
+	for _, category in Catalog.Categories do
+		for _, it in category.items do
+			local assetId = it.asset
+			if assetId then
+				pending += 1
+				task.spawn(function()
+					local loaded, model = pcall(InsertService.LoadAsset, InsertService, assetId)
+					local acc = loaded and model and model:FindFirstChildWhichIsA("Accessory", true)
+					local handle = acc and acc:FindFirstChild("Handle")
+					if acc and handle and handle:IsA("BasePart") then
+						for _, p in acc:GetDescendants() do
+							if p:IsA("BasePart") then
+								p.CanCollide = false
+								p.CanQuery = false
+								p.CanTouch = false
+								p.Massless = true
+							end
+						end
+						acc.Name = it.id
+						acc.Parent = costumeFolder
+					else
+						warn("[GlowUp] Could not load costume", it.id, assetId, model)
+					end
+					pending -= 1
+				end)
+			end
+		end
+	end
+
 	local started = os.clock()
 	while pending > 0 and os.clock() - started < 20 do
 		task.wait(0.1)
@@ -319,10 +356,168 @@ local function addHair(glam: Folder, head: BasePart, look, options: LookRenderer
 	end
 end
 
+-- An avatar-shop costume piece, lined up with the matching attachment on the body.
+local function addCostume(glam: Folder, model: Model, itemId: string?)
+	local assets = Avatar.assets(0)
+	local costumes = assets and assets:FindFirstChild("Costume")
+	local template = costumes and costumes:FindFirstChild(itemId or "")
+	if not template then
+		return
+	end
+	local acc = template:Clone() :: Accessory
+	local handle = acc:FindFirstChild("Handle") :: BasePart
+	local accAttachment = handle:FindFirstChildWhichIsA("Attachment")
+	local bodyAttachment = nil
+	if accAttachment then
+		for _, d in model:GetDescendants() do
+			if d:IsA("Attachment") and d.Name == accAttachment.Name and d.Parent and d.Parent:IsA("BasePart") and not d:IsDescendantOf(glam) then
+				bodyAttachment = d
+				break
+			end
+		end
+	end
+	local anchor = (if bodyAttachment then bodyAttachment.Parent else model:FindFirstChild("Head")) :: BasePart
+	if bodyAttachment and accAttachment then
+		handle.CFrame = bodyAttachment.WorldCFrame * accAttachment.CFrame:Inverse()
+	else
+		handle.CFrame = anchor.CFrame
+	end
+	for _, p in acc:GetDescendants() do
+		if p:IsA("JointInstance") or p:IsA("WeldConstraint") then
+			p:Destroy()
+		elseif p:IsA("BasePart") then
+			p.Anchored = false
+			if p ~= handle then
+				attach(p, handle)
+			end
+		end
+	end
+	attach(handle, anchor)
+	acc.Parent = glam
+end
+
+-- Runway effects that follow the avatar around.
+local EFFECTS = {
+	fx_sparkles = { texture = "rbxasset://textures/particles/sparkles_main.dds", colors = { Color3.fromRGB(255, 240, 160), WHITE }, rate = 14, speed = 1.5, size = 0.5 },
+	fx_hearts = { texture = "rbxassetid://5857851618", colors = { Color3.fromRGB(255, 90, 150), Color3.fromRGB(255, 160, 200) }, rate = 6, speed = 2, size = 0.6, up = true },
+	fx_bubbles = { texture = "rbxassetid://6711256324", colors = { Color3.fromRGB(170, 220, 255), WHITE }, rate = 8, speed = 2, size = 0.5, up = true, transparency = 0.5 },
+	fx_stars = { texture = "rbxassetid://6772783963", colors = { Color3.fromRGB(255, 220, 80), WHITE }, rate = 8, speed = 2.5, size = 0.6 },
+	fx_snow = { texture = "rbxasset://textures/particles/sparkles_main.dds", colors = { WHITE, Color3.fromRGB(210, 235, 255) }, rate = 30, speed = 3, size = 0.35, down = true },
+	fx_leaves = { texture = "rbxassetid://6772783963", colors = { Color3.fromRGB(90, 200, 90), Color3.fromRGB(170, 230, 90) }, rate = 8, speed = 2, size = 0.45, down = true },
+	fx_confetti = { texture = "rbxasset://textures/particles/sparkles_main.dds", colors = { Color3.fromRGB(255, 90, 150), Color3.fromRGB(255, 210, 60), Color3.fromRGB(90, 170, 255), Color3.fromRGB(120, 220, 120) }, rate = 25, speed = 5, size = 0.4, down = true },
+}
+
+local function addEffect(glam: Folder, model: Model, effectId: string?)
+	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local chest = (model:FindFirstChild("UpperTorso") or root) :: BasePart?
+	if not root or not chest or not effectId or Catalog.isNone(effectId) then
+		return
+	end
+	local spot = part(glam, "EffectSpot", Vector3.new(0.1, 0.1, 0.1), chest.CFrame, WHITE)
+	spot.Transparency = 1
+	attach(spot, chest)
+	if effectId == "fx_fire" then
+		-- a friendly pink-and-gold fire, all around
+		local fire = Instance.new("Fire")
+		fire.Color = Color3.fromRGB(255, 120, 60)
+		fire.SecondaryColor = Color3.fromRGB(255, 80, 180)
+		fire.Size = 6
+		fire.Heat = 6
+		fire.Parent = spot
+	elseif effectId == "fx_smoke" then
+		-- a puff of smoke for a big entrance, then it clears
+		local smoke = Instance.new("Smoke")
+		smoke.Color = Color3.fromRGB(220, 210, 255)
+		smoke.Opacity = 0.35
+		smoke.Size = 3
+		smoke.RiseVelocity = 2
+		smoke.Parent = spot
+		task.delay(2.5, function()
+			smoke.Enabled = false
+		end)
+	elseif effectId == "fx_rainbow" then
+		local a0 = Instance.new("Attachment")
+		a0.Position = Vector3.new(0, 0.6, 0.3)
+		a0.Parent = spot
+		local a1 = Instance.new("Attachment")
+		a1.Position = Vector3.new(0, -1.4, 0.3)
+		a1.Parent = spot
+		local trail = Instance.new("Trail")
+		trail.Attachment0, trail.Attachment1 = a0, a1
+		trail.Lifetime = 1.2
+		trail.LightEmission = 0.5
+		trail.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 90, 120)),
+			ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 200, 80)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(110, 220, 140)),
+			ColorSequenceKeypoint.new(0.75, Color3.fromRGB(100, 160, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(190, 110, 255)),
+		})
+		trail.Transparency = NumberSequence.new(0.1, 1)
+		trail.Parent = spot
+	else
+		local def = EFFECTS[effectId]
+		if not def then
+			return
+		end
+		local e = Instance.new("ParticleEmitter")
+		e.Texture = def.texture
+		local keypoints = {}
+		for i, c in def.colors do
+			table.insert(keypoints, ColorSequenceKeypoint.new((i - 1) / math.max(#def.colors - 1, 1), c))
+		end
+		e.Color = ColorSequence.new(keypoints)
+		e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, def.size), NumberSequenceKeypoint.new(1, def.size * 0.4) })
+		e.Transparency = NumberSequence.new(def.transparency or 0, 1)
+		e.Lifetime = NumberRange.new(1.2, 2)
+		e.Rate = def.rate
+		e.Speed = NumberRange.new(def.speed * 0.6, def.speed)
+		e.SpreadAngle = Vector2.new(60, 60)
+		e.LightEmission = 0.4
+		e.EmissionDirection = if def.down then Enum.NormalId.Bottom else Enum.NormalId.Top
+		if def.down then
+			-- falls from above the head
+			spot.CFrame = chest.CFrame * CFrame.new(0, 4, 0)
+			e.Shape = Enum.ParticleEmitterShape.Box
+			spot.Size = Vector3.new(4, 0.1, 4)
+		end
+		e.Parent = spot
+	end
+end
+
+-- Plays a runway pose (an emote) once. Returns the track, or nil.
+function Avatar.pose(model: Model, poseId: string?): AnimationTrack?
+	local it = Catalog.byId[poseId or ""]
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if not (it and it.anim and humanoid) then
+		return nil
+	end
+	local animator = humanoid:FindFirstChildOfClass("Animator")
+	if not animator then
+		animator = Instance.new("Animator")
+		animator.Parent = humanoid
+	end
+	local anim = Instance.new("Animation")
+	anim.AnimationId = it.anim
+	local ok, track = pcall(function()
+		return (animator :: Animator):LoadAnimation(anim)
+	end)
+	if ok and track then
+		track.Priority = Enum.AnimationPriority.Action
+		track:Play(0.2)
+		return track
+	end
+	return nil
+end
+
 -- Accessories are built from simple shapes so they match the colors in the menus.
 local function addAccessory(glam: Folder, head: BasePart, look)
 	local it = Catalog.byId[look.accessory]
 	if not it or Catalog.isNone(it.id) then
+		return
+	end
+	if it.asset then
+		addCostume(glam, head.Parent :: Model, it.id)
 		return
 	end
 	local acc = it.draw or it.id
@@ -461,8 +656,8 @@ local function addSkirt(glam: Folder, model: Model, color: Color3, accent: Color
 	for i = 0, count - 1 do
 		local base = hips.CFrame * CFrame.Angles(0, i / count * math.pi * 2, 0)
 		local center = Vector3.new(0, topY - math.cos(tilt) * length / 2, -(r0 + math.sin(tilt) * length / 2))
-		local up = Vector3.new(0, math.cos(tilt), math.sin(tilt))
-		local panelCf = base * CFrame.fromMatrix(center, Vector3.new(1, 0, 0), up)
+		-- tipped outward at the bottom, so the skirt flares
+		local panelCf = base * CFrame.new(center) * CFrame.Angles(tilt, 0, 0)
 		local pleat = if i % 2 == 0 then color else color:Lerp(Color3.new(0, 0, 0), 0.08)
 		local panel = part(glam, "Skirt", Vector3.new(width, length, 0.08), panelCf, pleat)
 		attach(panel, hips)
@@ -490,6 +685,7 @@ end
 -- Dresses `model` in `look`. Safe to call again whenever the look changes.
 -- options: clean / dirtHealth / mood / brushed / tangle, like LookRenderer.render.
 function Avatar.dress(model: Model, client, look, options: LookRenderer.Options?)
+	client = LookRenderer.withSkin(client, look)
 	local old = model:FindFirstChild("Glam")
 	if old then
 		old:Destroy()
@@ -560,6 +756,10 @@ function Avatar.dress(model: Model, client, look, options: LookRenderer.Options?
 
 	addHair(glam, head, look, options)
 	addAccessory(glam, head, look)
+	for _, key in { "costumeBack", "costumeFace", "costumeWaist", "costumeShoulder" } do
+		addCostume(glam, model, look[key])
+	end
+	addEffect(glam, model, look.effect)
 	glam.Parent = model
 	Avatar.setFace(model, client, look, options)
 end

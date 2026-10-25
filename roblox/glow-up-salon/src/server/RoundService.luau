@@ -82,29 +82,22 @@ end
 ------------------------------------------------------------------------------
 -- Makeover
 
--- Sometimes a client this stylist has styled before comes back.
-local function pickClient(player: Player): Clients.Client
-	local profile = DataService.get(player)
-	if profile and next(profile.friends) and rng:NextNumber() < Config.RETURNING_CLIENT_CHANCE then
-		local names = {}
-		for name in profile.friends do
-			table.insert(names, name)
-		end
-		table.sort(names)
-		local name = names[rng:NextInteger(1, #names)]
-		return Clients.returning(name, profile.friends[name], rng, state.eventId)
-	end
-	-- A new client never gets the same name as one of this stylist's regulars
-	return Clients.generate(rng, state.eventId, profile and profile.friends)
-end
-
+-- Each player dresses up themselves: their name, and the skin tone closest to their own avatar.
 local function assignClient(player: Player)
+	local skinId = "skin_7"
+	local character = player.Character
+	local head = character and character:FindFirstChild("Head")
+	if head and head:IsA("BasePart") then
+		skinId = Catalog.closestSkin(head.Color)
+	end
+	local look = Catalog.defaultLook()
+	look.skin = skinId
 	local entry: Entry = {
 		player = player,
-		client = pickClient(player),
-		look = Catalog.defaultLook(),
-		clean = 0,
-		rinsed = false,
+		client = Clients.forPlayer(player.DisplayName, tonumber(string.match(skinId, "%d+")) or 7),
+		look = look,
+		clean = 1, -- no washing: you come in fresh
+		rinsed = true,
 		done = false,
 		votes = {},
 		assignedAt = now(),
@@ -236,9 +229,30 @@ local function buildClientModel(entry: Entry): Model
 		model = buildBlockModel(entry.client.skin, top, outfit and outfit.accent or top)
 	end
 	model.Name = entry.client.name
+	model:SetAttribute("Pet", entry.look.pet) -- each screen walks the pet alongside (Showcase)
 
-	-- a little trail of stars behind every client
+	-- a little trail of stars behind every look, and the player's name over their head
 	local root = model.PrimaryPart or model:FindFirstChild("HumanoidRootPart")
+	local head = model:FindFirstChild("Head")
+	if head and head:IsA("BasePart") then
+		local tag = Instance.new("BillboardGui")
+		tag.Name = "NameTag"
+		tag.Size = UDim2.fromScale(6, 1)
+		tag.StudsOffset = Vector3.new(0, 3.2, 0)
+		tag.LightInfluence = 0
+		tag.MaxDistance = 120
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.fromScale(1, 1)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.FredokaOne
+		label.Text = entry.client.name
+		label.TextScaled = true
+		label.TextColor3 = Color3.fromRGB(176, 18, 91)
+		label.TextStrokeColor3 = Color3.new(1, 1, 1)
+		label.TextStrokeTransparency = 0
+		label.Parent = tag
+		tag.Parent = head
+	end
 	if root then
 		local trail = Instance.new("ParticleEmitter")
 		trail.Name = "StarTrail"
@@ -326,18 +340,6 @@ local function walkRunway(entry: Entry)
 	model:SetAttribute("WalkTo", target)
 	model:SetAttribute("WalkStart", now())
 	model:SetAttribute("WalkTime", walkTime)
-	-- The stylist's own avatar steps out to stand next to their client
-	local character = entry.player.Character
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	local stylistRoot = character and character:FindFirstChild("HumanoidRootPart")
-	local returnTo = stylistRoot and (stylistRoot :: BasePart).CFrame
-	task.delay(math.max(0, walkTime - 1), function()
-		if character and character.Parent and humanoid and stylistRoot then
-			humanoid.Sit = false
-			local spot = world.runwayEnd + Vector3.new(3.5, humanoid.HipHeight + (stylistRoot :: BasePart).Size.Y / 2 + 0.1, 0)
-			character:PivotTo(CFrame.lookAt(spot, spot + Vector3.new(0, 0, 1)))
-		end
-	end)
 	task.wait(walkTime)
 	if walk then
 		walk:Stop()
@@ -345,13 +347,8 @@ local function walkRunway(entry: Entry)
 	task.wait(1) -- the twirl at the end of the runway
 	if root.Parent then
 		root.CFrame = CFrame.lookAt(target, target + Vector3.new(0, 0, 1))
+		Avatar.pose(model, entry.look.pose) -- then strike their pose
 	end
-	-- After their moment on the runway, the stylist goes back to the salon
-	task.delay(Config.SHOWCASE_SECONDS_PER_LOOK - walkTime - 1, function()
-		if character and character.Parent and returnTo then
-			character:PivotTo(returnTo)
-		end
-	end)
 end
 
 ------------------------------------------------------------------------------
@@ -478,41 +475,12 @@ local function scoreAll()
 			local newLevel = Progress.level(profile.stats.totalStars)
 			row.level = newLevel
 
-			-- Remember this client; regulars who come back often become best friends
 			local entry = entries[row.userId]
 			local client = entry.client
-			local friend = profile.friends[client.name] or { visits = 0, skin = client.skinIndex, eyes = client.eyesIndex }
-			friend.visits = math.max(friend.visits, client.visits)
-			friend.skin, friend.eyes = client.skinIndex, client.eyesIndex
-			profile.friends[client.name] = friend
-			local friendCount = 0
-			for _ in profile.friends do
-				friendCount += 1
-			end
-			if friendCount > 12 then
-				-- forget the least-visited regular
-				local lowest, lowestName = math.huge, nil
-				for name, f in profile.friends do
-					if name ~= client.name and f.visits < lowest then
-						lowest, lowestName = f.visits, name
-					end
-				end
-				if lowestName then
-					profile.friends[lowestName] = nil
-				end
-			end
-			if table.find(Config.BEST_FRIEND_VISITS, client.visits) then
-				profile.coins += Config.BEST_FRIEND_COINS
-				task.delay(6, function()
-					if player.Parent then
-						Remotes.Celebrate:FireClient(player, { kind = "friend", name = client.name, visits = client.visits, coins = Config.BEST_FRIEND_COINS })
-					end
-				end)
-			end
 
 			-- Idle players (nothing changed) don't fill the Look Book or the weekly goal
 			local default = Catalog.defaultLook()
-			local touched = entry.clean > 0
+			local touched = false
 			for k, v in entry.look do
 				if default[k] ~= v then
 					touched = true

@@ -1,11 +1,11 @@
 # ✨ 5 Minute Glow Up Salon (Roblox)
 
-Tori's makeover game. Clients come in dirty from the shop. You wash their face, do their hair and makeup, dress them up, and send them down the runway. You get 5 minutes to do it all.
+Tori's dress-up game. Every round has a theme (Superhero, Pirate, Under the Sea, Princess Ball...). You get 5 minutes to dress up **your own Roblox character**: hair, skin, makeup, an outfit, costume pieces from the avatar shop (wings, capes, masks, tails, hats, shoulder buddies), a pet to walk with you, and a runway pose and effect. Then everyone walks the runway, votes with hearts, and the judges pick the winners.
 
 - **How the game works and how it makes money:** [GAME_DESIGN.md](GAME_DESIGN.md)
 - **What it looks like:** [docs/face-preview.jpg](docs/face-preview.jpg) and the screenshots in [docs/screens](docs/screens)
 
-Everything is built with code: the salon, runway, screens and faces. You don't need to upload any images or models.
+Everything is built with code: the salon, runway, screens, faces, pets and effects. Hair and costume pieces are real avatar-shop items, loaded by ID when the game starts (`Avatar.HAIR` and the `asset = ...` items in `Catalog`). You don't need to upload any images or models.
 
 ---
 
@@ -97,8 +97,10 @@ All the code is in Studio under:
 | Where | What it does |
 |---|---|
 | `ReplicatedStorage > Shared > Config` | Timer, coin rewards, Game Pass / product IDs |
-| `ReplicatedStorage > Shared > Catalog` | **Every hairstyle, color, makeup, outfit and theme.** Add new ones here: name, color, price, tags |
-| `ReplicatedStorage > Shared > Clients` | Customer names, skin tones, and "came from the shop" stories (plus holiday stories) |
+| `ReplicatedStorage > Shared > Catalog` | **Every hairstyle, skin tone, makeup, outfit, costume piece, pet, pose, effect and theme.** Add new ones here: name, color, price, tags. A costume piece is any avatar-shop accessory: add `asset = <its ID>` |
+| `ReplicatedStorage > Shared > Avatar` | Builds the 3D character: body, avatar-shop hair (recolored), the face, outfit, skirt, costume pieces, effects and poses |
+| `ReplicatedStorage > Shared > Pets` | The pets (Bean the Boston terrier, kitty, bunny, dino, dragon, unicorn), built from shapes |
+| `ReplicatedStorage > Shared > Clients` | Your name and skin tone for each round (plus the old salon customers, kept for a future salon mode) |
 | `ReplicatedStorage > Shared > Events` | Holiday event dates (Halloween, Harvest Festival, Christmas) |
 | `ReplicatedStorage > Shared > LookRenderer` | How faces, hair and outfits are drawn |
 | `ReplicatedStorage > Shared > Scoring` | How the judges give stars |

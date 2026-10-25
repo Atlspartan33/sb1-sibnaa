@@ -22,7 +22,7 @@ local ROBUX_ITEMS = {
 	{ kind = "pass", key = "VIP", icon = "👑", title = "VIP Glam Kit", text = "Rainbow & galaxy hair, Royal Updo, Mermaid Waves, Golden Gala Gown, crown and more - plus a VIP badge on the runway!" },
 	{ kind = "pass", key = "Princess", icon = "👸", title = "Princess Pack", text = "Ice Ball Gown, Rose Gown, Princess Curls, Rose Gold hair, a tiara and pink gems!" },
 	{ kind = "pass", key = "DoubleCoins", icon = "💰", title = "2x Coins", text = "Earn double coins after every fashion show, forever." },
-	{ kind = "pass", key = "RunwayStar", icon = "🌟", title = "Runway Star", text = "Confetti cannons and sparkles every time your client walks the runway!" },
+	{ kind = "pass", key = "RunwayStar", icon = "🌟", title = "Runway Star", text = "Confetti cannons and sparkles every time you walk the runway!" },
 	{ kind = "pass", key = "RainbowBubbles", icon = "🫧", title = "Rainbow Bubbles", text = "Washing makes rainbow-colored bubbles. Just for fun!" },
 	{ kind = "product", key = "CoinsSmall", icon = "💰", title = "500 Coins", text = "Unlock new looks a little faster." },
 }

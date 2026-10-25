@@ -18,62 +18,18 @@ print("  coins after gift:", coinsAfterGift and coinsAfterGift.Text)
 local cfgT = W.require(ct, W.game:GetService("ReplicatedStorage").Shared.Config)
 cfgT.Sounds.Click = "rbxassetid://1"; cfgT.Sounds.Sparkle = "rbxassetid://2"; cfgT.Sounds.MakeoverMusic = "rbxassetid://3"
 E.runFor(19)
-print("== Makeover")
--- A cheating client claims a spotless face right away (server should not believe it)
+print("== Dressing room")
 local remotesMia = W.require(cm, W.game:GetService("ReplicatedStorage").Shared.Remotes)
-E.runAs(cm, function() remotesMia.WashProgress:FireServer(1, true) end)
 local ui = H.ui(tori)
-H.check(H.shown(ui.Makeover), "makeover screen visible")
+H.check(H.shown(ui.Makeover), "dressing room visible")
 E.runFor(0.3)
-H.shot(tori, "02_wash_start")
-H.shot(tori, "02_wash_phone", 844, 390)
-H.shot(tori, "02_wash_tablet", 1024, 768)
-E.runFor(2.6)
-local dirtyFirst = H.ui(tori):FindFirstChild("PortraitHolder", true).Portrait
-for _, c in dirtyFirst:GetChildren() do
-	if c.Name == "Dirt1" or c.Name == "Dirt2" then H.rub(ct, H.center(c), 25, 14) end
-end
-E.runFor(0.05)
-H.shot(tori, "02b_wash_dirty")
-
-local holder = ui:FindFirstChild("PortraitHolder", true)
-local portrait = holder.Portrait
-local dirt = {}
-for _, c in portrait:GetChildren() do if string.sub(c.Name, 1, 4) == "Dirt" then table.insert(dirt, c) end end
-print("  dirt spots:", #dirt, "portrait size", portrait.AbsoluteSize.X)
-for i = 1, math.floor(#dirt / 2) do H.rub(ct, H.center(dirt[i]), 25, 14) end
-H.shot(tori, "03_wash_mid")
-local rubs = 0
-for pass = 1, 4 do
-	for i = 1, #dirt do
-		if dirt[i].Visible then H.rub(ct, H.center(dirt[i]), 25, 14); rubs += 1 end
-	end
-end
-print("  extra rubs needed:", rubs)
-local cleanText = H.findText(tori, "Clean:")
-print("  " .. (cleanText and cleanText.Text or "?"))
-H.check(H.findText(tori, "Rinse off the bubbles") ~= nil or H.findText(tori, "Sparkly clean") ~= nil, "rinse step reached")
-for _, b in ui:FindFirstChild("Bubbles", true):GetChildren() do
-	if b.Parent and E.D[b].class == "Frame" then H.rub(ct, H.center(b), 10, 6) end
-end
-E.runFor(0.5)
-H.check(#ui:FindFirstChild("Bubbles", true):GetChildren() <= 1, "all bubbles rinsed")
-H.check(H.findText(tori, "Sparkly clean") ~= nil, "wash complete hint")
-H.shot(tori, "04_wash_done")
+H.check(H.findText(tori, "Rub the dirt off") == nil, "no washing: you come in fresh")
+H.check(H.card(tori, "Cute Bob") ~= nil, "starts on the Hair tab")
+H.shot(tori, "02_dressing_room")
+H.shot(tori, "02_dressing_phone", 844, 390)
+H.shot(tori, "02_dressing_tablet", 1024, 768)
 
 print("== Hair")
-H.click(H.tab(tori, "Hair"), "Hair tab")
-H.check(H.findText(tori, "Brush out the tangles") ~= nil, "messy hair must be brushed first")
-H.shot(tori, "05a_brush")
-local root = H.ui(tori):FindFirstChild("PortraitHolder", true).Portrait
-local top = root.AbsolutePosition + E.Vector2.new(root.AbsoluteSize.X * 0.5, root.AbsoluteSize.X * 0.22)
-for _ = 1, 12 do
-	if not H.findText(tori, "Brush out the tangles") then break end
-	H.rub(ct, top, 60, 16)
-end
-H.check(H.findText(tori, "Brush out the tangles") == nil, "brushing unlocks the hairstyles")
-H.shot(tori, "05_hair")
-H.shot(tori, "05_hair_phone", 844, 390)
 H.click(H.card(tori, "Cute Bob"), "Cute Bob")
 H.click(H.button(tori, "Hair Color"), "Hair Color chip")
 H.click(H.card(tori, "Bubblegum"), "Bubblegum (locked)")
@@ -83,8 +39,11 @@ E.runFor(0.5)
 H.click(H.card(tori, "Bubblegum"), "Bubblegum")
 H.check(H.findText(tori, "🛍️ Shop") == nil, "shop button hidden during the makeover")
 
-print("== Makeup")
-H.click(H.tab(tori, "Makeup"), "Makeup tab")
+print("== Face")
+H.click(H.tab(tori, "Face"), "Face tab")
+H.click(H.button(tori, "Skin"), "Skin chip")
+H.click(H.card(tori, "Espresso"), "Espresso skin")
+H.click(H.button(tori, "Eyeshadow"), "Eyeshadow chip")
 H.click(H.card(tori, "Pink"), "Pink eyeshadow")
 H.click(H.button(tori, "Lashes"), "Lashes chip")
 H.click(H.card(tori, "Natural"), "Natural lashes")
@@ -92,28 +51,29 @@ H.click(H.button(tori, "Blush"), "Blush chip")
 H.click(H.card(tori, "Rosy"), "Rosy")
 H.click(H.button(tori, "Lipstick"), "Lipstick chip")
 H.click(H.card(tori, "Pink"), "Pink lipstick")
-H.shot(tori, "07_makeup")
+H.shot(tori, "07_face")
 H.click(H.tab(tori, "Outfit"), "Outfit tab")
 H.click(H.card(tori, "Pink Party Dress"), "Party dress")
 H.shot(tori, "08_outfit")
-H.click(H.tab(tori, "Extras"), "Extras tab")
-H.click(H.button(tori, "Accessory"), "Accessory chip")
-H.click(H.card(tori, "Big Bow"), "Bow")
-E.runFor(0.3)
-H.shot(tori, "09_extras")
 
-print("== Nails + outfit colors")
-H.click(H.tab(tori, "Nails"), "Nails tab")
-H.click(H.card(tori, "Pink"), "Pink polish")
-H.click(H.button(tori, "Nail Art"), "Nail Art chip")
-H.click(H.card(tori, "Hearts"), "Heart nail art")
-E.runFor(0.6)
-local nails = 0
-for _, d in H.ui(tori):FindFirstChild("PortraitHolder", true).Portrait:GetChildren() do
-	if d.Name == "Nail" then nails += 1 end
-end
-H.check(nails == 5, "hand shows 5 painted nails")
-H.shot(tori, "09b_nails")
+print("== Costume, pet, show")
+H.click(H.tab(tori, "Costume"), "Costume tab")
+H.click(H.button(tori, "Hats & Clips"), "Hats & Clips chip")
+H.click(H.card(tori, "Big Bow"), "Bow")
+H.click(H.button(tori, "Wings & Capes"), "Wings & Capes chip")
+H.click(H.card(tori, "Fairy Wings"), "Fairy Wings")
+H.click(H.button(tori, "Buddies"), "Buddies chip")
+H.click(H.card(tori, "Parrot"), "Parrot")
+E.runFor(0.3)
+H.shot(tori, "09_costume")
+H.click(H.tab(tori, "Pet"), "Pet tab")
+H.click(H.card(tori, "Bean"), "Bean")
+H.click(H.tab(tori, "Show"), "Show tab")
+H.click(H.card(tori, "Dance"), "Dance pose")
+H.click(H.button(tori, "Effect"), "Effect chip")
+H.click(H.card(tori, "Sparkles"), "Sparkles")
+E.runFor(0.3)
+H.shot(tori, "09b_show")
 H.click(H.tab(tori, "Outfit"), "Outfit tab")
 H.click(H.button(tori, "Color"), "Color chip")
 H.click(H.card(tori, "Violet"), "Violet color")
@@ -122,7 +82,9 @@ H.click(H.card(tori, "Polka Dots"), "Polka dots")
 E.runFor(0.3)
 H.shot(tori, "09c_outfit_pattern")
 H.shot(tori, "09_extras_phone", 844, 390)
-print("  hearts:", H.ui(tori):FindFirstChild("Makeover"):GetDescendants() and "")
+-- Mia brings a pet (so her show counts toward the weekly goal)
+H.click(H.tab(mia, "Pet"), "Mia pet tab")
+H.click(H.card(mia, "Kitty"), "Mia kitty")
 
 print("== Done -> show")
 H.click(H.button(tori, "I'm Done"), "Tori done")
@@ -146,10 +108,9 @@ E.runFor(1)
 print("== Results")
 H.shot(tori, "14_results")
 H.shot(tori, "14_results_phone", 844, 390)
-local res = H.findText(tori, "Your ")
+local res = H.findText(tori, "Tori: ")
 print("  " .. (res and res.Text or "no result text"))
-local miaRes = H.findText(mia, "Your ")
-H.check(miaRes ~= nil and string.find(miaRes.Text, "Wash the face", 1, true) ~= nil, "instant-wash cheat ignored")
+H.check(res ~= nil and string.find(res.Text, "show", 1, true) ~= nil, "judges loved the costume, pet and pose")
 H.check(res ~= nil and not string.find(res.Text, "nan", 1, true), "NaN vote ignored")
 E.runFor(5)
 H.check(H.findText(tori, "⭐ Lv") ~= nil, "level pill shows progress")
@@ -194,9 +155,8 @@ H.shot(tori, "15_lookbook")
 H.click(H.button(tori, "✕"), "close shop")
 
 E.runFor(30)
-print("== Round 2: super soap + leave/rejoin")
-H.check(H.shown(H.ui(tori).Makeover), "round 2 makeover visible")
-H.check(H.findText(tori, "Rub the dirt off") ~= nil, "round 2 starts with a dirty face")
+print("== Round 2: leave/rejoin")
+H.check(H.shown(H.ui(tori).Makeover), "round 2 dressing room visible")
 local coinsBefore = H.findText(tori, "💰 ").Text
 local toriId = tori.UserId
 W.removePlayer(tori)
@@ -222,7 +182,8 @@ for _ = 1, 26 * 12 do
 	E.runFor(5)
 	local mv = H.ui(mia):FindFirstChild("Makeover")
 	if H.shown(mv) and not acted then
-		H.click(H.tab(mia, "Makeup"), "Mia makeup tab")
+		H.click(H.tab(mia, "Face"), "Mia face tab")
+		H.click(H.button(mia, "Eyeshadow"), "Mia eyeshadow chip")
 		H.click(H.card(mia, "Pink"), "Mia pink")
 		acted = true
 	elseif not H.shown(mv) then
@@ -235,7 +196,7 @@ print("  after idle rounds, phase pill:", H.findText(mia, "Makeover") ~= nil or 
 
 local counts = {}
 for _, n in W.soundsPlayed do counts[n] = (counts[n] or 0) + 1 end
-print("sounds:", counts.Click, counts.Sparkle, counts.Rinse, counts.MakeoverMusic)
-H.check((counts.Click or 0) > 3 and (counts.Sparkle or 0) >= 1 and (counts.Rinse or 0) >= 1 and (counts.MakeoverMusic or 0) >= 1, "sounds play when IDs are set")
+print("sounds:", counts.Click, counts.MakeoverMusic)
+H.check((counts.Click or 0) > 3 and (counts.MakeoverMusic or 0) >= 1, "sounds play when IDs are set")
 print("errors", #E.errors, "warnings", #E.warnings, "fails", H.fails)
 for _, w in E.warnings do print("WARN", w) end

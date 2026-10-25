@@ -87,6 +87,38 @@ for _, n in { "Heartbeat", "RenderStepped", "Stepped", "PreRender", "PostSimulat
 	DYN.RunService[n] = function() return s end
 end
 E.setFrameSignals({ frameSigs.Heartbeat, frameSigs.RenderStepped, frameSigs.Stepped })
+-- BindToRenderStep runs every frame like RenderStepped (priorities don't matter here)
+local bound = {}
+M.RunService.BindToRenderStep = function(_, name, _priority, fn)
+	bound[name] = frameSigs.RenderStepped:Connect(fn)
+end
+M.RunService.UnbindFromRenderStep = function(_, name)
+	if bound[name] then
+		bound[name]:Disconnect()
+		bound[name] = nil
+	end
+end
+
+-- InsertService: avatar-shop items arrive as a model holding an accessory with a handle
+W.assetsLoaded = 0
+M.InsertService = {
+	LoadAsset = function(_, id)
+		assert(type(id) == "number", "LoadAsset needs a number")
+		W.assetsLoaded += 1
+		local model = new("Model")
+		local acc = new("Accessory")
+		acc.Name = "Asset" .. id
+		local handle = new("MeshPart")
+		handle.Name = "Handle"
+		handle.Size = Vector3.new(1, 1, 1)
+		local att = new("Attachment")
+		att.Name = "HatAttachment"
+		att.Parent = handle
+		handle.Parent = acc
+		acc.Parent = model
+		return model
+	end,
+}
 
 -- UserInputService (per player)
 DYN.UserInputService = {

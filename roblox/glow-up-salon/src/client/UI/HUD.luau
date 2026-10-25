@@ -186,7 +186,7 @@ function HUD.new(gui: ScreenGui, onShop: () -> (), onLookBook: () -> ())
 		Size = UDim2.new(1, 0, 0, 104),
 		LayoutOrder = 4,
 		Name = "Steps",
-		Text = "1. 🧼 Wash your client's dirty face\n2. 💇 Do their hair   3. 💄 Put on makeup\n4. 👗 Pick an outfit that fits the theme\n5. 📸 Walk the runway - you only get 5 minutes!",
+		Text = "1. 💇 Do your hair   2. 💄 Your face\n3. 👗 An outfit + 🦸 costume that fit the theme\n4. 🐶 Bring a pet   💃 Pick a pose\n5. 📸 Walk the runway - you only get 5 minutes!",
 		TextColor3 = C.text,
 		ZIndex = 41,
 		Parent = rows,

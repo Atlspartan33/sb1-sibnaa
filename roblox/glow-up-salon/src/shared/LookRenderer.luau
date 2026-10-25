@@ -526,9 +526,21 @@ end
 
 ------------------------------------------------------------------------------
 
+-- The look's skin tone (if it picked one) replaces the client's own.
+local function withSkin(client, look)
+	if look and look.skin and Catalog.byId[look.skin] then
+		local c = table.clone(client)
+		c.skin = Catalog.skinColor(look, client.skin)
+		return c
+	end
+	return client
+end
+LookRenderer.withSkin = withSkin
+
 -- The whole client, head to toe, for the runway and podium (a "paper doll").
 -- `container` should be twice as tall as it is wide.
 function LookRenderer.renderBody(container: GuiObject, client, look, options: Options?): Frame
+	client = withSkin(client, look)
 	local old = container:FindFirstChild("Doll")
 	if old then
 		old:Destroy()
@@ -616,6 +628,7 @@ end
 local FINGERS = { { 0.335, 0.27 }, { 0.445, 0.17 }, { 0.555, 0.2 }, { 0.665, 0.28 } } -- x, fingertip y
 
 function LookRenderer.renderHand(container: GuiObject, client, look): Frame
+	client = withSkin(client, look)
 	local old = container:FindFirstChild("Portrait")
 	if old then
 		old:Destroy()
@@ -691,6 +704,7 @@ end
 
 -- Draws the client into `container`, replacing any older drawing. Returns the square root frame.
 function LookRenderer.render(container: GuiObject, client, look, options: Options?): Frame
+	client = withSkin(client, look)
 	local old = container:FindFirstChild("Portrait")
 	if old then
 		old:Destroy()

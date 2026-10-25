@@ -82,7 +82,7 @@ function Results:show(results)
 		end
 	end
 
-	self.mine.Text = "Watch the show, then style a client next round! 👀"
+	self.mine.Text = "Watch the show, then get dressed up next round! 👀"
 	local old = self.minePortrait:FindFirstChild("Portrait")
 	if old then
 		old:Destroy()
@@ -91,7 +91,7 @@ function Results:show(results)
 		local isMe = row.userId == Players.LocalPlayer.UserId
 		if isMe then
 			local comments = table.concat(row.comments, "  ", 1, math.min(#row.comments, 3))
-			self.mine.Text = string.format("Your %s: %s\n%s  +%d 💰\n%s", row.client.name, Theme.stars(row.stars), row.award or "", row.coins, comments)
+			self.mine.Text = string.format("%s: %s\n%s  +%d 💰\n%s", row.client.name, Theme.stars(row.stars), row.award or "", row.coins, comments)
 			LookRenderer.render(self.minePortrait, row.client, row.look, { clean = 1, mood = if row.stars >= 4 then "grin" else "smile" })
 			self:celebrate(row, #results.rows)
 		end
@@ -122,7 +122,7 @@ function Results:show(results)
 		new("TextLabel", {
 			Position = UDim2.new(0, 130, 0, 6),
 			Size = UDim2.new(1, -136, 0, 32),
-			Text = row.stylist .. "'s " .. row.client.name,
+			Text = row.client.name,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			ZIndex = 43,
 			Parent = card,

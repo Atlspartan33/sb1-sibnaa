@@ -1,0 +1,822 @@
+[
+  {
+    "id": 417456455,
+    "name": "Supe-R Hero Cape",
+    "assetType": 46,
+    "theme": "superhero",
+    "slot": "back",
+    "favorites": 26803,
+    "creator": "Roblox",
+    "price": 200
+  },
+  {
+    "id": 8948936632,
+    "name": "Superhero Cape in White",
+    "assetType": 46,
+    "theme": "superhero",
+    "slot": "back",
+    "favorites": 7755,
+    "creator": "MrThorRBX",
+    "price": 140
+  },
+  {
+    "id": 6905344185,
+    "name": "Superhero Mask",
+    "assetType": 42,
+    "theme": "superhero",
+    "slot": "face",
+    "favorites": 10264,
+    "creator": "Lukacors",
+    "price": 95
+  },
+  {
+    "id": 5548522000,
+    "name": "Hopeful Hero Mask",
+    "assetType": 42,
+    "theme": "superhero",
+    "slot": "face",
+    "favorites": 15565,
+    "creator": "Reverse_Polarity",
+    "price": 95
+  },
+  {
+    "id": 16247687773,
+    "name": "Red Superhero Mask (Low)",
+    "assetType": 42,
+    "theme": "superhero",
+    "slot": "face",
+    "favorites": 225,
+    "creator": "Valkenheim UGC 2",
+    "price": 95
+  },
+  {
+    "id": 13073770809,
+    "name": "Hero Belt",
+    "assetType": 47,
+    "theme": "superhero",
+    "slot": "waist",
+    "favorites": 1969,
+    "creator": "HulaHoopman6",
+    "price": 73
+  },
+  {
+    "id": 5891628524,
+    "name": "Pirate Hat",
+    "assetType": 8,
+    "theme": "pirate",
+    "slot": "hat",
+    "favorites": 14797,
+    "creator": "huiyunwenhua",
+    "price": 95
+  },
+  {
+    "id": 5860059125,
+    "name": "Pirate Captains Hat",
+    "assetType": 8,
+    "theme": "pirate",
+    "slot": "hat",
+    "favorites": 2281,
+    "creator": "Sofloann",
+    "price": 95
+  },
+  {
+    "id": 15549772889,
+    "name": "Pirate's Classic Bandana",
+    "assetType": 8,
+    "theme": "pirate",
+    "slot": "hat",
+    "favorites": 995,
+    "creator": "Рort Royal",
+    "price": 95
+  },
+  {
+    "id": 74970669,
+    "name": "Eyepatch",
+    "assetType": 42,
+    "theme": "pirate",
+    "slot": "face",
+    "favorites": 162497,
+    "creator": "Roblox",
+    "price": 100
+  },
+  {
+    "id": 9794669285,
+    "name": "Parrot Shoulder Pet!",
+    "assetType": 44,
+    "theme": "pirate",
+    "slot": "shoulder",
+    "favorites": 1118,
+    "creator": "BIG Games Pets",
+    "price": 99
+  },
+  {
+    "id": 75528744521388,
+    "name": "Green Parrot Shoulder Pal [Parrotx2]",
+    "assetType": 44,
+    "theme": "pirate",
+    "slot": "shoulder",
+    "favorites": 134,
+    "creator": "Al's UGC Production",
+    "price": 55
+  },
+  {
+    "id": 5891629882,
+    "name": "Pirate Cutlass",
+    "assetType": 47,
+    "theme": "pirate",
+    "slot": "waist",
+    "favorites": 21651,
+    "creator": "huiyunwenhua",
+    "price": 65
+  },
+  {
+    "id": 136903969097188,
+    "name": "Cute Preppy Blue Mermaid Tail w/ Wings Fish H2O",
+    "assetType": 46,
+    "theme": "under-the-sea",
+    "slot": "back",
+    "favorites": 3013,
+    "creator": "kawaii glow",
+    "price": 140
+  },
+  {
+    "id": 18209759894,
+    "name": "Mermaid Tail",
+    "assetType": 47,
+    "theme": "under-the-sea",
+    "slot": "waist",
+    "favorites": 265,
+    "creator": "Enrapture Studios",
+    "price": 65
+  },
+  {
+    "id": 8651457451,
+    "name": "Mermaid Tail",
+    "assetType": 46,
+    "theme": "under-the-sea",
+    "slot": "back",
+    "favorites": 232,
+    "creator": "mutrix",
+    "price": 140
+  },
+  {
+    "id": 472605748,
+    "name": "Seashell Crown",
+    "assetType": 8,
+    "theme": "under-the-sea",
+    "slot": "hat",
+    "favorites": 6567,
+    "creator": "Roblox",
+    "price": 100
+  },
+  {
+    "id": 18261572591,
+    "name": "Pink Seashell  Mermaid Tiara Crown",
+    "assetType": 8,
+    "theme": "under-the-sea",
+    "slot": "hat",
+    "favorites": 118,
+    "creator": "G A i A",
+    "price": 95
+  },
+  {
+    "id": 14091886224,
+    "name": "Sea Shell Hair Clips",
+    "assetType": 8,
+    "theme": "under-the-sea",
+    "slot": "hat",
+    "favorites": 72,
+    "creator": "KelseyAnna x Calilies",
+    "price": 95
+  },
+  {
+    "id": 32661648,
+    "name": "Jellyfish",
+    "assetType": 8,
+    "theme": "under-the-sea",
+    "slot": "hat",
+    "favorites": 17475,
+    "creator": "Roblox",
+    "price": 95
+  },
+  {
+    "id": 112156305935859,
+    "name": "Jellyfish",
+    "assetType": 44,
+    "theme": "under-the-sea",
+    "slot": "shoulder",
+    "favorites": 234,
+    "creator": "Szeloba",
+    "price": 55
+  },
+  {
+    "id": 15812592051,
+    "name": "Puffer Fish (Shoulder Pet)",
+    "assetType": 44,
+    "theme": "under-the-sea",
+    "slot": "shoulder",
+    "favorites": 147,
+    "creator": "zar_min",
+    "price": 55
+  },
+  {
+    "id": 16396460602,
+    "name": "bubbles",
+    "assetType": 44,
+    "theme": "under-the-sea",
+    "slot": "shoulder",
+    "favorites": 57636,
+    "creator": "Mega Ugc!",
+    "price": 55
+  },
+  {
+    "id": 12590283275,
+    "name": "Bubbles 🧼",
+    "assetType": 46,
+    "theme": "under-the-sea",
+    "slot": "back",
+    "favorites": 48340,
+    "creator": "SCREAM QUEENS®",
+    "price": 140
+  },
+  {
+    "id": 14255470539,
+    "name": "pearl chain necklace",
+    "assetType": 43,
+    "theme": "under-the-sea",
+    "slot": "neck",
+    "favorites": 6910,
+    "creator": "Mega Ugc!",
+    "price": 55
+  },
+  {
+    "id": 8405410150,
+    "name": "Oversized Dino Hood (Blue)",
+    "assetType": 8,
+    "theme": "dinosaur",
+    "slot": "hat",
+    "favorites": 8874,
+    "creator": "JPG_LARGE",
+    "price": 95
+  },
+  {
+    "id": 4735353280,
+    "name": "Dino Hood",
+    "assetType": 8,
+    "theme": "dinosaur",
+    "slot": "hat",
+    "favorites": 7325,
+    "creator": "Ellzd",
+    "price": 95
+  },
+  {
+    "id": 14103824394,
+    "name": "Aesthetic Knitted Dinosaur Hood (Baby Pink)",
+    "assetType": 8,
+    "theme": "dinosaur",
+    "slot": "hat",
+    "favorites": 195,
+    "creator": "dramfii",
+    "price": 95
+  },
+  {
+    "id": 18178903179,
+    "name": "Yellow Dinosaur T-Rex Hat",
+    "assetType": 8,
+    "theme": "dinosaur",
+    "slot": "hat",
+    "favorites": 1412,
+    "creator": "PlushVerse Studio",
+    "price": 0
+  },
+  {
+    "id": 707915127,
+    "name": "Brown Dino Tail",
+    "assetType": 47,
+    "theme": "dinosaur",
+    "slot": "waist",
+    "favorites": 4397,
+    "creator": "Roblox",
+    "price": 350
+  },
+  {
+    "id": 119813106280423,
+    "name": "Dinosaur Tail",
+    "assetType": 46,
+    "theme": "dinosaur",
+    "slot": "back",
+    "favorites": 3715,
+    "creator": "Silly Fandom UGC",
+    "price": 140
+  },
+  {
+    "id": 131033988734231,
+    "name": "dino spikes ( white )",
+    "assetType": 46,
+    "theme": "dinosaur",
+    "slot": "back",
+    "favorites": 58,
+    "creator": "Shiba | UGC",
+    "price": 140
+  },
+  {
+    "id": 11449705506,
+    "name": "Baby Dinosaur Pal🦕 🦕",
+    "assetType": 44,
+    "theme": "dinosaur",
+    "slot": "shoulder",
+    "favorites": 387,
+    "creator": "azaotl",
+    "price": 55
+  },
+  {
+    "id": 12610739631,
+    "name": "Backpack Buddy - Dino (Green)",
+    "assetType": 46,
+    "theme": "dinosaur",
+    "slot": "back",
+    "favorites": 1265,
+    "creator": "Meep Designs",
+    "price": 140
+  },
+  {
+    "id": 1081366,
+    "name": "Astronaut Helmet",
+    "assetType": 8,
+    "theme": "space",
+    "slot": "hat",
+    "favorites": 123978,
+    "creator": "Roblox",
+    "price": 95
+  },
+  {
+    "id": 112810928618923,
+    "name": "♡ Galactic pastel astronaut helmet w stickers ♡",
+    "assetType": 8,
+    "theme": "space",
+    "slot": "hat",
+    "favorites": 4520,
+    "creator": "Little Pain",
+    "price": 95
+  },
+  {
+    "id": 5768738455,
+    "name": "Jetpack",
+    "assetType": 46,
+    "theme": "space",
+    "slot": "back",
+    "favorites": 7719,
+    "creator": "MyUsernamesThis",
+    "price": 150
+  },
+  {
+    "id": 15518691268,
+    "name": "Rocket Backpack",
+    "assetType": 46,
+    "theme": "space",
+    "slot": "back",
+    "favorites": 1672,
+    "creator": "Quataun",
+    "price": 0
+  },
+  {
+    "id": 13582999750,
+    "name": "Alien Antenna",
+    "assetType": 8,
+    "theme": "space",
+    "slot": "hat",
+    "favorites": 69777,
+    "creator": "The Axolotl Sun",
+    "price": 95
+  },
+  {
+    "id": 103873506199484,
+    "name": "Cute Galactic Heart Alien Antennas Pink Glowing",
+    "assetType": 8,
+    "theme": "space",
+    "slot": "hat",
+    "favorites": 113,
+    "creator": "Little Pain",
+    "price": 95
+  },
+  {
+    "id": 11574230139,
+    "name": "Silver Y2K Planet Necklace 1.0",
+    "assetType": 43,
+    "theme": "space",
+    "slot": "neck",
+    "favorites": 5891,
+    "creator": "Valkenheim UGC",
+    "price": 55
+  },
+  {
+    "id": 136682175562639,
+    "name": "👽 Alien Stars Saturn Headband",
+    "assetType": 8,
+    "theme": "space",
+    "slot": "hat",
+    "favorites": 211,
+    "creator": "Szeloba",
+    "price": 95
+  },
+  {
+    "id": 7002533200,
+    "name": "Fairy Wings",
+    "assetType": 46,
+    "theme": "princess-fairy",
+    "slot": "back",
+    "favorites": 38756,
+    "creator": "Onogork",
+    "price": 140
+  },
+  {
+    "id": 124754102,
+    "name": "Butterfly Wings",
+    "assetType": 46,
+    "theme": "princess-fairy",
+    "slot": "back",
+    "favorites": 8775,
+    "creator": "Roblox",
+    "price": 350
+  },
+  {
+    "id": 15170410900,
+    "name": "👑 Tiara 👑",
+    "assetType": 8,
+    "theme": "princess-fairy",
+    "slot": "hat",
+    "favorites": 7436,
+    "creator": "Alquo",
+    "price": 95
+  },
+  {
+    "id": 138180638995878,
+    "name": "Crown",
+    "assetType": 8,
+    "theme": "princess-fairy",
+    "slot": "hat",
+    "favorites": 71933,
+    "creator": "ZNcreation",
+    "price": 95
+  },
+  {
+    "id": 8918679960,
+    "name": "Flower Crown",
+    "assetType": 8,
+    "theme": "princess-fairy",
+    "slot": "hat",
+    "favorites": 49919,
+    "creator": "inkwaves",
+    "price": 95
+  },
+  {
+    "id": 9255093,
+    "name": "Unicorn Horn",
+    "assetType": 8,
+    "theme": "princess-fairy",
+    "slot": "hat",
+    "favorites": 52417,
+    "creator": "Roblox",
+    "price": 95
+  },
+  {
+    "id": 6444932602,
+    "name": "Large Transparent Pink Magic Wand",
+    "assetType": 46,
+    "theme": "princess-fairy",
+    "slot": "back",
+    "favorites": 22394,
+    "creator": "Soorbeet",
+    "price": 140
+  },
+  {
+    "id": 13012740693,
+    "name": "Fairytail Princess Magical Star Wand",
+    "assetType": 45,
+    "theme": "princess-fairy",
+    "slot": "front",
+    "favorites": 525,
+    "creator": "Alquo",
+    "price": 100
+  },
+  {
+    "id": 1744123855,
+    "name": "Light Back Axe Guitar",
+    "assetType": 46,
+    "theme": "rock-star",
+    "slot": "back",
+    "favorites": 95813,
+    "creator": "Roblox",
+    "price": 250
+  },
+  {
+    "id": 1149571901,
+    "name": "Rockin Red Back Guitar",
+    "assetType": 46,
+    "theme": "rock-star",
+    "slot": "back",
+    "favorites": 7396,
+    "creator": "Roblox",
+    "price": 250
+  },
+  {
+    "id": 13174877315,
+    "name": "Y2k Silver Star Punk Sunglasses (On-Head)",
+    "assetType": 8,
+    "theme": "rock-star",
+    "slot": "hat",
+    "favorites": 7550,
+    "creator": "MxtchaMintz Shop",
+    "price": 95
+  },
+  {
+    "id": 130883544614317,
+    "name": "2000’s Pop-Star Crystal sunglasses",
+    "assetType": 42,
+    "theme": "rock-star",
+    "slot": "face",
+    "favorites": 2997,
+    "creator": "VuduDoll",
+    "price": 95
+  },
+  {
+    "id": 14253748049,
+    "name": "Headphones",
+    "assetType": 42,
+    "theme": "rock-star",
+    "slot": "face",
+    "favorites": 16552,
+    "creator": "Shop Dummies",
+    "price": 95
+  },
+  {
+    "id": 4963997880,
+    "name": "Microphone",
+    "assetType": 42,
+    "theme": "rock-star",
+    "slot": "face",
+    "favorites": 5339,
+    "creator": "OrbitectGG",
+    "price": 105
+  },
+  {
+    "id": 7543036047,
+    "name": "Full Size Classic Microphone",
+    "assetType": 46,
+    "theme": "rock-star",
+    "slot": "back",
+    "favorites": 6151,
+    "creator": "MainGag",
+    "price": 140
+  },
+  {
+    "id": 12611548379,
+    "name": "star earrings",
+    "assetType": 42,
+    "theme": "rock-star",
+    "slot": "face",
+    "favorites": 2323,
+    "creator": "WhoseTrade",
+    "price": 95
+  },
+  {
+    "id": 14760078313,
+    "name": "Witch Hat",
+    "assetType": 8,
+    "theme": "spooky",
+    "slot": "hat",
+    "favorites": 881,
+    "creator": "Gorillaz Studio",
+    "price": 95
+  },
+  {
+    "id": 5673632543,
+    "name": "Pumpkin Hat",
+    "assetType": 8,
+    "theme": "spooky",
+    "slot": "hat",
+    "favorites": 23089,
+    "creator": "IDontHaveAUse",
+    "price": 95
+  },
+  {
+    "id": 13990532463,
+    "name": "Bat Wings",
+    "assetType": 44,
+    "theme": "spooky",
+    "slot": "shoulder",
+    "favorites": 5240,
+    "creator": "Exclusive UGC",
+    "price": 55
+  },
+  {
+    "id": 14952436297,
+    "name": "Bat Wings",
+    "assetType": 44,
+    "theme": "spooky",
+    "slot": "shoulder",
+    "favorites": 4906,
+    "creator": "xThree",
+    "price": 55
+  },
+  {
+    "id": 5702357673,
+    "name": "GHOST! 👻",
+    "assetType": 46,
+    "theme": "spooky",
+    "slot": "back",
+    "favorites": 58650,
+    "creator": "Builder_Boy",
+    "price": 125
+  },
+  {
+    "id": 16444910191,
+    "name": "Cat Shoulder Ghost",
+    "assetType": 44,
+    "theme": "spooky",
+    "slot": "shoulder",
+    "favorites": 380,
+    "creator": "VLightning Studios",
+    "price": 65
+  },
+  {
+    "id": 94072997357023,
+    "name": "Grizzly Cute Ghost Shoulder",
+    "assetType": 44,
+    "theme": "spooky",
+    "slot": "shoulder",
+    "favorites": 274,
+    "creator": "UGCVERSES",
+    "price": 55
+  },
+  {
+    "id": 133612550428411,
+    "name": "♡ : Cute Candy Halloween Pumpkin Bucket (FREE)",
+    "assetType": 45,
+    "theme": "spooky",
+    "slot": "front",
+    "favorites": 1111,
+    "creator": "Yumebun",
+    "price": 0
+  },
+  {
+    "id": 9553060342,
+    "name": "Cat Ears",
+    "assetType": 8,
+    "theme": "animal-friends",
+    "slot": "hat",
+    "favorites": 9724,
+    "creator": "Avaeta",
+    "price": 95
+  },
+  {
+    "id": 13547447399,
+    "name": "Cat Tail",
+    "assetType": 47,
+    "theme": "animal-friends",
+    "slot": "waist",
+    "favorites": 2045,
+    "creator": "dvdko",
+    "price": 65
+  },
+  {
+    "id": 118301166634769,
+    "name": "Bunny Ears",
+    "assetType": 8,
+    "theme": "animal-friends",
+    "slot": "hat",
+    "favorites": 392,
+    "creator": "ANTERRA",
+    "price": 95
+  },
+  {
+    "id": 14447720654,
+    "name": "Bunny Tail",
+    "assetType": 47,
+    "theme": "animal-friends",
+    "slot": "waist",
+    "favorites": 7444,
+    "creator": "dvdko",
+    "price": 65
+  },
+  {
+    "id": 11142487,
+    "name": "Dog Ears",
+    "assetType": 8,
+    "theme": "animal-friends",
+    "slot": "hat",
+    "favorites": 57413,
+    "creator": "Roblox",
+    "price": 95
+  },
+  {
+    "id": 104546936393010,
+    "name": "Puppy Ears",
+    "assetType": 8,
+    "theme": "animal-friends",
+    "slot": "hat",
+    "favorites": 150,
+    "creator": "RC Rusty Crew",
+    "price": 95
+  },
+  {
+    "id": 91964461585164,
+    "name": "♡・puppy ears w/ ribbon (samoyed, poodle, terrier)",
+    "assetType": 8,
+    "theme": "animal-friends",
+    "slot": "hat",
+    "favorites": 33,
+    "creator": "pawz <3",
+    "price": 95
+  },
+  {
+    "id": 118335404525932,
+    "name": "Boston Terrier Dog Head",
+    "assetType": 8,
+    "theme": "animal-friends",
+    "slot": "hat",
+    "favorites": 20,
+    "creator": "Solitary UGC",
+    "price": 90
+  },
+  {
+    "id": 14972209282,
+    "name": "Neon Dragon Pet",
+    "assetType": 44,
+    "theme": "animal-friends",
+    "slot": "shoulder",
+    "favorites": 1274,
+    "creator": "Playables.",
+    "price": 0
+  },
+  {
+    "id": 18953818754,
+    "name": "White Wings",
+    "assetType": 46,
+    "theme": "wings",
+    "slot": "back",
+    "favorites": 15997,
+    "creator": "Valkenheim UGC 2",
+    "price": 140
+  },
+  {
+    "id": 93388062049113,
+    "name": "angel wings",
+    "assetType": 44,
+    "theme": "wings",
+    "slot": "shoulder",
+    "favorites": 9705,
+    "creator": "WhoseTrade",
+    "price": 55
+  },
+  {
+    "id": 335080396,
+    "name": "Rainbow Wings",
+    "assetType": 46,
+    "theme": "wings",
+    "slot": "back",
+    "favorites": 57301,
+    "creator": "Roblox",
+    "price": 800
+  },
+  {
+    "id": 15302783937,
+    "name": "♡ pink wings",
+    "assetType": 44,
+    "theme": "wings",
+    "slot": "shoulder",
+    "favorites": 47130,
+    "creator": "Snoopsie",
+    "price": 56
+  },
+  {
+    "id": 10643458628,
+    "name": "Butterfly Wings",
+    "assetType": 46,
+    "theme": "wings",
+    "slot": "back",
+    "favorites": 3010,
+    "creator": "Lee991014",
+    "price": 140
+  },
+  {
+    "id": 17426330725,
+    "name": "Dragon wings",
+    "assetType": 46,
+    "theme": "wings",
+    "slot": "back",
+    "favorites": 480,
+    "creator": "Maw emporium",
+    "price": 140
+  },
+  {
+    "id": 13869071268,
+    "name": "Dragon Wings",
+    "assetType": 46,
+    "theme": "wings",
+    "slot": "back",
+    "favorites": 357,
+    "creator": "HulaHoopman6",
+    "price": 140
+  }
+]

@@ -18,7 +18,12 @@ export type Entry = {
 
 local MAKEUP_KEYS = { "eyeshadow", "lashes", "blush", "lipstick" }
 -- Things that can match the theme. 4 matches = full theme points.
-local THEME_SLOTS = { "hairColor", "eyeshadow", "blush", "lipstick", "outfit", "accessory", "nailColor", "gems" }
+local THEME_SLOTS = {
+	"hairStyle", "hairColor", "eyeshadow", "blush", "lipstick", "outfit", "accessory", "gems",
+	"costumeBack", "costumeFace", "costumeWaist", "costumeShoulder", "pet", "pose", "effect",
+}
+-- The fun stuff that makes a runway walk a show
+local SHOW_KEYS = { "costumeBack", "costumeFace", "costumeWaist", "costumeShoulder", "pet", "pose", "effect" }
 local THEME_MATCHES_NEEDED = 4
 
 function Scoring.roundToHalf(stars: number): number
@@ -82,23 +87,23 @@ function Scoring.judge(entry: Entry, theme: Catalog.Theme): (number, { string })
 	local points = 0
 	local comments = {}
 
-	-- Washing (1 point)
-	local clean = math.clamp(entry.clean or 0, 0, 1)
-	points += clean
-	if clean < 0.5 then
-		table.insert(comments, "Wash the face first next time! 🧼")
-	elseif clean < 0.98 then
-		table.insert(comments, "Almost clean... you missed a spot!")
-	elseif not entry.rinsed then
-		points -= 0.2
-		table.insert(comments, "Rinse off the soap bubbles! 🚿")
-	else
-		table.insert(comments, "Squeaky clean! ✨")
+	-- The show (1 point): costume pieces, a pet, a pose, an effect
+	local show = 0
+	for _, key in SHOW_KEYS do
+		if not Catalog.isNone(look[key]) then
+			show += 1
+		end
+	end
+	points += math.min(show, 4) / 4
+	if show == 0 then
+		table.insert(comments, "Add a costume, a pet or a pose to WOW the crowd! 🐶💃")
+	elseif show >= 4 then
+		table.insert(comments, "What a show! 🔥")
 	end
 
 	-- Hair, makeup, outfit (1.75 points for doing each part)
 	if Catalog.isNone(look.hairStyle) then
-		table.insert(comments, "Fix that messy hair! 💇")
+		table.insert(comments, "Pick a hairstyle! 💇")
 	else
 		points += 0.5
 	end
@@ -138,9 +143,6 @@ function Scoring.judge(entry: Entry, theme: Catalog.Theme): (number, { string })
 	end
 
 	-- Little extras (bonus)
-	if not Catalog.isNone(look.nailColor) then
-		points += 0.15
-	end
 	if not Catalog.isNone(look.gems) then
 		points += 0.1
 	end
@@ -152,7 +154,7 @@ function Scoring.judge(entry: Entry, theme: Catalog.Theme): (number, { string })
 	if stars >= 4.5 then
 		table.insert(comments, 1, "ABSOLUTELY STUNNING! 😍")
 	elseif stars >= 3.5 then
-		table.insert(comments, 1, "What a glow up!")
+		table.insert(comments, 1, "Looking great!")
 	end
 	return stars, comments
 end
@@ -186,14 +188,14 @@ end
 
 Scoring.AWARDS = {
 	{ id = "theme", emoji = "⭐" }, -- named "Most <theme>"
-	{ id = "wishes", name = "Wish Granted", emoji = "💌" },
+	{ id = "costume", name = "Best Costume", emoji = "🎭" },
+	{ id = "pet", name = "Best Buddy", emoji = "🐶" },
+	{ id = "show", name = "Showstopper", emoji = "🔥" },
 	{ id = "hair", name = "Best Hair", emoji = "💇" },
 	{ id = "makeup", name = "Makeup Star", emoji = "💄" },
-	{ id = "nails", name = "Nail Queen", emoji = "💅" },
 	{ id = "sparkle", name = "Sparkliest", emoji = "✨" },
 	{ id = "colorful", name = "Most Colorful", emoji = "🌈" },
 	{ id = "extras", name = "Cutest Extras", emoji = "🎀" },
-	{ id = "clean", name = "Squeaky Clean", emoji = "🧼" },
 }
 Scoring.FALLBACK_AWARD = { id = "star", name = "Super Stylist", emoji = "💖" }
 
@@ -228,17 +230,22 @@ function Scoring.awardScores(entry: Entry, theme: Catalog.Theme): { [string]: nu
 			applied += 1
 		end
 	end
-	local met, total = wishesMet(entry)
+	local costume = 0
+	for _, key in { "costumeBack", "costumeFace", "costumeWaist", "costumeShoulder" } do
+		if has(key) then
+			costume += 1
+		end
+	end
 	return {
 		theme = Scoring.themeMatches(look, theme) / THEME_MATCHES_NEEDED,
-		wishes = if total > 0 then met / total else 0,
+		costume = math.min(costume / 2, 1),
+		pet = if has("pet") then 0.8 else 0,
+		show = (if has("pose") then 0.4 else 0) + (if has("effect") then 0.4 else 0),
 		hair = (if has("hairStyle") then 0.5 else 0) + (if slotMatches(look, "hairColor", theme) then 0.3 else 0) + (if has("accessory") then 0.1 else 0),
 		makeup = applied / #MAKEUP_KEYS,
-		nails = (if has("nailColor") then 0.6 else 0) + (if has("nailArt") then 0.4 else 0),
 		sparkle = math.min(sparkles / 3, 1),
 		colorful = distinct / #THEME_SLOTS,
 		extras = (if has("accessory") then 0.5 else 0) + (if has("gems") then 0.4 else 0),
-		clean = if (entry.clean or 0) >= 0.98 and entry.rinsed then 0.7 else 0,
 	}
 end
 
