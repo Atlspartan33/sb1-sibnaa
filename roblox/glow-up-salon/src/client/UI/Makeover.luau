@@ -1,6 +1,7 @@
--- The dressing room: style your own avatar for the theme. Hair, face, outfit, costume pieces,
--- a pet to walk with you, and your runway pose and effect. Your avatar reacts as you go: it talks,
--- smiles more, and fills up its happy hearts.
+-- The Dressing Hall: walk your own avatar from station to station and style yourself for the
+-- theme. Hair, face, outfit, costume pieces, a pet to walk with you, and your runway pose and
+-- effect. A guide on the left shows what's done and walks you to the next station; you react as
+-- you go (speech, a bigger smile, happy hearts).
 
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
@@ -10,12 +11,12 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local Avatar = require(ReplicatedStorage.Shared.Avatar)
-local Pets = require(ReplicatedStorage.Shared.Pets)
 local Catalog = require(ReplicatedStorage.Shared.Catalog)
 local Events = require(ReplicatedStorage.Shared.Events)
 local LookRenderer = require(ReplicatedStorage.Shared.LookRenderer)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Scoring = require(ReplicatedStorage.Shared.Scoring)
+local Stations = require(ReplicatedStorage.Shared.Stations)
 local Effects = require(script.Parent.Effects)
 local Sounds = require(script.Parent.Sounds)
 local Theme = require(script.Parent.Theme)
@@ -26,16 +27,14 @@ local new = Theme.new
 local Makeover = {}
 Makeover.__index = Makeover
 
-local STEPS = { { "Hair", "💇" }, { "Face", "💄" }, { "Outfit", "👗" }, { "Costume", "🦸" } }
+-- The stations in the order the guide suggests them
+local STEPS = { { "Hair", "💇" }, { "Face", "💄" }, { "Outfit", "👗" }, { "Costume", "🦸" }, { "Pet", "🐶" }, { "Show", "💃" } }
 local COSTUME_KEYS = { "costumeBack", "costumeFace", "costumeWaist", "costumeShoulder", "accessory" }
 local MAKEUP_KEYS = { "eyeshadow", "lashes", "blush", "lipstick" }
 local MAX_BUBBLES = 24
 local SEND_INTERVAL = 0.25
 
--- The 3D client stands in front of the middle styling chair, facing the camera.
-local STAND = Vector3.new(0, 0.2, 55.5)
-local FACING = Vector3.new(0, 0, -1)
--- How much of the character fills the window on each tab (studs tall) and where to look.
+-- How much of your avatar fills the space next to the menu at each station (studs tall).
 local FRAMING = {
 	Face = { height = 2.9, focus = "face" },
 	Hair = { height = 4, focus = "hair" },
@@ -86,8 +85,8 @@ function Makeover.new(gui: ScreenGui, ctx)
 		Name = "Makeover",
 		Size = UDim2.fromScale(1, 1),
 		BackgroundColor3 = C.white,
-		BackgroundTransparency = 1, -- the salon shows around the panels, with the client in it
-		Active = true, -- touches here are for styling, not for moving the character
+		BackgroundTransparency = 1, -- the hall shows around the panels
+		Active = false, -- touches outside the panels still walk you around
 		Visible = false,
 		ZIndex = 10,
 		Parent = gui,
@@ -96,6 +95,7 @@ function Makeover.new(gui: ScreenGui, ctx)
 
 	self:buildLeft()
 	self:buildRight()
+	self:buildGuide()
 	self.frame:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
 		self:layoutForScreen()
 	end)
@@ -250,9 +250,11 @@ end
 
 function Makeover:buildRight()
 	local right = new("Frame", {
-		Position = UDim2.new(0.46, 0, 0, 62),
-		Size = UDim2.new(0.525, 0, 1, -70),
+		Position = UDim2.new(0.52, 0, 0, 62),
+		Size = UDim2.new(0.465, 0, 1, -70),
 		BackgroundColor3 = C.white,
+		Active = true,
+		Visible = false, -- opens when you step onto a station
 		ZIndex = 11,
 		Parent = self.frame,
 	}, { Theme.corner(24), Theme.stroke(C.purple, 4), Theme.padding(10) })
@@ -267,10 +269,12 @@ function Makeover:buildRight()
 		Parent = right,
 	}, { Theme.round(), Theme.maxText(22), Theme.padding(3) })
 
+	-- The station decides the tab, so the tab row stays hidden (the guide does the switching)
 	local tabs = new("Frame", {
 		Position = UDim2.fromScale(0, 0.09),
 		Size = UDim2.fromScale(1, 0.135),
 		BackgroundTransparency = 1,
+		Visible = false,
 		ZIndex = 12,
 		Parent = right,
 	}, {
@@ -315,7 +319,7 @@ function Makeover:buildRight()
 	end
 
 	self.chips = new("Frame", {
-		Position = UDim2.fromScale(0, 0.24),
+		Position = UDim2.fromScale(0, 0.09),
 		Size = UDim2.fromScale(1, 0.075),
 		BackgroundTransparency = 1,
 		ZIndex = 12,
@@ -374,6 +378,7 @@ function Makeover:buildRight()
 		MaxText = 32,
 		Parent = right,
 	})
+	self.doneButton.Visible = false -- the guide has the Done button
 	self.doneStroke = Theme.new("UIStroke", {
 		Color = C.gold,
 		Thickness = 4,
@@ -418,6 +423,100 @@ function Makeover:buildRight()
 		end
 		self:say(pick(PERFUME_LINES), 1.5)
 	end)
+end
+
+-- The guide down the left: your happy hearts, a button for each station (green with a check when
+-- it's done, glowing when it's next; tap one to walk there) and the I'm Done button.
+function Makeover:buildGuide()
+	self.left.Visible = false -- the old portrait card isn't used in the Dressing Hall
+	local guide = new("Frame", {
+		Name = "Guide",
+		Position = UDim2.new(0, 10, 0, 62),
+		Size = UDim2.new(0, 152, 0, 300),
+		BackgroundColor3 = C.white,
+		BackgroundTransparency = 0.08,
+		Active = true,
+		ZIndex = 11,
+		Parent = self.frame,
+	}, { Theme.corner(20), Theme.stroke(C.pink, 3), Theme.padding(6) })
+	self.guide = guide
+	self.heartsLabel.Parent = guide
+	self.heartsLabel.Position = UDim2.new(0, 0, 0, 0)
+	self.heartsLabel.Size = UDim2.new(1, 0, 0, 26)
+	self.heartsLabel.ZIndex = 12
+
+	local grid = new("Frame", {
+		Position = UDim2.new(0, 0, 0, 30),
+		Size = UDim2.new(1, 0, 0, 198),
+		BackgroundTransparency = 1,
+		ZIndex = 12,
+		Parent = guide,
+	}, {
+		new("UIGridLayout", { CellSize = UDim2.new(0.5, -4, 0, 62), CellPadding = UDim2.fromOffset(6, 6) }),
+	})
+	self.checks = {}
+	self.tabStrokes = {}
+	for i, step in STEPS do
+		local station = Stations.byTab[step[1]]
+		local b = Theme.button({
+			Text = "",
+			LayoutOrder = i,
+			Color = C.lavender,
+			ZIndex = 13,
+			Parent = grid,
+		})
+		b.Name = "Go" .. step[1]
+		new("TextLabel", { Name = "Icon", Size = UDim2.fromScale(1, 0.6), Text = step[2], ZIndex = 14, Parent = b }, { Theme.maxText(30) })
+		new("TextLabel", {
+			Name = "Label",
+			Position = UDim2.fromScale(0, 0.58),
+			Size = UDim2.fromScale(1, 0.4),
+			Text = step[1],
+			TextColor3 = C.text,
+			ZIndex = 14,
+			Parent = b,
+		}, { Theme.maxText(16) })
+		self.tabStrokes[step[1]] = Theme.new("UIStroke", {
+			Color = C.gold,
+			Thickness = 4,
+			Transparency = 1,
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+			Parent = b,
+		})
+		b.Activated:Connect(function()
+			if station then
+				self:walkTo(station)
+			end
+		end)
+		self.checks[step[1]] = b
+	end
+
+	local done = Theme.button({
+		Position = UDim2.new(0, 0, 1, -60),
+		Size = UDim2.new(1, 0, 0, 60),
+		Text = "I'm Done! ✨",
+		Color = C.hotPink,
+		ZIndex = 13,
+		MaxText = 24,
+		Parent = guide,
+	})
+	done.Activated:Connect(function()
+		self:setDone(not self.done)
+	end)
+	self.doneButton = done
+	self.doneStroke = Theme.new("UIStroke", {
+		Color = C.gold,
+		Thickness = 4,
+		Transparency = 1,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Parent = done,
+	})
+
+	-- What you say pops up at the top of the hall
+	self.speech.Parent = self.frame
+	self.speech.AnchorPoint = Vector2.new(0, 0)
+	self.speech.Position = UDim2.new(0, 172, 0, 66)
+	self.speech.Size = UDim2.new(0.3, 0, 0, 58)
 end
 
 function Makeover:buildWashPanel(parent: GuiObject)
@@ -541,7 +640,6 @@ function Makeover:assign(payload)
 	self.nameTag.Text = "💖 " .. self.client.name
 	self:setDone(self.done, true)
 	self.spin = 0
-	self:buildAvatar()
 	self:renderPortrait()
 	self:setTab("Hair")
 	local theme = self:theme()
@@ -581,18 +679,9 @@ function Makeover:setVisible(visible: boolean)
 	if not self.frame.Visible then
 		self.cursor.Visible = false
 		self.scrubbing = false
-		self.spinning = false
-		if self.model then
-			self.model:Destroy()
-			self.model = nil
+		if self.station then
+			self:closeStation()
 		end
-		if self.pet then
-			self.pet:Destroy()
-			self.pet = nil
-		end
-		self.petId = nil
-	elseif not self.model then
-		self:buildAvatar()
 	end
 	if self.frame.Visible and not wasVisible then
 		self:refreshTheme()
@@ -689,22 +778,6 @@ function Makeover:renderPortrait()
 	self.hearts = full
 	self:refreshWishes()
 	self:refreshChecklist()
-	if self.model then
-		Avatar.dress(self.model, self.client, self.look, self:avatarOptions())
-		if self.petId ~= self.look.pet then
-			self.petId = self.look.pet
-			if self.pet then
-				self.pet:Destroy()
-				self.pet = nil
-			end
-			local pet = Pets.build(self.look.pet)
-			if pet then
-				pet:PivotTo(CFrame.new(STAND + Vector3.new(2.6, 0, 0)))
-				pet.Parent = Workspace
-				self.pet = pet
-			end
-		end
-	end
 end
 
 function Makeover:wishesMet(): number
@@ -788,6 +861,8 @@ function Makeover:stepsDone()
 		Face = makeupCount >= 2,
 		Outfit = not Catalog.isNone(self.look.outfit),
 		Costume = costume,
+		Pet = not Catalog.isNone(self.look.pet),
+		Show = not Catalog.isNone(self.look.pose) or not Catalog.isNone(self.look.effect),
 	}
 end
 
@@ -796,6 +871,12 @@ function Makeover:refreshChecklist()
 	for step, chip in self.checks do
 		chip.BackgroundColor3 = if done[step] then C.green else C.lavender
 		chip.TextColor3 = if done[step] then C.white else C.text
+		-- a check mark too, so done isn't shown by color alone
+		local label = chip:FindFirstChild("Label")
+		if label and label:IsA("TextLabel") then
+			label.Text = step .. (if done[step] then " ✓" else "")
+			label.TextColor3 = if done[step] then C.white else C.text
+		end
 	end
 	self.nextStep = "Done"
 	for _, step in STEPS do
@@ -814,9 +895,6 @@ function Makeover:setTab(tabId: string)
 		self:renderPortrait() -- switch between the face and the hand
 	end
 	self.cursor.Visible = false
-	if self.model and self.client then
-		Avatar.setFace(self.model, self.client, self.look, self:avatarOptions())
-	end
 	for id, b in self.tabButtons do
 		local active = id == tabId
 		b.BackgroundColor3 = if active then C.pink else C.lavender
@@ -854,8 +932,8 @@ function Makeover:setTab(tabId: string)
 	end
 	self.chips.Visible = #categories > 1
 	-- Without sub-category chips, the grid moves up to use their space
-	self.grid.Position = UDim2.fromScale(0, if #categories > 1 then 0.33 else 0.24)
-	self.grid.Size = UDim2.fromScale(1, if #categories > 1 then 0.52 else 0.61)
+	self.grid.Position = UDim2.fromScale(0, if #categories > 1 then 0.18 else 0.09)
+	self.grid.Size = UDim2.fromScale(1, if #categories > 1 then 0.81 else 0.9)
 	for i, category in categories do
 		local active = self.subcategory[tabId] == category.key
 		local chip = Theme.button({
@@ -1065,8 +1143,9 @@ function Makeover:choose(key: string, itemId: string)
 	Remotes.UpdateLook:FireServer(key, itemId)
 	self:renderPortrait()
 	self:refreshSelection(key)
-	if key == "pose" and self.model then
-		Avatar.pose(self.model, itemId) -- show it right away
+	local me = self:character()
+	if key == "pose" and me then
+		Avatar.pose(me, itemId) -- show it right away
 	end
 
 	local theme = self:theme()
@@ -1261,128 +1340,125 @@ function Makeover:scrub(pos: Vector2, moved: number)
 end
 
 ------------------------------------------------------------------------------
--- The client in 3D: a real Roblox character standing by the styling chair. On the Hair, Makeup,
--- Outfit and Extras tabs the left card becomes a window onto them; washing, brushing and nails
--- keep their close-up drawings, because that's where you rub and paint.
+-- The Dressing Hall: you walk around in your own avatar. Step on a station's glowing pad and its
+-- menu slides in on the right while the camera frames you on the left; walk off and it closes.
+-- The look itself is put on by the server, so everyone in the hall sees it.
 
 function Makeover:is3D(): boolean
-	return FRAMING[self.tab] ~= nil and not (self.tab == "Hair" and self:needsBrush())
+	return self.station ~= nil
 end
 
-function Makeover:avatarOptions()
-	return {
-		dirtHealth = self.dirtHealth,
-		mood = Scoring.mood(self:previewStars(), self:cleanAmount()),
-		brushed = self.brushed,
-		tangle = self.tangle,
-	}
+function Makeover:character(): Model?
+	return Players.LocalPlayer.Character
 end
 
-function Makeover:buildAvatar()
-	if self.model then
-		self.model:Destroy()
-		self.model = nil
+-- The guide buttons walk you over to a station.
+function Makeover:walkTo(station: Stations.Station)
+	local character = self:character()
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid:MoveTo(station.pad)
 	end
-	local client = self.client
-	if not client then
-		return
-	end
-	task.spawn(function()
-		local model = Avatar.new(client)
-		if not model then
-			return
-		end
-		if self.client ~= client or not self.frame.Visible or self.model then
-			model:Destroy()
-			return
-		end
-		self.model = model
-		Avatar.place(model, STAND, FACING)
-		self.standCFrame = (model:FindFirstChild("HumanoidRootPart") :: BasePart).CFrame
-		model.Parent = Workspace
-		Avatar.dress(model, client, self.look, self:avatarOptions())
-		Avatar.idle(model)
-	end)
 end
 
--- Where the camera goes so the client fills the window on the left of the screen.
+function Makeover:openStation(station: Stations.Station)
+	self.station = station
+	self.spin = 0
+	self:setTab(station.tab)
+	self.right.Visible = true
+	Theme.pop(self.right)
+	Sounds.play("Pop", 0.6)
+	local character = self:character()
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if humanoid and root and root:IsA("BasePart") then
+		humanoid.AutoRotate = false
+		humanoid:Move(Vector3.zero)
+		-- turn to face the camera
+		root.CFrame = CFrame.lookAt(root.Position, root.Position + station.facing)
+		self.standRotation = root.CFrame.Rotation
+	end
+end
+
+function Makeover:closeStation()
+	self.station = nil
+	self.spinning = false
+	self.right.Visible = false
+	local character = self:character()
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.AutoRotate = true
+	end
+end
+
+-- The part of the screen your avatar is framed in: between the guide and the station menu.
+function Makeover:stageRect(viewport: Vector2): (Vector2, Vector2)
+	local left = self.guide.AbsolutePosition.X + self.guide.AbsoluteSize.X
+	local right = if self.right.Visible then self.right.AbsolutePosition.X else viewport.X
+	local top, bottom = 64, viewport.Y
+	return Vector2.new(left, top), Vector2.new(math.max(right - left, 1), bottom - top)
+end
+
+-- Where the camera goes so your avatar fills the space next to the station menu.
 function Makeover:cameraTarget(camera: Camera): CFrame?
-	local model = self.model
-	local head = model and model:FindFirstChild("Head")
-	local root = model and model:FindFirstChild("HumanoidRootPart")
-	if not (head and root and head:IsA("BasePart") and root:IsA("BasePart")) then
+	local character = self:character()
+	local head = character and character:FindFirstChild("Head")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local station = self.station
+	if not (station and head and root and head:IsA("BasePart") and root:IsA("BasePart")) then
+		return nil
+	end
+	local viewport = camera.ViewportSize
+	if not viewport or viewport.X <= 0 then
 		return nil
 	end
 	local framing = FRAMING[self.tab] or FRAMING.Hair
-	-- aimed a little above the head, so it sits below the speech bubble at the top of the window
-	local focus = if framing.focus == "face"
-		then head.Position + Vector3.new(0, 0.55, 0)
-		elseif framing.focus == "hair" then head.Position + Vector3.new(0, 0.55, 0)
-		else Vector3.new(root.Position.X, STAND.Y + 3.4, root.Position.Z)
-	local holder = self.portraitHolder
-	local center = holder.AbsolutePosition + holder.AbsoluteSize / 2
-	local viewport = camera.ViewportSize
-	if not viewport or viewport.X <= 0 or holder.AbsoluteSize.Y <= 0 then
-		return nil
-	end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local feet = root.Position.Y - (if humanoid then humanoid.HipHeight + root.Size.Y / 2 else 3)
+	local focus = if framing.focus == "body"
+		then Vector3.new(root.Position.X, (feet + head.Position.Y + head.Size.Y) / 2 + 0.3, root.Position.Z)
+		else head.Position + Vector3.new(0, 0.45, 0)
+	local origin, size = self:stageRect(viewport)
+	local center = origin + size / 2
 	local tanV = math.tan(math.rad(camera.FieldOfView) / 2)
 	local tanH = tanV * viewport.X / viewport.Y
-	-- far enough back that the framing height fills most of the window
-	local distance = framing.height * viewport.Y / (2 * tanV * holder.AbsoluteSize.Y * 0.92)
-	local position = focus + FACING * distance
-	-- then turn the camera so the client sits in the window instead of the middle of the screen
+	-- far enough back that the framing height fills most of that space
+	local distance = framing.height * viewport.Y / (2 * tanV * math.min(size.Y, size.X * 1.3) * 0.9)
+	local position = focus + station.facing * distance
+	-- then turn the camera so you sit in that space instead of the middle of the screen
 	local ndcX = center.X / viewport.X * 2 - 1
 	local ndcY = 1 - center.Y / viewport.Y * 2
 	return CFrame.lookAt(position, focus) * CFrame.Angles(0, math.atan(ndcX * tanH), 0) * CFrame.Angles(-math.atan(ndcY * tanV), 0, 0)
-end
-
-local function setLocalTransparency(character: Model?, amount: number)
-	if character then
-		for _, d in character:GetDescendants() do
-			if d:IsA("BasePart") or d:IsA("Decal") then
-				d.LocalTransparencyModifier = amount
-			end
-		end
-	end
 end
 
 function Makeover:startStage()
 	local controlling = false
 	RunService:BindToRenderStep("GlowUpStage", Enum.RenderPriority.Camera.Value + 1, function(dt)
 		local camera = Workspace.CurrentCamera
-		local active = self.frame.Visible and self.model ~= nil and self.model.Parent ~= nil and self.standCFrame ~= nil
-		local show3D = active and self:is3D()
-		-- the left card turns into a window onto the salon
-		self.left.BackgroundTransparency = if show3D then 1 else 0
-		self.portraitHolder.BackgroundTransparency = if show3D then 1 else 0
-		self.spinHint.Visible = show3D and not self.spinning
-		if self.portraitRoot then
-			self.portraitRoot.Visible = not show3D
+		local character = self:character()
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		local here = if self.frame.Visible and root and root:IsA("BasePart") then Stations.at(root.Position) else nil
+		if here ~= self.station then
+			if self.station then
+				self:closeStation()
+			end
+			if here then
+				self:openStation(here)
+			end
 		end
-		self.bubbleLayer.Visible = not show3D and self.tab ~= "Nails"
+		self.spinHint.Visible = self.station ~= nil and not self.spinning
 
-		local character = Players.LocalPlayer.Character
-		if not active then
+		if not self.station then
 			if controlling then
 				controlling = false
 				camera.CameraType = Enum.CameraType.Custom
-				setLocalTransparency(character, 0)
 			end
 			return
 		end
-		-- The stylist's own avatar steps out of the shot while the makeover screen is up
-		setLocalTransparency(character, 1)
-
-		-- a gentle sway, plus however far the player spun them
-		local sway = if show3D and not self.spinning then math.sin(os.clock() * 0.7) * 0.2 else 0
-		local root = self.model and self.model:FindFirstChild("HumanoidRootPart")
-		if root and root:IsA("BasePart") then
-			root.CFrame = (self.standCFrame :: CFrame) * CFrame.Angles(0, self.spin + sway, 0)
+		-- turned however far the player spun themselves
+		if root and root:IsA("BasePart") and self.standRotation then
+			root.CFrame = CFrame.new(root.Position) * self.standRotation * CFrame.Angles(0, self.spin, 0)
 		end
-		if self.pet and self.pet.Parent and self.model then
-			Pets.follow(self.pet, self.model, dt, -1)
-		end
-
 		local target = self:cameraTarget(camera)
 		if target then
 			camera.CameraType = Enum.CameraType.Scriptable
@@ -1399,9 +1475,10 @@ function Makeover:connectInput()
 	-- Drag across the 3D client to spin them around
 	UserInputService.InputBegan:Connect(function(input)
 		local isPress = input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch
-		if isPress and self.frame.Visible and self:is3D() and self.model and not self.ctx.isModalOpen() then
+		if isPress and self.frame.Visible and self:is3D() and not self.ctx.isModalOpen() then
 			local pos = screenPosition(input)
-			if self:isOverPortrait(pos) then
+			local origin, size = self:stageRect(Workspace.CurrentCamera.ViewportSize)
+			if pos.X >= origin.X and pos.X <= origin.X + size.X and pos.Y >= origin.Y then
 				self.spinning = true
 				self.spinFrom = pos.X
 			end

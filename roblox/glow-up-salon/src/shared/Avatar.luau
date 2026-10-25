@@ -209,6 +209,26 @@ local function attach(p: BasePart, to: BasePart)
 	weld.Parent = p
 end
 
+-- The makeover face goes on the front of the head as a SurfaceGui, scaled so its eyes and mouth
+-- land where a face would be.
+local function addFaceGui(head: BasePart)
+	local gui = Instance.new("SurfaceGui")
+	gui.Name = "GlamFace"
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 260
+	gui.LightInfluence = 0.5
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	local holder = Instance.new("Frame")
+	holder.Name = "Holder"
+	holder.AnchorPoint = Vector2.new(0.5, 0.5)
+	holder.Position = UDim2.fromScale(0.5, 0.6)
+	holder.Size = UDim2.fromScale(1.8, 1.8)
+	holder.BackgroundTransparency = 1
+	holder.Parent = gui
+	gui.Parent = head
+end
+
 -- A fresh client body. Returns nil if the body couldn't be loaded.
 function Avatar.new(client): Model?
 	local assets = Avatar.assets()
@@ -226,25 +246,55 @@ function Avatar.new(client): Model?
 	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
 	root.Anchored = true
 	model.PrimaryPart = root
-
-	local head = model:FindFirstChild("Head") :: BasePart
-	local gui = Instance.new("SurfaceGui")
-	gui.Name = "GlamFace"
-	gui.Face = Enum.NormalId.Front
-	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.PixelsPerStud = 260
-	gui.LightInfluence = 0.5
-	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	-- The makeover drawing is scaled so its eyes and mouth land on the front of the head.
-	local holder = Instance.new("Frame")
-	holder.Name = "Holder"
-	holder.AnchorPoint = Vector2.new(0.5, 0.5)
-	holder.Position = UDim2.fromScale(0.5, 0.6)
-	holder.Size = UDim2.fromScale(1.8, 1.8)
-	holder.BackgroundTransparency = 1
-	holder.Parent = gui
-	gui.Parent = head
+	addFaceGui(model:FindFirstChild("Head") :: BasePart)
 	return model
+end
+
+-- Gets a player's own character ready for a round. They keep their own body, skin and
+-- animations; the round swaps in a classic head (so makeup lines up with the drawn face) and
+-- takes off their own hair, clothes and accessories (the round adds new ones). Their normal look
+-- comes back when they respawn after the show. Server only. Returns their skin color.
+function Avatar.prepareCharacter(character: Model): Color3?
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return nil
+	end
+	local ok, desc = pcall(function()
+		return humanoid:GetAppliedDescription()
+	end)
+	if not ok or not desc then
+		return nil
+	end
+	local base = desc:Clone()
+	base.Head = 0
+	base.Face = 0
+	base.Shirt, base.Pants, base.GraphicTShirt = 0, 0, 0
+	base.HatAccessory, base.HairAccessory, base.FaceAccessory, base.NeckAccessory = "", "", "", ""
+	base.ShouldersAccessory, base.FrontAccessory, base.BackAccessory, base.WaistAccessory = "", "", "", ""
+	pcall(function()
+		base:SetAccessories({}, true) -- layered clothing too
+	end)
+	local applied = pcall(function()
+		humanoid:ApplyDescription(base)
+	end)
+	if not applied then
+		-- still take off their own hair and hats so the round's look can go on
+		for _, d in character:GetChildren() do
+			if d:IsA("Accessory") or d:IsA("Shirt") or d:IsA("Pants") or d:IsA("ShirtGraphic") then
+				d:Destroy()
+			end
+		end
+	end
+	local head = character:FindFirstChild("Head")
+	if head and head:IsA("BasePart") and not head:FindFirstChild("GlamFace") then
+		for _, d in head:GetChildren() do
+			if d:IsA("Decal") then
+				d:Destroy()
+			end
+		end
+		addFaceGui(head)
+	end
+	return desc.HeadColor
 end
 
 -- Plays the default idle on a client standing somewhere (makeover screen, podium).

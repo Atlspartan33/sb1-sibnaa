@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Stations = require(ReplicatedStorage.Shared.Stations)
 
 local WorldBuilder = {}
 
@@ -279,6 +280,98 @@ local function cameraMarker(parent: Instance, name: string, from: Vector3, to: V
 	p.CanTouch = false
 end
 
+-- The Dressing Hall: a glowing pad, a sign and a few props for each station (see Shared.Stations).
+local function buildStations(salon: Instance)
+	local folder = Instance.new("Folder")
+	folder.Name = "Stations"
+	folder.Parent = salon
+	for _, s in Stations.list do
+		local pad = part(folder, "Pad_" .. s.id, Vector3.new(0.3, Stations.PAD_RADIUS * 2, Stations.PAD_RADIUS * 2), CFrame.new(s.pad) * CFrame.Angles(0, 0, math.rad(90)), s.color, Enum.Material.Neon)
+		pad.Shape = Enum.PartType.Cylinder
+		pad.Transparency = 0.35
+		pad.CanCollide = false
+		pad:SetAttribute("Station", s.id)
+		-- A floating sign over each pad, readable from the salon floor
+		local board = part(folder, "Sign_" .. s.id, Vector3.new(9, 2.4, 0.4), CFrame.lookAt(s.pad + Vector3.new(0, 10.5, 0), s.pad + Vector3.new(0, 10.5, 0) + s.facing), rgb(255, 255, 255))
+		board.CanCollide = false
+		sign(board, Enum.NormalId.Front, s.icon .. " " .. s.name, s.color:Lerp(rgb(40, 20, 60), 0.35))
+		local beam = Instance.new("PointLight")
+		beam.Color = s.color
+		beam.Range = 10
+		beam.Brightness = 1.2
+		beam.Parent = pad
+	end
+
+	-- Props that say what each station is for
+	local hair = Stations.byTab.Hair.pad
+	part(folder, "Dryer", Vector3.new(2.2, 1.6, 2.2), CFrame.new(hair + Vector3.new(0, 5.6, 4.6)), rgb(240, 240, 250), Enum.Material.Metal).Shape = Enum.PartType.Ball
+	local face = Stations.byTab.Face.pad
+	for i, c in { rgb(255, 60, 120), rgb(200, 30, 60), rgb(255, 140, 180) } do
+		part(folder, "Lipstick", Vector3.new(0.5, 1.4, 0.5), CFrame.new(face + Vector3.new(-2 + i, 3.9, 9.3)), c)
+	end
+	local outfit = Stations.byTab.Outfit.pad
+	part(folder, "RackBar", Vector3.new(8, 0.2, 0.2), CFrame.new(outfit + Vector3.new(0, 6.2, 8.6)), rgb(200, 200, 210), Enum.Material.Metal)
+	for i, c in { rgb(255, 120, 190), rgb(90, 160, 255), rgb(245, 200, 70), rgb(130, 210, 90), rgb(170, 120, 230) } do
+		part(folder, "Shirt", Vector3.new(1.2, 2.2, 0.3), CFrame.new(outfit + Vector3.new(-3.2 + i * 1.3, 4.9, 8.6)), c, Enum.Material.Fabric)
+	end
+	local costume = Stations.byTab.Costume.pad
+	part(folder, "Trunk", Vector3.new(4, 2, 2.4), CFrame.new(costume + Vector3.new(3.5, 1, 6)), rgb(140, 80, 40), Enum.Material.Wood)
+	part(folder, "Cape", Vector3.new(2.4, 3.6, 0.2), CFrame.new(costume + Vector3.new(-3.6, 3.6, 8.2)), rgb(220, 30, 50), Enum.Material.Fabric)
+	local show = Stations.byTab.Show.pad
+	local stage = part(folder, "PoseStage", Vector3.new(0.5, 9.5, 9.5), CFrame.new(show + Vector3.new(0, -0.3, 0)) * CFrame.Angles(0, 0, math.rad(90)), GOLD, Enum.Material.SmoothPlastic)
+	stage.Shape = Enum.PartType.Cylinder
+	stage.CanCollide = false
+	local light = part(folder, "StageLight", Vector3.new(1.2, 1.2, 1.2), CFrame.new(show + Vector3.new(0, 13, 0)), rgb(255, 250, 230), Enum.Material.Neon)
+	local spot = Instance.new("SpotLight")
+	spot.Face = Enum.NormalId.Bottom
+	spot.Color = rgb(255, 240, 220)
+	spot.Range = 16
+	spot.Brightness = 3
+	spot.Angle = 45
+	spot.Parent = light
+	local pet = Stations.byTab.Pet.pad
+	local grass = part(folder, "PetGrass", Vector3.new(14, 0.15, 12), CFrame.new(pet + Vector3.new(2, -0.12, 0)), rgb(120, 200, 110), Enum.Material.Grass)
+	grass.CanCollide = false
+	for _, z in { -6, 6 } do
+		part(folder, "Fence", Vector3.new(14, 1.4, 0.3), CFrame.new(pet + Vector3.new(2, 0.7, z)), rgb(255, 255, 255), Enum.Material.Wood)
+	end
+	part(folder, "DogHouse", Vector3.new(3, 3, 3), CFrame.new(pet + Vector3.new(7, 1.5, 0)), rgb(255, 160, 80), Enum.Material.Wood)
+	part(folder, "DogRoof", Vector3.new(3.6, 1.2, 3.6), CFrame.new(pet + Vector3.new(7, 3.6, 0)), rgb(200, 60, 80), Enum.Material.Wood)
+end
+
+-- Somewhere to hang out between rounds: step on the floor and you dance (see Main.client)
+local function buildDanceFloor(salon: Instance)
+	local floor = Instance.new("Folder")
+	floor.Name = "DanceFloor"
+	floor.Parent = salon
+	local center = Vector3.new(-24, 0.25, 39)
+	local colors = { PINK, PURPLE, GOLD, rgb(90, 200, 255) }
+	local tiles = {}
+	for ix = -2, 1 do
+		for iz = -2, 1 do
+			local t = part(floor, "DanceTile", Vector3.new(2.9, 0.3, 2.9), CFrame.new(center + Vector3.new(ix * 3 + 1.5, 0, iz * 3 + 1.5)), colors[(ix + iz) % 4 + 1], Enum.Material.Neon)
+			t.CanCollide = false
+			table.insert(tiles, t)
+		end
+	end
+	local board = part(floor, "DanceSign", Vector3.new(9, 2.4, 0.4), CFrame.lookAt(center + Vector3.new(0, 9, 0), center + Vector3.new(1, 9, 0)), rgb(255, 255, 255))
+	board.CanCollide = false
+	sign(board, Enum.NormalId.Front, "🕺 Dance Floor 💃", PURPLE)
+	floor:SetAttribute("Center", center)
+	floor:SetAttribute("Radius", 6)
+	-- the tiles twinkle through the colors
+	task.spawn(function()
+		local step = 0
+		while floor.Parent do
+			step += 1
+			for i, t in tiles do
+				t.Color = colors[(i + step) % #colors + 1]
+			end
+			task.wait(0.6)
+		end
+	end)
+end
+
 function WorldBuilder.build(): World
 	local old = Workspace:FindFirstChild("GlowUpWorld")
 	if old then
@@ -326,6 +419,7 @@ function WorldBuilder.build(): World
 		local seat = Instance.new("Seat")
 		seat.Name = "SalonChair"
 		seat.Anchored = true
+		seat.Disabled = true -- scenery: you stand on the glowing pad in front of it
 		seat.Size = Vector3.new(3, 1, 3)
 		seat.CFrame = CFrame.new(x, 2, 59) * CFrame.Angles(0, math.pi, 0)
 		seat.Color = PURPLE
@@ -335,6 +429,8 @@ function WorldBuilder.build(): World
 	end
 	local salonSign = part(salon, "SalonSign", Vector3.new(36, 7, 1), CFrame.new(0, 15, 67), rgb(255, 255, 255))
 	sign(salonSign, Enum.NormalId.Front, "✨ 5 Minute Glow Up Salon ✨", PINK)
+	buildStations(salon)
+	buildDanceFloor(salon)
 
 	-- Runway
 	local runway = Instance.new("Folder")

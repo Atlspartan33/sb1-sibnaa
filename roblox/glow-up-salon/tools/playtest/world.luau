@@ -573,6 +573,56 @@ function W.startServer()
 	return ctx
 end
 
+-- A simple R15 character standing on the salon spawn (players walk around the Dressing Hall)
+local function spawnCharacter(p)
+	local desc = new("HumanoidDescription")
+	local skin = Color3.fromRGB(124, 78, 50)
+	desc.HeadColor, desc.TorsoColor = skin, skin
+	desc.LeftArmColor, desc.RightArmColor, desc.LeftLegColor, desc.RightLegColor = skin, skin, skin, skin
+	local character = M.Players.CreateHumanoidModelFromDescription(nil, desc, Enum.HumanoidRigType.R15)
+	character.Name = p.Name
+	character.PrimaryPart.CFrame = CFrame.new(0, 3, 42)
+	D[character].ownerPlayer = p
+	character.Parent = W.game:GetService("Workspace")
+	D[p].props.Character = character
+	local s = D[p].signals.CharacterAdded
+	if s then s:Fire(character) end
+	return character
+end
+M.Player = {
+	LoadCharacter = function(self)
+		local old = D[self].props.Character
+		if old then old:Destroy() end
+		spawnCharacter(self)
+	end,
+}
+M.Humanoid.GetAppliedDescription = function(self)
+	local desc = new("HumanoidDescription")
+	local head = self.Parent and self.Parent:FindFirstChild("Head")
+	local skin = head and head.Color or Color3.fromRGB(124, 78, 50)
+	desc.HeadColor, desc.TorsoColor = skin, skin
+	desc.LeftArmColor, desc.RightArmColor, desc.LeftLegColor, desc.RightLegColor = skin, skin, skin, skin
+	return desc
+end
+M.Humanoid.ApplyDescription = function(_, desc)
+	assert(E.typeof(desc) == "Instance" and desc:IsA("HumanoidDescription"), "ApplyDescription needs a HumanoidDescription")
+end
+-- Walking is instant here: MoveTo puts the character on the spot
+M.Humanoid.MoveTo = function(self, pos)
+	local root = self.Parent and self.Parent:FindFirstChild("HumanoidRootPart")
+	if root then
+		root.CFrame = CFrame.new(pos.X, root.CFrame.Position.Y, pos.Z)
+	end
+	self.MoveToFinished:Fire(true)
+end
+M.Humanoid.Move = function() end
+M.HumanoidDescription = {
+	SetAccessories = function() end,
+}
+M.Seat = {
+	Sit = function() end,
+}
+
 function W.addPlayer(name, userId)
 	W.nextUserId += 1
 	userId = userId or W.nextUserId
@@ -589,6 +639,7 @@ function W.addPlayer(name, userId)
 	E.runAs(W.server, function()
 		p.Parent = Players
 		Players.PlayerAdded:Fire(p)
+		spawnCharacter(p)
 	end)
 	local ctx = newContext(name, false, p)
 	for _, c in sps:GetChildren() do

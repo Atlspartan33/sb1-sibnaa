@@ -12,6 +12,8 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Events = require(ReplicatedStorage.Shared.Events)
 local Progress = require(ReplicatedStorage.Shared.Progress)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Pets = require(ReplicatedStorage.Shared.Pets)
+local RunService = game:GetService("RunService")
 local Scoring = require(ReplicatedStorage.Shared.Scoring)
 
 local DataService = require(script.Parent.DataService)
@@ -28,6 +30,7 @@ type Entry = {
 	done: boolean,
 	votes: { [number]: number }, -- voter UserId -> stars
 	assignedAt: number,
+	pet: Model?, -- their pet, trotting after them during the round
 }
 
 local world: WorldBuilder.World
@@ -82,20 +85,53 @@ end
 ------------------------------------------------------------------------------
 -- Makeover
 
--- Each player dresses up themselves: their name, and the skin tone closest to their own avatar.
-local function assignClient(player: Player)
-	local skinId = "skin_7"
-	local character = player.Character
-	local head = character and character:FindFirstChild("Head")
-	if head and head:IsA("BasePart") then
-		skinId = Catalog.closestSkin(head.Color)
+-- Puts the entry's look on the player's real character (everyone sees it), and keeps their pet.
+local function dressCharacter(entry: Entry)
+	local character = entry.player.Character
+	if not character or not character.Parent then
+		return
 	end
-	local look = Catalog.defaultLook()
-	look.skin = skinId
+	Avatar.dress(character, entry.client, entry.look, { clean = 1, mood = "smile", brushed = true })
+	local petId = entry.look.pet
+	if not entry.pet or entry.pet:GetAttribute("PetId") ~= petId then
+		if entry.pet then
+			entry.pet:Destroy()
+			entry.pet = nil
+		end
+		local pet = Pets.build(petId)
+		local root = character:FindFirstChild("HumanoidRootPart")
+		if pet and root and root:IsA("BasePart") then
+			pet:SetAttribute("PetId", petId)
+			pet.Name = entry.player.Name .. "'s Pet"
+			pet:PivotTo(root.CFrame * CFrame.new(2.6, -3, 0.6))
+			pet.Parent = world.folder
+			entry.pet = pet
+		end
+	end
+end
+
+-- Gets the character ready for the round (own body and skin, classic head, own hair and clothes
+-- off) and puts the look on. Also used when someone respawns in the middle of a round.
+local function prepareCharacter(entry: Entry)
+	local character = entry.player.Character
+	if not character then
+		return
+	end
+	local skin = Avatar.prepareCharacter(character)
+	if skin then
+		entry.client.skin = skin
+		local index = tonumber(string.match(Catalog.closestSkin(skin), "%d+"))
+		entry.client.skinIndex = index or entry.client.skinIndex
+	end
+	dressCharacter(entry)
+end
+
+-- Each player dresses up themselves, in their own avatar.
+local function assignClient(player: Player)
 	local entry: Entry = {
 		player = player,
-		client = Clients.forPlayer(player.DisplayName, tonumber(string.match(skinId, "%d+")) or 7),
-		look = look,
+		client = Clients.forPlayer(player.DisplayName, 7),
+		look = Catalog.defaultLook(),
 		clean = 1, -- no washing: you come in fresh
 		rinsed = true,
 		done = false,
@@ -103,6 +139,8 @@ local function assignClient(player: Player)
 		assignedAt = now(),
 	}
 	entries[player.UserId] = entry
+	-- their real skin goes in the payload, so the menus' little faces match them
+	prepareCharacter(entry)
 	Remotes.AssignClient:FireClient(player, entryPayload(entry))
 end
 
@@ -140,6 +178,7 @@ local function onUpdateLook(player: Player, key: unknown, itemId: unknown)
 		return
 	end
 	entry.look[key] = itemId
+	dressCharacter(entry)
 	-- Holiday items you used during the event are yours to keep afterwards
 	if it.event then
 		local profile = DataService.get(player)
@@ -320,34 +359,129 @@ local function clearModels()
 	table.clear(spawnedModels)
 end
 
-local function walkRunway(entry: Entry)
-	local model = buildClientModel(entry)
-	model:SetAttribute("Walking", true) -- the runway camera follows this model
-	local root = placeModel(model, world.runwayStart, Vector3.new(0, 0, 1))
-	local walk = playWalk(model)
+-- Everyone not on the runway sits in the audience seats along it.
+local function seatAudience(except: Player?)
+	local seats = {}
+	for _, d in world.folder.Runway:GetChildren() do
+		if d:IsA("Seat") and d.Name == "AudienceSeat" and not d.Occupant then
+			table.insert(seats, d)
+		end
+	end
+	for _, player in Players:GetPlayers() do
+		local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+		if player ~= except and humanoid and not humanoid.SeatPart and #seats > 0 then
+			local seat = table.remove(seats, 1)
+			player.Character:PivotTo(seat.CFrame + Vector3.new(0, 3, 0))
+			seat:Sit(humanoid)
+		end
+	end
+end
 
+local function unseat(character: Model)
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		local seat = humanoid.SeatPart
+		humanoid.Sit = false
+		if seat then
+			local weld = seat:FindFirstChild("SeatWeld")
+			if weld then
+				weld:Destroy()
+			end
+		end
+	end
+end
+
+-- The player's own character walks the runway (their pet trots along), then strikes their pose.
+-- If they have no character (just left), a stand-in model walks instead.
+local function walkRunway(entry: Entry)
+	local character = entry.player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not (character and humanoid and root and root:IsA("BasePart")) then
+		local model = buildClientModel(entry)
+		model:SetAttribute("Walking", true)
+		local r = placeModel(model, world.runwayStart, Vector3.new(0, 0, 1))
+		local walk = playWalk(model)
+		local walkTime = Config.SHOWCASE_SECONDS_PER_LOOK * 0.6
+		local target = world.runwayEnd + Vector3.new(0, rootHeight(model), 0)
+		model:SetAttribute("WalkFrom", r.Position)
+		model:SetAttribute("WalkTo", target)
+		model:SetAttribute("WalkStart", now())
+		model:SetAttribute("WalkTime", walkTime)
+		task.wait(walkTime)
+		if walk then
+			walk:Stop()
+		end
+		Avatar.pose(model, entry.look.pose)
+		return
+	end
+
+	unseat(character)
+	task.wait(0.1)
+	local height = humanoid.HipHeight + root.Size.Y / 2
+	local start = world.runwayStart + Vector3.new(0, height, 0)
+	character:PivotTo(CFrame.lookAt(start, start + Vector3.new(0, 0, 1)))
+	if entry.pet then
+		entry.pet:PivotTo(CFrame.new(world.runwayStart + Vector3.new(2.6, 0, 0)))
+	end
+	character:SetAttribute("Walking", true) -- the runway camera follows them
 	if hasPass(entry.player, "RunwayStar") then
 		for _, emitter in world.confetti do
 			emitter:Emit(80)
 		end
+		local sparkles = Instance.new("Sparkles")
+		sparkles.Name = "RunwayStar"
+		sparkles.Parent = root
+		task.delay(Config.SHOWCASE_SECONDS_PER_LOOK, function()
+			sparkles:Destroy()
+		end)
 	end
 
-	-- Each player's screen moves the model smoothly from these attributes (moving an anchored
-	-- part from the server looks jerky). See Showcase:updateWalkers on the client.
 	local walkTime = Config.SHOWCASE_SECONDS_PER_LOOK * 0.6
-	local target = world.runwayEnd + Vector3.new(0, rootHeight(model), 0)
-	model:SetAttribute("WalkFrom", root.Position)
-	model:SetAttribute("WalkTo", target)
-	model:SetAttribute("WalkStart", now())
-	model:SetAttribute("WalkTime", walkTime)
-	task.wait(walkTime)
-	if walk then
-		walk:Stop()
+	local speed = humanoid.WalkSpeed or 16
+	humanoid.WalkSpeed = (world.runwayEnd - world.runwayStart).Magnitude / walkTime
+	humanoid:MoveTo(world.runwayEnd)
+	local started = os.clock()
+	while os.clock() - started < walkTime + 1.5 and (Vector3.new(root.Position.X, 0, root.Position.Z) - Vector3.new(world.runwayEnd.X, 0, world.runwayEnd.Z)).Magnitude > 1.5 do
+		task.wait(0.1)
 	end
-	task.wait(1) -- the twirl at the end of the runway
+	humanoid.WalkSpeed = speed
 	if root.Parent then
-		root.CFrame = CFrame.lookAt(target, target + Vector3.new(0, 0, 1))
-		Avatar.pose(model, entry.look.pose) -- then strike their pose
+		-- face the crowd and strike the pose
+		root.CFrame = CFrame.lookAt(root.Position, root.Position + Vector3.new(0, 0, 1))
+		Avatar.pose(character, entry.look.pose)
+	end
+	task.delay(Config.SHOWCASE_SECONDS_PER_LOOK - walkTime - 0.5, function()
+		if character.Parent then
+			character:SetAttribute("Walking", nil)
+		end
+	end)
+end
+
+-- Pets trot after their owners all round long.
+local function followPets(dt: number)
+	for _, entry in entries do
+		local character = entry.player.Character
+		if entry.pet and entry.pet.Parent and character then
+			Pets.follow(entry.pet, character, dt)
+		end
+	end
+end
+
+-- After the show everyone gets their own look back.
+local function restoreEveryone()
+	for _, entry in entries do
+		if entry.pet then
+			entry.pet:Destroy()
+			entry.pet = nil
+		end
+		if entry.player.Parent then
+			task.spawn(function()
+				pcall(function()
+					entry.player:LoadCharacter()
+				end)
+			end)
+		end
 	end
 end
 
@@ -567,9 +701,10 @@ end
 -- Main loop
 
 local function runRound()
-	-- Intermission
+	-- Intermission: everyone back in their own look
 	results = nil
 	showcase = nil
+	restoreEveryone()
 	table.clear(entries)
 	while #Players:GetPlayers() < Config.MIN_PLAYERS do
 		setState("Waiting", 0)
@@ -603,10 +738,11 @@ local function runRound()
 	task.wait(Config.INTERMISSION_SECONDS)
 
 	-- Makeover: 5 minutes!
-	for _, player in Players:GetPlayers() do
-		assignClient(player)
-	end
 	setState("Makeover", Config.MAKEOVER_SECONDS)
+	-- getting each avatar ready takes a moment, so everyone is set up side by side
+	for _, player in Players:GetPlayers() do
+		task.spawn(assignClient, player)
+	end
 	while now() < state.endsAt do
 		task.wait(0.5)
 		if allDone() then
@@ -643,6 +779,7 @@ local function runRound()
 			}
 			setState("Showcase", Config.SHOWCASE_SECONDS_PER_LOOK)
 			Remotes.Showcase:FireAllClients(showcase)
+			seatAudience(entry.player)
 			local started = os.clock()
 			walkRunway(entry)
 			task.wait(math.max(0, Config.SHOWCASE_SECONDS_PER_LOOK - (os.clock() - started)))
@@ -657,11 +794,23 @@ local function runRound()
 		results = { themeId = state.themeId, rows = rows }
 		sendResults()
 		setState("Results", Config.RESULTS_SECONDS)
-		for place = 1, math.min(3, #rows) do
-			local entry = entries[rows[place].userId]
-			if entry then
+		-- The top 3 stand on the podium in their looks; everyone else gathers in front
+		for _, row in rows do
+			local entry = entries[row.userId]
+			local character = entry and entry.player.Character
+			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+			local root = character and character:FindFirstChild("HumanoidRootPart")
+			if character and humanoid and root and root:IsA("BasePart") then
+				unseat(character)
+				local spot = world.podium[row.rank] or (world.podium[1] + Vector3.new((row.rank - 5) * 3, -world.podium[1].Y, 9))
+				local pos = spot + Vector3.new(0, humanoid.HipHeight + root.Size.Y / 2 + 0.1, 0)
+				character:PivotTo(CFrame.lookAt(pos, pos + Vector3.new(0, 0, 1)))
+				if row.rank == 1 then
+					Avatar.pose(character, "pose_cheer")
+				end
+			elseif entry and row.rank <= 3 then
 				local model = buildClientModel(entry)
-				placeModel(model, world.podium[place], Vector3.new(0, 0, 1))
+				placeModel(model, world.podium[row.rank], Vector3.new(0, 0, 1))
 				Avatar.idle(model)
 			end
 		end
@@ -699,7 +848,22 @@ function RoundService.init(builtWorld: WorldBuilder.World)
 			end
 		end
 	end)
+	-- Respawning in the middle of a round puts the look straight back on
+	Players.PlayerAdded:Connect(function(player)
+		player.CharacterAdded:Connect(function()
+			local entry = entries[player.UserId]
+			if entry and (state.phase == "Makeover" or state.phase == "Showcase") then
+				task.wait(0.5)
+				prepareCharacter(entry)
+			end
+		end)
+	end)
+	RunService.Heartbeat:Connect(followPets)
 	Players.PlayerRemoving:Connect(function(player)
+		local entry = entries[player.UserId]
+		if entry and entry.pet then
+			entry.pet:Destroy()
+		end
 		entries[player.UserId] = nil
 		lastReaction[player] = nil
 	end)

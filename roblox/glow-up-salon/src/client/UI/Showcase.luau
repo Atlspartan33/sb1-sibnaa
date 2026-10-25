@@ -307,7 +307,13 @@ function Showcase:followWalker()
 	if not world then
 		return
 	end
+	-- the player walking the runway in their own avatar (or a stand-in model if they left)
 	local walker = nil
+	for _, player in Players:GetPlayers() do
+		if player.Character and player.Character:GetAttribute("Walking") then
+			walker = player.Character
+		end
+	end
 	for _, m in world:GetChildren() do
 		if m:IsA("Model") and m:GetAttribute("Walking") then
 			walker = m

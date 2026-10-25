@@ -38,12 +38,14 @@ for i, eventId in { "halloween", "thanksgiving", "christmas" } do
 	-- into the makeover: holiday items should be in the menus
 	while not H.shown(H.ui(tori).Makeover) and waited < 900 do E.runFor(1); waited += 1 end
 	E.runFor(3)
-	H.click(H.tab(tori, "Costume"), "Costume")
+	H.click(H.tab(tori, "GoCostume"), "walk to Costume Closet")
+	E.runFor(0.2)
 	H.click(H.button(tori, "Hats & Clips"), "Hats & Clips chip")
 	local holidayAcc = ({ halloween = "Pumpkin Clip", thanksgiving = "Leaf Crown", christmas = "Reindeer Antlers" })[eventId]
 	H.check(H.card(tori, holidayAcc) ~= nil, holidayAcc .. " is in the menu")
 	H.click(H.card(tori, holidayAcc), holidayAcc)
-	H.click(H.tab(tori, "Outfit"), "Outfit")
+	H.click(H.tab(tori, "GoOutfit"), "walk to Wardrobe")
+	E.runFor(0.2)
 	print("@@SHOT e" .. i .. "_" .. eventId .. "_outfits " .. W.dumpScreen(tori, 1280, 720))
 	E.SCREEN = { 1280, 720 }
 	H.click(H.button(tori, "I'm Done"), "done")
@@ -54,7 +56,8 @@ force(nil, ct)
 local waited = 0
 while not H.shown(H.ui(tori).Makeover) and waited < 900 do E.runFor(1); waited += 1 end
 E.runFor(2)
-H.click(H.tab(tori, "Costume"), "Costume")
+H.click(H.tab(tori, "GoCostume"), "walk to Costume Closet")
+	E.runFor(0.2)
 H.click(H.button(tori, "Hats & Clips"), "Hats & Clips chip")
 H.check(H.card(tori, "Santa Hat") == nil, "unused holiday items hidden after the event")
 H.check(H.card(tori, "Reindeer Antlers") ~= nil, "holiday items you used are yours to keep")

@@ -1,4 +1,4 @@
--- Everything you can put on your avatar: hairstyles, skin, makeup, outfits, costume pieces,
+-- Everything you can put on your avatar: hairstyles, makeup, outfits, costume pieces,
 -- a pet to walk with, and a runway pose and effect.
 --
 -- Item fields:
@@ -72,7 +72,8 @@ Catalog.Tabs = {
 	{ id = "Show", label = "Show", icon = "💃" },
 }
 
--- Skin tones, light to deep. Your own avatar's skin is picked to start.
+-- Skin tones, light to deep. There's no skin picker: everyone plays in their own avatar's skin.
+-- These only help save a look (the Look Book stores the closest tone).
 Catalog.SkinTones = {
 	{ "Cream", rgb(255, 224, 196) },
 	{ "Peach", rgb(250, 205, 175) },
@@ -163,19 +164,6 @@ Catalog.Categories = {
 				tags = { "red", "white", "sparkle" },
 			}),
 		},
-	},
-	{
-		key = "skin",
-		label = "Skin",
-		tab = "Face",
-		preview = "swatch",
-		items = (function()
-			local list = {}
-			for i, tone in Catalog.SkinTones do
-				table.insert(list, item({ id = "skin_" .. i, name = tone[1], color = tone[2] }))
-			end
-			return list
-		end)(),
 	},
 	{
 		key = "eyeshadow",
@@ -726,7 +714,6 @@ function Catalog.defaultLook(): { [string]: string }
 	return {
 		hairStyle = "hair_puff",
 		hairColor = "hc_black",
-		skin = "skin_7",
 		eyeshadow = "es_none",
 		lashes = "lash_none",
 		blush = "bl_none",

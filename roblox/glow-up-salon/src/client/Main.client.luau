@@ -88,8 +88,11 @@ local function applyState(newState)
 	local oldPhase = state.phase
 	state = newState
 	hud:setState(state)
-	if state.phase ~= oldPhase and (state.phase == "Makeover" or oldPhase == "Makeover") then
-		setCharacterControls(state.phase ~= "Makeover")
+	-- You walk around the Dressing Hall while getting ready and between rounds; during the show and
+	-- the results you sit in the audience (or stand on the podium), so your controls rest
+	local canWalk = state.phase ~= "Showcase" and state.phase ~= "Results"
+	if state.phase ~= oldPhase then
+		setCharacterControls(canWalk)
 	end
 	Sounds.music(if state.phase == "Makeover" then "MakeoverMusic" elseif state.phase == "Showcase" then "RunwayMusic" else nil)
 
@@ -216,8 +219,40 @@ task.spawn(function()
 	end
 end)
 
+-- Step onto the dance floor and you dance (everyone sees it); step off and you stop.
+local danceTrack: AnimationTrack? = nil
+local function updateDance()
+	local character = Players.LocalPlayer.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local floor = workspace:FindFirstChild("GlowUpWorld") and workspace.GlowUpWorld:FindFirstChild("DanceFloor", true)
+	local center, radius = floor and floor:GetAttribute("Center"), floor and floor:GetAttribute("Radius")
+	local on = false
+	if root and root:IsA("BasePart") and typeof(center) == "Vector3" and type(radius) == "number" then
+		on = Vector3.new(root.Position.X - center.X, 0, root.Position.Z - center.Z).Magnitude <= radius and state.phase ~= "Showcase"
+	end
+	if on and not danceTrack then
+		local animator = character:FindFirstChildOfClass("Humanoid") and character:FindFirstChildOfClass("Humanoid"):FindFirstChildOfClass("Animator")
+		if animator then
+			local anim = Instance.new("Animation")
+			anim.AnimationId = "rbxassetid://507771019" -- Roblox's default dance
+			local ok, track = pcall(function()
+				return animator:LoadAnimation(anim)
+			end)
+			if ok and track then
+				track.Looped = true
+				track:Play(0.3)
+				danceTrack = track
+			end
+		end
+	elseif not on and danceTrack then
+		danceTrack:Stop(0.3)
+		danceTrack = nil
+	end
+end
+
 RunService.RenderStepped:Connect(function()
 	hud:update()
 	showcase:updateWalkers()
 	showcase:followWalker()
+	updateDance()
 end)
